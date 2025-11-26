@@ -1,89 +1,142 @@
 /* src/index.css */
+:root {
+    /* Light theme */
+    --bg-color: #ffffff;
+    --text-color: #111111;
+    --accent-color: #111111;
+
+    /* Dark metric card (as in mock) */
+    --card-bg: #1f1f1f;
+    --card-text-color: #e5e7eb;
+
+    --profit-color: #16a34a; /* green */
+    --loss-color: #ef4444;   /* red */
+}
 
 body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
-    color: #333;
+    padding: 0;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 30px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.nav a {
+    color: #111111;
+    text-decoration: none;
+    margin-right: 20px;
+    font-size: 0.95rem;
+    transition: color .15s ease, font-weight .15s ease, text-decoration-color .15s ease;
+}
+
+.nav a:hover {
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.account-button {
+    background-color: #111111;
+    color: #ffffff;
+    border: 1px solid #111111;
+    padding: 10px 18px;
+    border-radius: 9999px; /* fully rounded */
+    cursor: pointer;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    transition: background-color 0.15s ease, transform 0.05s ease;
+}
+.account-button:hover { background-color: #000000; }
+.account-button:active { transform: translateY(1px); }
+
+.refresh-button { margin-bottom: 30px; }
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.total-value-block {
+    text-align: left;
+    margin-bottom: 12px;
+}
+
+.stat-card {
+    background-color: var(--card-bg);
     padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
+    margin-bottom: 30px;
 }
 
-.dashboard {
-    max-width: 1000px;
-    margin: 0 auto;
-    background: white;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.total-value-label {
+    font-size: 1.2rem;
+    opacity: 0.7;
+    margin-bottom: 5px;
 }
 
-h1, h2 {
-    color: #2c3e50;
-    border-bottom: 2px solid #ecf0f1;
-    padding-bottom: 10px;
+.value-amount {
+    font-size: 2.8rem;
+    font-weight: 600;
 }
 
-.summary {
-    background: #ecf0f1;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-}
-
-.summary p {
-    margin: 5px 0;
-    font-size: 1.1em;
-}
-
-.summary b {
+.profit-indicator {
+    color: var(--profit-color);
     font-weight: bold;
+    font-size: 1.1rem;
+    margin-left: 0;
+    margin-top: 4px;
+}
+
+.loss-indicator {
+    color: var(--loss-color);
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-left: 0;
+    margin-top: 4px;
 }
 
 /* Tabulka */
 table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
+    margin-top: 15px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
 }
 
 th, td {
-    border: 1px solid #ddd;
-    padding: 10px;
+    padding: 12px 15px;
     text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+    color: var(--text-color);
 }
 
 th {
-    background-color: #3498db;
-    color: white;
+    background-color: #f3f4f6;
+    color: #111111;
+    text-transform: uppercase;
+    font-size: 0.85rem;
 }
 
-tr:nth-child(even) {
-    background-color: #f2f2f2;
-}
+.profit-text { color: var(--profit-color); }
+.loss-text { color: var(--loss-color); }
 
-/* Tlačítko */
-button {
-    background-color: #2ecc71;
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    margin-bottom: 20px;
-    transition: background-color 0.3s;
-}
-
-button:hover:not(:disabled) {
-    background-color: #27ae60;
-}
-
-button:disabled {
-    background-color: #bdc3c7;
-    cursor: not-allowed;
-}
-
-.error-message {
-    color: red;
-    font-weight: bold;
+.loading {
+    text-align: center;
+    padding: 50px;
+    font-size: 1.5rem;
+    color: var(--text-color);
 }
