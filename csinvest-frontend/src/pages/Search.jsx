@@ -40,7 +40,7 @@ function SearchPage() {
 
   return (
     <div className="dashboard-container">
-      <h2 style={{ textAlign: 'center' }}>Search any skin</h2>
+      <h2 style={{ textAlign: 'center' }}>Search any item</h2>
 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <input

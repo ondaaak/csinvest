@@ -215,6 +215,21 @@ function App() {
     const isSearch = path.startsWith('/search');
     const isAuthPage = path === '/login' || path === '/account';
     const shouldBlur = !user && !isSearch && !isAuthPage; // blur Overview & Inventory only when logged out
+
+    // Theme handling
+    const [theme, setTheme] = useState('light');
+    useEffect(() => {
+        const saved = localStorage.getItem('csinvest:theme');
+        const t = saved === 'dark' ? 'dark' : 'light';
+        setTheme(t);
+        document.body.setAttribute('data-theme', t);
+    }, []);
+    const toggleTheme = () => {
+        const next = theme === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+        document.body.setAttribute('data-theme', next);
+        localStorage.setItem('csinvest:theme', next);
+    };
     return (
         <>
             <div className="header">
@@ -224,11 +239,14 @@ function App() {
                     <NavLink to="/inventory" className={({isActive}) => isActive ? 'active' : undefined}>Inventory</NavLink>
                     <NavLink to="/search" className={({isActive}) => isActive ? 'active' : undefined}>Search</NavLink>
                 </div>
-                {user ? (
-                    <NavLink to="/account" className="account-button">Account</NavLink>
-                ) : (
-                    <NavLink to="/login" className="account-button">Login</NavLink>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button aria-label="Toggle theme" className={`theme-toggle ${theme}`} onClick={toggleTheme}></button>
+                    {user ? (
+                        <NavLink to="/account" className="account-button">Account</NavLink>
+                    ) : (
+                        <NavLink to="/login" className="account-button">Login</NavLink>
+                    )}
+                </div>
             </div>
             <div className={`app-content ${shouldBlur ? 'blurred' : ''}`}>
                 {shouldBlur && (
