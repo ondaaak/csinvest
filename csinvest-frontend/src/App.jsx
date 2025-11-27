@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Routes, Route, NavLink } from 'react-router-dom';
+import { InventoryPage, SearchPage, SearchCategory } from './pages';
 import './App.css'; 
 
 const USER_ID = 1;
@@ -31,13 +33,15 @@ const PortfolioChart = ({ history }) => {
     );
 };
 
-// --- HLAVNÍ KOMPONENTA ---
-function App() {
+// --- STRÁNKA: OVERVIEW ---
+function OverviewPage() {
     const [portfolio, setPortfolio] = useState([]);
     const [history, setHistory] = useState([]);
     const [totals, setTotals] = useState({ invested: 0, value: 0, profit: 0 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [timeframe, setTimeframe] = useState('all');
+    const [sortAsc, setSortAsc] = useState(false);
 
     // Načítání a zpracování dat
     const fetchData = async () => {
@@ -93,9 +97,33 @@ function App() {
         fetchData();
     }, []); 
 
+    // --- FILTRACE HISTORIE PRO GRAF ---
+    const now = new Date();
+    const filteredHistory = history.filter((record) => {
+        const t = new Date(record.timestamp);
+        if (timeframe === 'week') {
+            const weekAgo = new Date(now);
+            weekAgo.setDate(now.getDate() - 7);
+            return t >= weekAgo;
+        }
+        if (timeframe === 'month') {
+            const monthAgo = new Date(now);
+            monthAgo.setMonth(now.getMonth() - 1);
+            return t >= monthAgo;
+        }
+        if (timeframe === 'year') {
+            const yearAgo = new Date(now);
+            yearAgo.setFullYear(now.getFullYear() - 1);
+            return t >= yearAgo;
+        }
+        return true; // all
+    });
+
     // --- LOGIKA ŘAZENÍ ---
-    // Řadíme portfolium podle profitu sestupně, jak je v návrhu ("Most profitable items")
-    const sortedPortfolio = [...portfolio].sort((a, b) => b.profit - a.profit);
+    const sortedPortfolio = [...portfolio].sort((a, b) => {
+        const diff = a.profit - b.profit;
+        return sortAsc ? diff : -diff;
+    });
     const profitPercent = (totals.profit / totals.invested) * 100 || 0;
     const isProfit = totals.profit >= 0;
 
@@ -108,17 +136,6 @@ function App() {
     }
     
     return (
-        <>
-        <div className="header">
-            <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--accent-color)' }}>CSInvest</h1>
-            <div className="nav">
-                <a href="#">Overview</a>
-                <a href="#">Inventory</a>
-                <a href="#">Search</a>
-            </div>
-            <button className="account-button">Account *</button>
-        </div>
-        
         <div className="dashboard-container">
             <div className="total-value-block">
                 <div className="total-value-label">Total value</div>
@@ -129,14 +146,39 @@ function App() {
             </div>
 
             <div className="stat-card">
-                <PortfolioChart history={history} />
+                <div className="chart-toolbar">
+                    <div className="chart-filters">
+                        {['week','month','year','all'].map((tf) => (
+                            <button
+                                key={tf}
+                                className={`chart-filter ${timeframe === tf ? 'active' : ''}`}
+                                onClick={() => setTimeframe(tf)}
+                            >
+                                {tf === 'week' && 'week'}
+                                {tf === 'month' && 'month'}
+                                {tf === 'year' && 'year'}
+                                {tf === 'all' && 'all'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <PortfolioChart history={filteredHistory} />
             </div>
 
             <button onClick={handleRefresh} disabled={loading} className="account-button refresh-button">
-                {loading ? 'Aktualizuji ceny...' : 'Refresh Ceny (CSFloat)'}
+                {loading ? 'Aktualizuji ceny...' : 'Refresh Ceny'}
             </button>
             
-            <h2>Most profitable items ↓</h2>
+            <h2 className="mpi-header">
+                Most profitable items
+                <button
+                    className={`arrow-toggle ${sortAsc ? 'rotated' : ''}`}
+                    onClick={() => setSortAsc(!sortAsc)}
+                    aria-label="Toggle sort order"
+                >
+                    ↓
+                </button>
+            </h2>
             <table>
                 <thead>
                     <tr>
@@ -162,6 +204,29 @@ function App() {
                 </tbody>
             </table>
         </div>
+    );
+}
+
+// --- HLAVNÍ APLIKACE / LAYOUT ---
+function App() {
+    return (
+        <>
+            <div className="header">
+                <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--accent-color)' }}>CSInvest</h1>
+                <div className="nav">
+                    <NavLink to="/" end className={({isActive}) => isActive ? 'active' : undefined}>Overview</NavLink>
+                    <NavLink to="/inventory" className={({isActive}) => isActive ? 'active' : undefined}>Inventory</NavLink>
+                    <NavLink to="/search" className={({isActive}) => isActive ? 'active' : undefined}>Search</NavLink>
+                </div>
+                <button className="account-button">Account</button>
+            </div>
+            <Routes>
+                <Route path="/" element={<OverviewPage />} />
+                <Route path="/inventory" element={<InventoryPage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/search/:category" element={<SearchCategory />} />
+                <Route path="*" element={<OverviewPage />} />
+            </Routes>
         </>
     );
 }
