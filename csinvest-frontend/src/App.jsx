@@ -306,8 +306,14 @@ function App() {
                     <Route path="*" element={<OverviewPage />} />
                 </Routes>
             </div>
+            <footer className="footer">
+                <span>© 2025 CSInvest (beta)</span>
+                <a href="#" aria-label="About placeholder">About</a>
+                <a href="#" aria-label="Contact placeholder">Contact</a>
+            </footer>
         </>
     );
 }
 
 export default App;
+// Footer injected below in root render wrapper

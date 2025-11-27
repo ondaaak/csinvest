@@ -40,3 +40,20 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Simple footer */
+.footer {
+  width: 100%;
+  padding: 24px 30px 40px 30px;
+  margin-top: 60px;
+  border-top: 1px solid var(--surface-border);
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  opacity: 0.7;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.footer a { color: var(--text-color); text-decoration: none; opacity: 0.8; }
+.footer a:hover { opacity: 1; text-decoration: underline; }
