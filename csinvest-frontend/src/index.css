@@ -31,6 +31,7 @@
     --bg-color: #ffffff;
     --text-color: #111111;
     --accent-color: #111111;
+    --header-h: 64px;
 
     /* Dark metric card (as in mock) */
     --card-bg: #1f1f1f;
@@ -55,7 +56,41 @@ body {
     padding: 18px 30px;
     background-color: #ffffff;
     border-bottom: 1px solid #e5e7eb;
+    min-height: var(--header-h);
 }
+
+.app-content { position: relative; min-height: calc(100vh - var(--header-h)); }
+.app-content.blurred > :not(.screen-blur) { filter: blur(3px); }
+.app-content.blurred { position: relative; }
+.app-content.blurred .screen-blur { z-index: 10; }
+.screen-blur {
+    position: absolute;
+    left: 0; right: 0; bottom: 0; top: -12px; /* slightly overlap header for smoother transition */
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all; /* block clicks to underlying content */
+}
+.screen-message {
+    background: rgba(255,255,255,0.85);
+    border: 1px solid #e5e7eb;
+    padding: 20px 24px;
+    border-radius: 16px;
+    text-align: center;
+    pointer-events: auto; /* enable click on Login button */
+    transform: translateY(-100%); /* nudge slightly upward */
+}
+
+/* Dark overlay on stat cards for visual consistency during blur */
+.app-content.blurred .stat-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.15);
+}
+.stat-card { position: relative; }
 
 .nav a {
     color: #111111;
@@ -109,6 +144,8 @@ body {
     box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12);
     margin-bottom: 30px;
 }
+
+/* old per-section blur removed; using global screen-blur instead */
 
 .chart-toolbar {
     display: flex;

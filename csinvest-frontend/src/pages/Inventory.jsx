@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const USER_ID = 1;
 const BASE_URL = 'http://127.0.0.1:8000';
 
 function InventoryPage() {
+  const { userId } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,7 +18,8 @@ function InventoryPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get(`${BASE_URL}/portfolio/${USER_ID}`);
+      if (!userId) throw new Error('Unauthenticated');
+      const res = await axios.get(`${BASE_URL}/portfolio/${userId}`);
       const data = res.data.map((item) => ({
         ...item,
         profit: item.current_price - item.buy_price,
@@ -33,7 +36,8 @@ function InventoryPage() {
   const reloadPrices = async () => {
     setLoading(true);
     try {
-      await axios.post(`${BASE_URL}/refresh-portfolio/${USER_ID}`);
+      if (!userId) throw new Error('Unauthenticated');
+      await axios.post(`${BASE_URL}/refresh-portfolio/${userId}`);
       await fetchItems();
     } catch (err) {
       console.error(err);
@@ -90,13 +94,11 @@ function InventoryPage() {
     <span className="sort-arrow">{sortKey === keyName ? (sortAsc ? '↑' : '↓') : ''}</span>
   );
 
-  if (error) {
-    return (
-      <div className="dashboard-container">
-        <div className="loading" style={{ color: 'var(--loss-color)' }}>{error}</div>
-      </div>
-    );
-  }
+  const unauthenticatedOverlay = (
+    <div className="blur-overlay">
+      <div className="blur-message">Please login to view your inventory.</div>
+    </div>
+  );
 
   return (
     <div className="dashboard-container">
@@ -120,7 +122,9 @@ function InventoryPage() {
         </button>
       </div>
 
-      <table>
+      <div className="blur-container">
+        {!userId && unauthenticatedOverlay}
+        <table>
         <thead>
           <tr>
             <th className="sortable" onClick={() => requestSort('amount')}>Amount <Arrow keyName="amount" /></th>
@@ -152,7 +156,8 @@ function InventoryPage() {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

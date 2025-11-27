@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Routes, Route, NavLink } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { InventoryPage, SearchPage, SearchCategory } from './pages';
+import LoginPage from './pages/Login.jsx';
+import AccountPage from './pages/Account.jsx';
+import { useAuth } from './auth/AuthContext.jsx';
 import './App.css'; 
 
 const USER_ID = 1;
@@ -35,6 +38,7 @@ const PortfolioChart = ({ history }) => {
 
 // --- STRÁNKA: OVERVIEW ---
 function OverviewPage() {
+    const { userId } = useAuth();
     const [portfolio, setPortfolio] = useState([]);
     const [history, setHistory] = useState([]);
     const [totals, setTotals] = useState({ invested: 0, value: 0, profit: 0 });
@@ -48,9 +52,10 @@ function OverviewPage() {
         setLoading(true);
         setError(null);
         try {
+            if (!userId) throw new Error('Unauthenticated');
             const [portfolioResponse, historyResponse] = await Promise.all([
-                axios.get(`${BASE_URL}/portfolio/${USER_ID}`),
-                axios.get(`${BASE_URL}/portfolio-history/${USER_ID}`)
+                axios.get(`${BASE_URL}/portfolio/${userId}`),
+                axios.get(`${BASE_URL}/portfolio-history/${userId}`)
             ]);
 
             // Data pro tabulku
@@ -128,12 +133,7 @@ function OverviewPage() {
     const isProfit = totals.profit >= 0;
 
     // --- RENDERING ---
-    if (error) {
-        return <div className="loading" style={{color: 'var(--loss-color)'}}>Chyba: {error}</div>;
-    }
-    if (loading && portfolio.length === 0) {
-        return <div className="loading">Načítám data z backendu...</div>;
-    }
+    // Per-section overlay removed; global overlay handled in App layout
     
     return (
         <div className="dashboard-container">
@@ -179,7 +179,7 @@ function OverviewPage() {
                     ↓
                 </button>
             </h2>
-            <table>
+                        <table>
                 <thead>
                     <tr>
                         <th>Amount</th>
@@ -209,6 +209,12 @@ function OverviewPage() {
 
 // --- HLAVNÍ APLIKACE / LAYOUT ---
 function App() {
+    const { user } = useAuth();
+    const location = useLocation();
+    const path = location.pathname || '/';
+    const isSearch = path.startsWith('/search');
+    const isAuthPage = path === '/login' || path === '/account';
+    const shouldBlur = !user && !isSearch && !isAuthPage; // blur Overview & Inventory only when logged out
     return (
         <>
             <div className="header">
@@ -218,15 +224,31 @@ function App() {
                     <NavLink to="/inventory" className={({isActive}) => isActive ? 'active' : undefined}>Inventory</NavLink>
                     <NavLink to="/search" className={({isActive}) => isActive ? 'active' : undefined}>Search</NavLink>
                 </div>
-                <button className="account-button">Account</button>
+                {user ? (
+                    <NavLink to="/account" className="account-button">Account</NavLink>
+                ) : (
+                    <NavLink to="/login" className="account-button">Login</NavLink>
+                )}
             </div>
-            <Routes>
-                <Route path="/" element={<OverviewPage />} />
-                <Route path="/inventory" element={<InventoryPage />} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/search/:category" element={<SearchCategory />} />
-                <Route path="*" element={<OverviewPage />} />
-            </Routes>
+            <div className={`app-content ${shouldBlur ? 'blurred' : ''}`}>
+                {shouldBlur && (
+                    <div className="screen-blur">
+                        <div className="screen-message">
+                            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>Login to preview your skins</div>
+                            <NavLink to="/login" className="account-button">Login</NavLink>
+                        </div>
+                    </div>
+                )}
+                <Routes>
+                    <Route path="/" element={<OverviewPage />} />
+                    <Route path="/inventory" element={<InventoryPage />} />
+                    <Route path="/search" element={<SearchPage />} />
+                    <Route path="/search/:category" element={<SearchCategory />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/account" element={<AccountPage />} />
+                    <Route path="*" element={<OverviewPage />} />
+                </Routes>
+            </div>
         </>
     );
 }
