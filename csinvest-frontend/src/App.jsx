@@ -251,7 +251,7 @@ function App() {
         <>
             <div className="header">
                 <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--accent-color)' }}>CSInvest</h1>
-                <div className="nav">
+                <div className="nav" style={{ display:'flex', gap:'14px', justifyContent:'center', paddingLeft:'150px', flex:1 }}>
                     <NavLink to="/" end className={({isActive}) => isActive ? 'active' : undefined}>Overview</NavLink>
                     <NavLink to="/inventory" className={({isActive}) => isActive ? 'active' : undefined}>Inventory</NavLink>
                     <NavLink to="/search" className={({isActive}) => isActive ? 'active' : undefined}>Search</NavLink>
