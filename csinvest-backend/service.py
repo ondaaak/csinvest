@@ -1,67 +1,108 @@
 # service.py - KOMPLETNÍ KÓD
 from sqlalchemy.orm import Session
-from repository import SkinRepository
+from repository import ItemRepository
 from strategy import IMarketStrategy
 from factory import PriceFactory
 import time
 
 class PriceService:
-    """
-    Hlavní služba. Používá Dependency Injection.
-    """
     def __init__(self, db: Session, strategy: IMarketStrategy):
-        self.repo = SkinRepository(db)
+        self.repo = ItemRepository(db)
         self.strategy = strategy
         self.factory = PriceFactory()
 
     def update_portfolio_prices(self, user_id: int):
-        user_skins = self.repo.get_user_skins(user_id)
+        user_items = self.repo.get_user_items(user_id)
         results = []
 
-        print(f"Začínám aktualizaci pro uživatele {user_id}. Počet skinů: {len(user_skins)}")
+        print(f"Začínám aktualizaci pro uživatele {user_id}. Počet položek: {len(user_items)}")
 
-        for item in user_skins:
-            time.sleep(1) # PAUZA JE HNED NA ZAČÁTKU, AŤ NEDOSTANEME 429
-            
-            # Skládáme název skinu přesně pro API
-            base_name = item.skin.name
-            wear_status = f"({item.skin.wear})" 
-            full_market_hash_name = f"{base_name} {wear_status}" 
-            
+        for owned in user_items:
+            time.sleep(1)
+            itm = owned.item
+            if itm.item_type != 'skin':
+                continue  # pricing only for skins for now
+
+            base_name = itm.name
+            wear_status = f"({itm.wear})" if itm.wear else ""
+            full_market_hash_name = f"{base_name} {wear_status}".strip()
             print(f"Skládám název pro API: {full_market_hash_name}")
 
-            # 2. Stažení ceny z internetu (Strategy)
-            raw_data = self.strategy.fetch_price(full_market_hash_name) 
-            
+            raw_data = self.strategy.fetch_price(full_market_hash_name)
             if not raw_data:
-                print(f"Přeskakuji {item.skin.name} - chyba stahování/nenalezeno.")
+                print(f"Přeskakuji {itm.name} - chyba stahování/nenalezeno.")
                 continue
 
-            # 3. Zpracování dat (Factory)
-            clean_data = self.factory.create_price(raw_data, item.skin_id, market_id=2)
-            
+            clean_data = self.factory.create_price(raw_data, itm.item_id, market_id=2)
             if not clean_data:
-                 print(f"Přeskakuji {item.skin.name} - chyba zpracování.")
-                 continue
+                print(f"Přeskakuji {itm.name} - chyba zpracování.")
+                continue
 
-            # 4. Uložení do databáze (Repository)
             self.repo.save_market_price(
                 market_id=clean_data["market_id"],
-                skin_id=clean_data["skin_id"],
+                item_id=clean_data["skin_id"],  # factory returns skin_id; treat as item_id
                 price=clean_data["price"]
             )
-            
-            self.repo.update_price(item.user_skin_id, clean_data["price"])
-            
+            self.repo.update_price(owned.user_item_id, clean_data["price"])
+
             results.append({
-                "skin": item.skin.name,
-                "old_price": float(item.current_price) if item.current_price else 0,
+                "item": itm.name,
+                "old_price": float(owned.current_price) if owned.current_price else 0,
                 "new_price": clean_data["price"],
                 "currency": "USD"
             })
-            
-        # 5. Spočítat a uložit celkový záznam do historie (W3 Operace)
+
         totals = self.repo.calculate_portfolio_totals(user_id)
-        self.repo.save_portfolio_history(user_id, totals)    
+        self.repo.save_portfolio_history(user_id, totals)
+        return results
+
+    def update_items_prices(self, item_type: str | None = None, limit: int = 1000):
+        from models import Item  # local import to avoid cycles in type hints
+        if item_type:
+            items = self.repo.get_items(item_type=item_type, limit=limit)
+        else:
+            # Default: only refresh skins and cases for now
+            items = self.repo.get_items(item_type='skin', limit=limit) + self.repo.get_items(item_type='case', limit=limit)
+
+        results = []
+        print(f"Aktualizuji ceny pro item_type={item_type or 'skin,case'}; počet: {len(items)}")
+        for itm in items:
+            try:
+                time.sleep(1)
+                # Build market name: skins may carry wear in API name; cases are plain names
+                if itm.item_type == 'skin':
+                    wear_status = f"({itm.wear})" if getattr(itm, 'wear', None) else ""
+                    market_name = f"{itm.name} {wear_status}".strip()
+                else:
+                    market_name = itm.name
+
+                raw = self.strategy.fetch_price(market_name)
+                if not raw:
+                    print(f"Přeskakuji {itm.name} - cena nenalezena.")
+                    continue
+
+                clean = self.factory.create_price(raw, itm.item_id, market_id=2)
+                if not clean:
+                    print(f"Přeskakuji {itm.name} - chyba zpracování ceny.")
+                    continue
+
+                self.repo.save_market_price(
+                    market_id=clean["market_id"],
+                    item_id=clean["skin_id"],  # factory key name
+                    price=clean["price"],
+                )
+                # Update catalog item current_price
+                self.repo.update_item_current_price(itm.item_id, clean["price"])
+
+                results.append({
+                    "item_id": itm.item_id,
+                    "name": itm.name,
+                    "item_type": itm.item_type,
+                    "new_price": clean["price"],
+                    "currency": "USD",
+                })
+            except Exception as e:
+                print(f"Chyba při aktualizaci {itm.name}: {e}")
+                continue
 
         return results

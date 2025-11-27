@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 
 const USER_ID = 1;
@@ -7,6 +8,7 @@ const BASE_URL = 'http://127.0.0.1:8000';
 
 function InventoryPage() {
   const { userId } = useAuth();
+  const { formatPrice } = useCurrency();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,15 +20,21 @@ function InventoryPage() {
     setLoading(true);
     setError(null);
     try {
-      if (!userId) throw new Error('Unauthenticated');
+      if (!userId) {
+        // Bez přihlášení jen vyprázdníme a skončíme tiše
+        setItems([]);
+        setLoading(false);
+        return;
+      }
       const res = await axios.get(`${BASE_URL}/portfolio/${userId}`);
-      const data = res.data.map((item) => ({
+      const arr = Array.isArray(res.data) ? res.data : [];
+      const data = arr.map((item) => ({
         ...item,
         profit: item.current_price - item.buy_price,
       }));
       setItems(data);
     } catch (err) {
-      console.error(err);
+      console.error('Chyba načítání inventáře:', err);
       setError('Nepodařilo se načíst položky.');
     } finally {
       setLoading(false);
@@ -52,7 +60,7 @@ function InventoryPage() {
   }, []);
 
   const filtered = items.filter((it) =>
-    it.skin?.name?.toLowerCase().includes(search.toLowerCase())
+    (it.item?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const getAmount = (it) => (typeof it.amount === 'number' ? it.amount : 1);
@@ -67,7 +75,7 @@ function InventoryPage() {
       case 'amount':
         return (getAmount(a) - getAmount(b)) * dir;
       case 'name':
-        return a.skin.name.localeCompare(b.skin.name) * dir;
+        return (a.item?.name || '').localeCompare(b.item?.name || '') * dir;
       case 'buy':
         return (a.buy_price - b.buy_price) * dir;
       case 'current':
@@ -138,20 +146,20 @@ function InventoryPage() {
         </thead>
         <tbody>
           {sorted.map((item) => (
-            <tr key={item.user_skin_id}>
+            <tr key={item.user_item_id}>
               <td>{getAmount(item)}</td>
-              <td>{item.skin.name}</td>
-              <td>{item.buy_price.toFixed(2)}€</td>
-              <td>{item.current_price.toFixed(2)}€</td>
+              <td>{item.item?.name}</td>
+              <td>{formatPrice(item.buy_price)}</td>
+              <td>{formatPrice(item.current_price)}</td>
               <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>
-                {item.profit.toFixed(2)}€
+                {formatPrice(item.profit)}
               </td>
               <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>
                 {getProfitPct(item).toFixed(2)}%
               </td>
               <td>
-                <button className="icon-btn" title="Edit" onClick={() => console.log('edit', item.user_skin_id)}>✏️</button>
-                <button className="icon-btn" title="Delete" onClick={() => console.log('delete', item.user_skin_id)}>❌</button>
+                <button className="icon-btn" title="Edit" onClick={() => console.log('edit', item.user_item_id)}>✏️</button>
+                <button className="icon-btn" title="Delete" onClick={() => console.log('delete', item.user_item_id)}>❌</button>
               </td>
             </tr>
           ))}

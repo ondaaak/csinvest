@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { InventoryPage, SearchPage, SearchCategory } from './pages';
+import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage } from './pages';
 import LoginPage from './pages/Login.jsx';
 import AccountPage from './pages/Account.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import './App.css'; 
+import { useCurrency } from './currency/CurrencyContext.jsx';
 
 const USER_ID = 1;
 const BASE_URL = 'http://127.0.0.1:8000'; 
@@ -14,16 +15,20 @@ const BASE_URL = 'http://127.0.0.1:8000';
 // --- Komponenta pro vykreslení grafu ---
 // Používá historická data a simuluje časovou řadu
 const PortfolioChart = ({ history }) => {
-    // Příprava dat pro Recharts
+    if (!history || history.length === 0) {
+        return (
+            <div style={{ height: 350, backgroundColor: 'var(--card-bg)', padding: '15px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', color:'var(--card-text-color)' }}>
+                No history data.
+            </div>
+        );
+    }
     const dataForChart = history.map(record => ({
-        // Převod timestampu na čitelný formát (měsíc/den)
         name: new Date(record.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         'Hodnota Portfolia': parseFloat(record.total_value),
     }));
-
     return (
         <div style={{ height: 350, backgroundColor: 'var(--card-bg)', padding: '15px' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={350}>
                 <LineChart data={dataForChart} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" />
                     <XAxis dataKey="name" stroke="var(--card-text-color)" />
@@ -39,6 +44,7 @@ const PortfolioChart = ({ history }) => {
 // --- STRÁNKA: OVERVIEW ---
 function OverviewPage() {
     const { userId } = useAuth();
+    const { formatPrice } = useCurrency();
     const [portfolio, setPortfolio] = useState([]);
     const [history, setHistory] = useState([]);
     const [totals, setTotals] = useState({ invested: 0, value: 0, profit: 0 });
@@ -51,34 +57,44 @@ function OverviewPage() {
     const fetchData = async () => {
         setLoading(true);
         setError(null);
+        // Pokud není přihlášen uživatel, nastavíme prázdná data bez chyby
+        if (!userId) {
+            setPortfolio([]);
+            setHistory([]);
+            setTotals({ invested: 0, value: 0, profit: 0 });
+            setLoading(false);
+            return;
+        }
         try {
-            if (!userId) throw new Error('Unauthenticated');
             const [portfolioResponse, historyResponse] = await Promise.all([
                 axios.get(`${BASE_URL}/portfolio/${userId}`),
                 axios.get(`${BASE_URL}/portfolio-history/${userId}`)
             ]);
 
-            // Data pro tabulku
-            const portfolioData = portfolioResponse.data.map(item => ({
+            const portfolioArray = Array.isArray(portfolioResponse.data) ? portfolioResponse.data : [];
+            const historyArray = Array.isArray(historyResponse.data) ? historyResponse.data : [];
+
+            const portfolioData = portfolioArray.map(item => ({
                 ...item,
-                profit: item.current_price - item.buy_price // Přidáme profit pro řazení
+                profit: item.current_price - item.buy_price
             }));
 
             setPortfolio(portfolioData);
-            setHistory(historyResponse.data);
+            setHistory(historyArray);
 
-            // Zpracování součtů z historie (poslední záznam)
-            if (historyResponse.data.length > 0) {
-                const latest = historyResponse.data.slice(-1)[0]; 
+            if (historyArray.length > 0) {
+                const latest = historyArray[historyArray.length - 1];
                 setTotals({
                     invested: parseFloat(latest.total_invested),
                     value: parseFloat(latest.total_value),
                     profit: parseFloat(latest.total_profit)
                 });
+            } else {
+                setTotals({ invested: 0, value: 0, profit: 0 });
             }
         } catch (err) {
             console.error("Chyba při načítání dat z API:", err);
-            setError("Nepodařilo se kontaktovat backend (port 8000). Zkontrolujte připojení.");
+            setError("Nepodařilo se načíst data z backendu.");
         } finally {
             setLoading(false);
         }
@@ -139,7 +155,7 @@ function OverviewPage() {
         <div className="dashboard-container">
             <div className="total-value-block">
                 <div className="total-value-label">Total value</div>
-                <div className="value-amount">{totals.value.toFixed(2)}€</div>
+                <div className="value-amount">{formatPrice(totals.value)}</div>
                 <div className={isProfit ? 'profit-indicator' : 'loss-indicator'}>
                     {isProfit ? '+' : ''}{profitPercent.toFixed(2)}%
                 </div>
@@ -192,13 +208,13 @@ function OverviewPage() {
                 </thead>
                 <tbody>
                     {sortedPortfolio.map(item => (
-                        <tr key={item.user_skin_id}>
+                        <tr key={item.user_item_id}>
                             <td>1</td>
-                            <td>{item.skin.name}</td>
-                            <td>{item.buy_price.toFixed(2)}€</td>
-                            <td>{item.current_price.toFixed(2)}€</td>
-                            <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{item.profit.toFixed(2)}€</td>
-                            <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{((item.profit / item.buy_price) * 100).toFixed(2)}%</td>
+                            <td>{item.item?.name || '—'}</td>
+                            <td>{formatPrice(item.buy_price)}</td>
+                            <td>{formatPrice(item.current_price)}</td>
+                            <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{formatPrice(item.profit)}</td>
+                            <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{((item.profit / (item.buy_price || 1)) * 100).toFixed(2)}%</td>
                         </tr>
                     ))}
                 </tbody>
@@ -210,6 +226,7 @@ function OverviewPage() {
 // --- HLAVNÍ APLIKACE / LAYOUT ---
 function App() {
     const { user } = useAuth();
+    const { currency, cycleCurrency, refreshRates, loadingRates, lastUpdated } = useCurrency();
     const location = useLocation();
     const path = location.pathname || '/';
     const isSearch = path.startsWith('/search');
@@ -241,6 +258,26 @@ function App() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <button aria-label="Toggle theme" className={`theme-toggle ${theme}`} onClick={toggleTheme}></button>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button aria-label="Toggle currency" onClick={cycleCurrency} style={{
+                          background:'var(--button-bg)',
+                          color:'var(--button-text)',
+                          border:'1px solid var(--border-color)',
+                          padding:'6px 10px',
+                          borderRadius:10,
+                          cursor:'pointer',
+                          fontSize:'0.75rem'
+                      }}>{currency}</button>
+                      <button aria-label="Refresh FX rates" onClick={refreshRates} disabled={loadingRates} style={{
+                          background:'var(--button-bg)',
+                          color:'var(--button-text)',
+                          border:'1px solid var(--border-color)',
+                          padding:'6px 10px',
+                          borderRadius:10,
+                          cursor: loadingRates ? 'not-allowed':'pointer',
+                          fontSize:'0.75rem'
+                      }}>{loadingRates ? '↻…' : '↻'}</button>
+                    </div>
                     {user ? (
                         <NavLink to="/account" className="account-button">Account</NavLink>
                     ) : (
@@ -261,6 +298,8 @@ function App() {
                     <Route path="/" element={<OverviewPage />} />
                     <Route path="/inventory" element={<InventoryPage />} />
                     <Route path="/search" element={<SearchPage />} />
+                    <Route path="/search/cases" element={<CasesPage />} />
+                    <Route path="/case/:slug" element={<CaseDetailPage />} />
                     <Route path="/search/:category" element={<SearchCategory />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/account" element={<AccountPage />} />
