@@ -11,6 +11,7 @@ function CasesPage() {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [sortMode, setSortMode] = useState('release_new');
+  const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const { formatPrice } = useCurrency();
 
@@ -79,8 +80,13 @@ function CasesPage() {
       default:
         break;
     }
-    return arr;
-  }, [cases, sortMode]);
+    // Filter by query (name or slug)
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? arr.filter(c => (c.name || '').toLowerCase().includes(q) || (c.slug || '').toLowerCase().includes(q))
+      : arr;
+    return filtered;
+  }, [cases, sortMode, query]);
 
   const badgeColors = (dt) => {
     switch ((dt || '').toLowerCase()) {
@@ -109,6 +115,14 @@ function CasesPage() {
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
         <h2 style={{ margin:0, flex:1, paddingLeft:'14%' }}>Cases</h2>
+        <input
+          className="search-input"
+          type="text"
+          placeholder="Search cases..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ maxWidth: 320 }}
+        />
         <select value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
           background:'var(--surface-bg)', color:'var(--text-color)', border:'1px solid var(--border-color)', borderRadius:8, padding:'6px 8px'
         }}>

@@ -90,6 +90,16 @@ function CaseDetailPage() {
   const knifeItems = [...knives, ...rawSkinItems.filter(knifeLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i);
   const gloveItems = [...gloves, ...rawSkinItems.filter(gloveLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i);
 
+  // Per-item odds for knives/gloves: base 0.26% divided by count
+  const knifePerItemOdds = (() => {
+    const count = knifeItems.length || 1;
+    return (0.26 / count).toFixed(4) + '%';
+  })();
+  const glovePerItemOdds = (() => {
+    const count = gloveItems.length || 1;
+    return (0.26 / count).toFixed(4) + '%';
+  })();
+
   const badgeColors = (dt) => {
     switch ((dt || '').toLowerCase()) {
       case 'active':
@@ -147,16 +157,42 @@ function CaseDetailPage() {
       case 'milspec':
       case 'mil-spec':
       case 'mil spec':
-        return '80.00%';
+        return 80.00;
       case 'restricted':
-        return '15.97%';
+        return 15.97;
       case 'classified':
-        return '3.20%';
+        return 3.20;
       case 'covert':
-        return '0.64%';
+        return 0.64;
       default:
-        return '';
+        return null;
     }
+  };
+
+  // Count skins per rarity to distribute odds evenly per item
+  const rarityCounts = (() => {
+    const counts = { milspec: 0, restricted: 0, classified: 0, covert: 0 };
+    skinItems.forEach(s => {
+      const r = (s.rarity || '').toLowerCase();
+      if (r === 'milspec' || r === 'milspec grade' || r === 'mil-spec' || r === 'mil spec') counts.milspec += 1;
+      else if (r === 'restricted') counts.restricted += 1;
+      else if (r === 'classified') counts.classified += 1;
+      else if (r === 'covert') counts.covert += 1;
+    });
+    return counts;
+  })();
+
+  const perItemOddsText = (rarity) => {
+    const base = rarityOdds(rarity);
+    if (base == null || base === '—') return '—';
+    const r = (rarity || '').toLowerCase();
+    let count = 1;
+    if (r === 'milspec' || r === 'milspec grade' || r === 'mil-spec' || r === 'mil spec') count = rarityCounts.milspec || 1;
+    else if (r === 'restricted') count = rarityCounts.restricted || 1;
+    else if (r === 'classified') count = rarityCounts.classified || 1;
+    else if (r === 'covert') count = rarityCounts.covert || 1;
+    const perItem = base / count;
+    return `${perItem.toFixed(2)}%`;
   };
 
   return (
@@ -165,7 +201,7 @@ function CaseDetailPage() {
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <h2 style={{ margin:0, flex:1 }}>{cs.name}</h2>
+        <h2 style={{ margin:0, flex:1, paddingLeft:145 }}>{cs.name}</h2>
         <div style={{
           fontSize:'0.7rem', padding:'4px 8px', borderRadius:8, background:badge.bg, color:badge.color, fontWeight:600
         }}>{badge.label.toUpperCase()}</div>
@@ -175,7 +211,9 @@ function CaseDetailPage() {
       </div>
       <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)' }}>
         {caseImgMap[slug] && (
-          <img src={caseImgMap[slug]} alt={cs.name} style={{ width:120, height:120, objectFit:'cover', borderRadius:12, marginBottom:12 }} />
+          <div style={{ width:140, height:140, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--surface-bg)', border:'1px solid var(--surface-border)', borderRadius:16, margin:'0 auto 12px auto', padding:10 }}>
+            <img src={caseImgMap[slug]} alt={cs.name} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }} />
+          </div>
         )}
         <div style={{ display:'flex', gap:'12px', flexWrap:'wrap', fontSize:'0.85rem' }}>
           <div><strong>Release:</strong> {cs.release_date || '—'}</div>
@@ -208,7 +246,7 @@ function CaseDetailPage() {
               <div className="card-header">
                 <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{s.name}</div>
                 <span className={`badge ${rarityClass(s.rarity)}`}>{s.rarity || '—'}</span>
-                <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>{rarityOdds(s.rarity)}</span>
+                <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>{perItemOddsText(s.rarity)}</span>
               </div>
               {skinImgMap[s.slug] ? (
                 <img className="category-img" src={skinImgMap[s.slug]} alt={s.name} style={{ width: 120, height: 120 }} />
@@ -238,7 +276,7 @@ function CaseDetailPage() {
                 <div className="card-header">
                   <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{kn.name}</div>
                   <span className={`badge ${rarityClass(kn.rarity)}`}>{kn.rarity || '—'}</span>
-                  <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>0.26%</span>
+                  <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>{knifePerItemOdds}</span>
                 </div>
                 {skinImgMap[kn.slug] ? (
                   <img className="category-img" src={skinImgMap[kn.slug]} alt={kn.name} style={{ width: 120, height: 120 }} />
@@ -269,7 +307,7 @@ function CaseDetailPage() {
                 <div className="card-header">
                   <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{gl.name}</div>
                   <span className={`badge ${rarityClass(gl.rarity)}`}>{gl.rarity || '—'}</span>
-                  <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>0.26%</span>
+                  <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>{glovePerItemOdds}</span>
                 </div>
                 {skinImgMap[gl.slug] ? (
                   <img className="category-img" src={skinImgMap[gl.slug]} alt={gl.name} style={{ width: 120, height: 120 }} />
