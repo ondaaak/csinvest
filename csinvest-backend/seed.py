@@ -110,17 +110,103 @@ def seed_data():
 
     revolution = db.query(Item).filter(Item.slug == slugify("Revolution Case")).first()
 
-    # Skins (item_type='skin') referencing case_id or collection
-    if not db.query(Item).filter(Item.item_type == 'skin').first():
-        print("Seeduji skin položky...")
-        skins = [
-            Item(name="AK-47 | Redline", item_type="skin", rarity="Classified", wear="Field-Tested", wearValue=0.25, pattern=None, collection="Phoenix", case_id=None, current_price=15.50, slug=slugify("AK-47 Redline")),
-            Item(name="AWP | Asiimov", item_type="skin", rarity="Covert", wear="Field-Tested", wearValue=0.28, collection="Phoenix", case_id=None, current_price=90.00, slug=slugify("AWP Asiimov")),
+    # Revolution Case skins
+    if revolution:
+        print("Kontroluji/seeduji Revolution Case skiny...")
+        rev_skins = [
+            ("AK-47 | Head Shot", "Covert"),
+            ("M4A4 | Temukau", "Covert"),
+            ("P2000 | Wicked Sick", "Classified"),
+            ("UMP-45 | Wild Child", "Classified"),
+            ("AWP | Duality", "Classified"),
+            ("M4A1-S | Emphorosaur-S", "Restricted"),
+            ("Glock-18 | Umbral Rabbit", "Restricted"),
+            ("P90 | Neoqueen", "Restricted"),
+            ("R8 Revolver | Banana Cannon", "Restricted"),
+            ("MAC-10 | Sakkaku", "Restricted"),
+            ("MAG-7 | Insomnia", "Mil-spec"),
+            ("MP9 | Featherweight", "Mil-spec"),
+            ("SCAR-20 | Fragments", "Mil-spec"),
+            ("P250 | Re.built", "Mil-spec"),
+            ("MP5-SD | Liquidation", "Mil-spec"),
+            ("SG 553 | Cyberforce", "Mil-spec"),
+            ("Tec-9 | Rebel", "Mil-spec"),
         ]
-        db.add_all(skins)
-        db.commit()
-        for s in skins:
-            db.refresh(s)
+        added = 0
+        for name, rarity in rev_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=revolution.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            added += 1
+        if added:
+            db.commit()
+            print(f"Přidáno Revolution skinů: {added}")
+
+        # Revolution Case gloves
+        print("Kontroluji/seeduji Revolution Case rukavice...")
+        rev_gloves = [
+            "Sport Gloves | Vice",
+            "Driver Gloves | Imperial Plaid",
+            "Moto Gloves | Polygon",
+            "Sport Gloves | Omega",
+            "Hand Wraps | Overprint",
+            "Driver Gloves | Racing Green",
+            "Sport Gloves | Bronze Morph",
+            "Hand Wraps | Cobalt Skulls",
+            "Hydra Gloves | Emerald",
+            "Hydra Gloves | Mangrove",
+            "Moto Gloves | Transport",
+            "Hydra Gloves | Case Hardened",
+            "Driver Gloves | Overtake",
+            "Sport Gloves | Amphibious",
+            "Moto Gloves | Turtle",
+            "Specialist Gloves | Mogul",
+            "Hand Wraps | Duct Tape",
+            "Driver Gloves | King Snake",
+            "Hydra Gloves | Rattler",
+            "Specialist Gloves | Buckshot",
+            "Specialist Gloves | Fade",
+            "Specialist Gloves | Crimson Web",
+            "Hand Wraps | Arboreal",
+            "Moto Gloves | POW!",
+        ]
+        g_added = 0
+        for name in rev_gloves:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                continue
+            itm = Item(
+                name=name,
+                item_type='glove',
+                rarity='Knife/Glove',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=revolution.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            g_added += 1
+        if g_added:
+            db.commit()
+            print(f"Přidáno Revolution rukavic: {g_added}")
 
     # User inventory sample
     if not db.query(UserItem).first():

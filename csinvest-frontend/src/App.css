@@ -36,6 +36,31 @@
 .card {
   padding: 2em;
 }
+/* Rarity badges */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.badge.consumer { background: #b0c4de; color: #0f172a; }
+.badge.industrial { background: #7fb3d5; color: #0f172a; }
+.badge.milspec { background: #3b82f6; color: white; }
+.badge.restricted { background: #9555e0; color: white; }
+.badge.classified { background: #cf2ee9; color: white; }
+.badge.covert { background: #eb4b4b; color: white; }
+.badge.contraband { background: #ffae00; color: #0f172a; }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
 
 .read-the-docs {
   color: #888;

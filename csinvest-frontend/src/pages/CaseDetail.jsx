@@ -26,6 +26,18 @@ function CaseDetailPage() {
     return map;
   }, []);
 
+  // Skin images by slug from src/assets/skins
+  const skinImgMap = useMemo(() => {
+    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const map = {};
+    Object.entries(files).forEach(([path, url]) => {
+      const filename = path.split('/').pop() || '';
+      const base = filename.substring(0, filename.lastIndexOf('.'));
+      map[base.toLowerCase()] = url;
+    });
+    return map;
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -60,7 +72,23 @@ function CaseDetailPage() {
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
   if (!data) return null;
 
-  const { case: cs, skins } = data;
+  // Backend now returns separate arrays; provide safe defaults
+  const { case: cs, skins = [], knives = [], gloves = [] } = data;
+
+  // If older data still has gloves/knives inside skins (wrong item_type), filter them out
+  const rawSkinItems = Array.isArray(skins) ? skins : [];
+  const knifeLike = (item) => {
+    const r = (item.rarity || '').toLowerCase();
+    return r === 'knife' || r === 'knife/glove';
+  };
+  const gloveLike = (item) => {
+    const r = (item.rarity || '').toLowerCase();
+    return r === 'glove' || r === 'knife/glove';
+  };
+
+  const skinItems = rawSkinItems.filter(s => !knifeLike(s) && !gloveLike(s));
+  const knifeItems = [...knives, ...rawSkinItems.filter(knifeLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i);
+  const gloveItems = [...gloves, ...rawSkinItems.filter(gloveLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i);
 
   const badgeColors = (dt) => {
     switch ((dt || '').toLowerCase()) {
@@ -76,6 +104,60 @@ function CaseDetailPage() {
   };
 
   const badge = badgeColors(cs.drop_type);
+
+  const rarityClass = (rarity) => {
+    switch ((rarity || '').toLowerCase()) {
+      case 'consumer grade':
+      case 'consumer':
+        return 'consumer';
+      case 'industrial grade':
+      case 'industrial':
+        return 'industrial';
+      case 'milspec grade':
+      case 'milspec':
+      case 'mil-spec':
+      case 'mil spec':
+        return 'milspec';
+      case 'restricted':
+        return 'restricted';
+      case 'classified':
+        return 'classified';
+      case 'covert':
+        return 'covert';
+      case 'contraband':
+        return 'contraband';
+      case 'knife/glove':
+      case 'knife':
+      case 'glove':
+        return 'contraband';
+      default:
+        return '';
+    }
+  };
+
+  const rarityOdds = (rarity) => {
+    switch ((rarity || '').toLowerCase()) {
+      case 'consumer grade':
+      case 'consumer':
+        return '—';
+      case 'industrial grade':
+      case 'industrial':
+        return '—';
+      case 'milspec grade':
+      case 'milspec':
+      case 'mil-spec':
+      case 'mil spec':
+        return '80.00%';
+      case 'restricted':
+        return '15.97%';
+      case 'classified':
+        return '3.20%';
+      case 'covert':
+        return '0.64%';
+      default:
+        return '';
+    }
+  };
 
   return (
     <div className="dashboard-container">
@@ -103,31 +185,106 @@ function CaseDetailPage() {
       </div>
 
       <h3 style={{ marginTop:0 }}>Contained Skins</h3>
-      {(!skins || skins.length === 0) && <div style={{ opacity:0.6, fontSize:'0.85rem' }}>No skins linked to this case yet.</div>}
-      {skins && skins.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Rarity</th>
-              <th>Wear</th>
-              <th>Collection</th>
-              <th>Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {skins.map(s => (
-              <tr key={s.item_id}>
-                <td>{s.name}</td>
-                <td>{s.rarity || '—'}</td>
-                <td>{s.wear || '—'}</td>
-                <td>{s.collection || '—'}</td>
-                <td>{formatPrice(s.current_price)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', fontSize:'0.9rem' }}>
+        <strong>Odds:</strong>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8, marginTop:8 }}>
+          <div><span className="badge milspec">Mil‑Spec</span> 1 / 1.25 → 80.00%</div>
+          <div><span className="badge restricted">Restricted</span> 1 / 6.26 → 15.97%</div>
+          <div><span className="badge classified">Classified</span> 1 / 31.28 → 3.20%</div>
+          <div><span className="badge covert">Covert</span> 1 / 156.4 → 0.64%</div>
+          <div><span className="badge contraband">Knives / Gloves</span> 1 / 391 → 0.26%</div>
+        </div>
+      </div>
+      {skinItems.length === 0 && <div style={{ opacity:0.6, fontSize:'0.85rem' }}>No skins linked to this case yet.</div>}
+      {skinItems.length > 0 && (
+        <div className="categories-grid" style={{ gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))' }}>
+          {skinItems.map(s => (
+            <button
+              key={s.item_id}
+              className="category-card"
+              style={{ padding: '22px 18px' }}
+              onClick={() => navigate(`/skin/${s.slug}`)}
+            >
+              <div className="card-header">
+                <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{s.name}</div>
+                <span className={`badge ${rarityClass(s.rarity)}`}>{s.rarity || '—'}</span>
+                <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>{rarityOdds(s.rarity)}</span>
+              </div>
+              {skinImgMap[s.slug] ? (
+                <img className="category-img" src={skinImgMap[s.slug]} alt={s.name} style={{ width: 120, height: 120 }} />
+              ) : (
+                <div className="category-icon" aria-hidden="true" style={{ width: 120, height: 120 }}></div>
+              )}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12, fontSize:'0.95rem', color:'var(--text-color)' }}>
+                <span style={{ opacity:0.8, color:'var(--text-color)' }}>Price</span>
+                <span style={{ fontWeight:600, color:'var(--text-color)' }}>{formatPrice(s.current_price)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
       )}
+
+      {knifeItems.length > 0 ? (
+        <>
+          <h3 style={{ marginTop:20 }}>Contained Knives</h3>
+          <div className="categories-grid" style={{ gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))' }}>
+            {knifeItems.map(kn => (
+              <button
+                key={kn.item_id}
+                className="category-card"
+                style={{ padding: '22px 18px' }}
+                onClick={() => navigate(`/skin/${kn.slug}`)}
+              >
+                <div className="card-header">
+                  <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{kn.name}</div>
+                  <span className={`badge ${rarityClass(kn.rarity)}`}>{kn.rarity || '—'}</span>
+                  <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>0.26%</span>
+                </div>
+                {skinImgMap[kn.slug] ? (
+                  <img className="category-img" src={skinImgMap[kn.slug]} alt={kn.name} style={{ width: 120, height: 120 }} />
+                ) : (
+                  <div className="category-icon" aria-hidden="true" style={{ width: 120, height: 120 }}></div>
+                )}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12, fontSize:'0.95rem', color:'var(--text-color)' }}>
+                  <span style={{ opacity:0.8, color:'var(--text-color)' }}>Price</span>
+                  <span style={{ fontWeight:600, color:'var(--text-color)' }}>{formatPrice(kn.current_price)}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      {gloveItems.length > 0 ? (
+        <>
+          <h3 style={{ marginTop:20 }}>Contained Gloves</h3>
+          <div className="categories-grid" style={{ gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))' }}>
+            {gloveItems.map(gl => (
+              <button
+                key={gl.item_id}
+                className="category-card"
+                style={{ padding: '22px 18px' }}
+                onClick={() => navigate(`/skin/${gl.slug}`)}
+              >
+                <div className="card-header">
+                  <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{gl.name}</div>
+                  <span className={`badge ${rarityClass(gl.rarity)}`}>{gl.rarity || '—'}</span>
+                  <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>0.26%</span>
+                </div>
+                {skinImgMap[gl.slug] ? (
+                  <img className="category-img" src={skinImgMap[gl.slug]} alt={gl.name} style={{ width: 120, height: 120 }} />
+                ) : (
+                  <div className="category-icon" aria-hidden="true" style={{ width: 120, height: 120 }}></div>
+                )}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12, fontSize:'0.95rem', color:'var(--text-color)' }}>
+                  <span style={{ opacity:0.8, color:'var(--text-color)' }}>Price</span>
+                  <span style={{ fontWeight:600, color:'var(--text-color)' }}>{formatPrice(gl.current_price)}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

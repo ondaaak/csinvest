@@ -94,10 +94,14 @@ def get_case_detail(slug: str, db: Session = Depends(get_db)):
     case = repo.get_case_by_slug(slug)
     if not case:
         raise HTTPException(status_code=404, detail="Case nenalezena")
-    skins = repo.get_case_skins(case.item_id)
+    skins = repo.get_case_items_by_types(case.item_id, ["skin"])
+    knives = repo.get_case_items_by_types(case.item_id, ["knife"])  # future-proof if knives are seeded
+    gloves = repo.get_case_items_by_types(case.item_id, ["glove"])  # newly seeded as glove
     return {
         "case": case,
-        "skins": skins
+        "skins": skins,
+        "knives": knives,
+        "gloves": gloves,
     }
 
 
@@ -119,3 +123,12 @@ def refresh_items(item_type: str | None = None, db: Session = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/items/{slug}")
+def get_item_detail(slug: str, db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    itm = repo.get_item_by_slug(slug)
+    if not itm:
+        raise HTTPException(status_code=404, detail="Item nenalezen")
+    return itm

@@ -35,11 +35,17 @@ class ItemRepository:
             q = q.filter(Item.item_type == item_type)
         return q.limit(limit).all()
 
+    def get_item_by_slug(self, slug: str):
+        return self.db.query(Item).filter(Item.slug == slug).first()
+
     def get_case_by_slug(self, slug: str):
         return self.db.query(Item).filter(Item.slug == slug, Item.item_type == 'case').first()
 
     def get_case_skins(self, case_id: int):
         return self.db.query(Item).filter(Item.case_id == case_id, Item.item_type == 'skin').all()
+
+    def get_case_items_by_types(self, case_id: int, types: list[str]):
+        return self.db.query(Item).filter(Item.case_id == case_id, Item.item_type.in_(types)).all()
 
     # Prices
     def update_price(self, user_item_id: int, new_price: float):
