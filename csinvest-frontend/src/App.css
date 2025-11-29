@@ -86,7 +86,7 @@
 /* Search suggestions dropdown theming */
 .search-suggestions {
   position: absolute;
-  top: 100%;
+  top: calc(100% - 8px); /* overlap input bottom radius */
   left: 0;
   right: 0;
   border-top: none;
@@ -106,8 +106,7 @@ body[data-theme='light'] .search-suggestions {
   background: #ffffff;
   border: 1px solid var(--border-color);
   border-radius: 0 0 12px 12px;
-  margin-top: -1px; /* visually merge with input border */
-  border-top: none; /* avoid double border between input and dropdown */
+  border-top: none;
 }
 
 /* Dark theme: use card colors */
@@ -115,7 +114,6 @@ body[data-theme='dark'] .search-suggestions {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 0 0 12px 12px;
-  margin-top: -1px;
   border-top: none;
 }
 

@@ -22,6 +22,7 @@ const CATEGORIES = [
 function SearchPage() {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef(null);
   const navigate = useNavigate();
@@ -70,12 +71,16 @@ function SearchPage() {
         const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&limit=8`);
         if (res.ok) {
           const data = await res.json();
-          setSuggestions(Array.isArray(data) ? data : []);
+          const arr = Array.isArray(data) ? data : [];
+          setSuggestions(arr);
+          setOpen(arr.length > 0);
         } else {
           setSuggestions([]);
+          setOpen(false);
         }
       } catch {
         setSuggestions([]);
+        setOpen(false);
       } finally {
         setLoading(false);
       }
@@ -88,11 +93,13 @@ function SearchPage() {
     const handleClick = (e) => {
       if (!boxRef.current) return;
       if (!boxRef.current.contains(e.target)) {
-        setSuggestions([]);
+        setOpen(false);
       }
     };
     const handleKey = (e) => {
-      if (e.key === 'Escape') setSuggestions([]);
+      if (e.key === 'Escape') {
+        setOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleKey);
@@ -113,14 +120,18 @@ function SearchPage() {
             placeholder="Search..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => {
+              if (query.trim() && suggestions.length > 0) setOpen(true);
+            }}
           />
-          {query && suggestions.length > 0 && (
+          {open && query && suggestions.length > 0 && (
             <div className="search-suggestions">
               {suggestions.map((s) => (
                 <button
                   key={s.slug}
                   onClick={() => {
                     navigate(s.item_type === 'case' ? `/case/${s.slug}` : `/skin/${s.slug}`);
+                    setOpen(false);
                   }}
                   className="search-suggestion-row"
                 >
