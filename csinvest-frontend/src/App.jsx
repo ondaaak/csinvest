@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage } from './pages';
 import LoginPage from './pages/Login.jsx';
+import RegisterPage from './pages/Register.jsx';
 import AccountPage from './pages/Account.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import './App.css'; 
@@ -230,8 +231,10 @@ function App() {
     const location = useLocation();
     const path = location.pathname || '/';
     const isSearch = path.startsWith('/search');
-    const isAuthPage = path === '/login' || path === '/account';
-    const shouldBlur = !user && !isSearch && !isAuthPage; // blur Overview & Inventory only when logged out
+    const isAuthPage = path === '/login' || path === '/register' || path === '/account';
+    // Only blur selected protected pages (overview and inventory) when logged out
+    const blurPaths = ['/', '/inventory'];
+    const shouldBlur = !user && blurPaths.includes(path) && !isAuthPage;
 
     // Theme handling
     const [theme, setTheme] = useState('light');
@@ -290,7 +293,9 @@ function App() {
                     <div className="screen-blur">
                         <div className="screen-message">
                             <div style={{ fontSize: '2rem', marginBottom: '12px' }}>Login to preview your skins</div>
-                            <NavLink to="/login" className="account-button">Login</NavLink>
+                                                        <div style={{ textAlign:'center' }}>
+                                                            <NavLink to="/login" className="account-button">Login</NavLink>
+                                                        </div>
                         </div>
                     </div>
                 )}
@@ -303,6 +308,7 @@ function App() {
                     <Route path="/skin/:slug" element={<SkinDetailPage />} />
                     <Route path="/search/:category" element={<SearchCategory />} />
                     <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
                     <Route path="/account" element={<AccountPage />} />
                     <Route path="*" element={<OverviewPage />} />
                 </Routes>

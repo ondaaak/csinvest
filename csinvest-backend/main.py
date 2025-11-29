@@ -4,8 +4,10 @@ from database import get_db
 from repository import ItemRepository
 from service import PriceService
 from strategy import CSFloatStrategy
-from models import PortfolioHistory
+from models import PortfolioHistory, User
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+from auth import hash_password, verify_password, create_access_token, get_current_user
 
 app = FastAPI()
 
@@ -24,6 +26,48 @@ app.add_middleware(
 )
 # ------------------------------------
 # --- Endpointy pro API ---
+
+class RegisterRequest(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class AuthUser(BaseModel):
+    user_id: int
+    username: str
+    email: EmailStr
+
+def user_to_schema(u: User) -> AuthUser:
+    return AuthUser(user_id=u.user_id, username=u.username, email=u.email)
+
+@app.post("/auth/register")
+def register(data: RegisterRequest, db: Session = Depends(get_db)):
+    # Check uniqueness
+    existing = db.query(User).filter((User.username == data.username) | (User.email == data.email)).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username nebo email již existuje")
+    user = User(username=data.username, email=data.email, password_hash=hash_password(data.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    token = create_access_token(str(user.user_id))
+    return {"access_token": token, "token_type": "bearer", "user": user_to_schema(user)}
+
+@app.post("/auth/login")
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == data.username).first()
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Neplatné přihlašovací údaje")
+    token = create_access_token(str(user.user_id))
+    return {"access_token": token, "token_type": "bearer", "user": user_to_schema(user)}
+
+@app.get("/auth/me")
+def auth_me(current: User = Depends(get_current_user)):
+    return user_to_schema(current)
 
 @app.get("/")
 def read_root():

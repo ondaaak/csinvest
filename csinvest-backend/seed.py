@@ -1,5 +1,6 @@
 from database import SessionLocal, engine, Base
 from models import Market, User, Item, UserItem
+from auth import hash_password
 import datetime
 import re
 
@@ -29,7 +30,7 @@ def seed_data():
     user = db.query(User).filter(User.username == "student").first()
     if not user:
         print("Seeduji uživatele...")
-        user = User(username="student", email="student@vsb.cz", password_hash="tajneheslo123")
+        user = User(username="student", email="student@vsb.cz", password_hash=hash_password("tajneheslo123"))
         db.add(user)
         db.commit()
         db.refresh(user)

@@ -10,6 +10,7 @@ export default function AccountPage() {
       {user ? (
         <div style={{ textAlign: 'center' }}>
           <p>Logged in as <strong>{user.username}</strong></p>
+          <p style={{ color:'#6b7280', fontSize:'0.85rem' }}>{user.email}</p>
           <button className="account-button" onClick={logout}>Logout</button>
         </div>
       ) : (
