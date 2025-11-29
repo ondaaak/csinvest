@@ -82,3 +82,87 @@
 }
 .footer a { color: var(--text-color); text-decoration: none; opacity: 0.8; }
 .footer a:hover { opacity: 1; text-decoration: underline; }
+
+/* Search suggestions dropdown theming */
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  border-top: none;
+  z-index: 10;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+  box-sizing: border-box;
+}
+
+/* Ensure search input uses border-box so its visual width matches dropdown */
+.search-input {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Light theme: white background, black border */
+body[data-theme='light'] .search-suggestions {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 0 0 12px 12px;
+  margin-top: -1px; /* visually merge with input border */
+  border-top: none; /* avoid double border between input and dropdown */
+}
+
+/* Dark theme: use card colors */
+body[data-theme='dark'] .search-suggestions {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0 0 12px 12px;
+  margin-top: -1px;
+  border-top: none;
+}
+
+.search-suggestion-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.search-suggestion-row:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+/* Thumb frame matches theme */
+.search-thumb {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+body[data-theme='light'] .search-thumb {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+}
+
+body[data-theme='dark'] .search-thumb {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+}
+
+.search-thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.search-text { text-align: center; }
+.search-name { color: var(--card-text-color); }
+.search-name:where(body[data-theme='light'] .search-name) { color: #000000; }
+.search-type { font-size: 0.8rem; color: #6b7280; }

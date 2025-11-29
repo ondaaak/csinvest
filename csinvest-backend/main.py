@@ -4,7 +4,7 @@ from database import get_db
 from repository import ItemRepository
 from service import PriceService
 from strategy import CSFloatStrategy
-from models import PortfolioHistory, User
+from models import PortfolioHistory, User, Item
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from auth import hash_password, verify_password, create_access_token, get_current_user
@@ -68,6 +68,21 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 @app.get("/auth/me")
 def auth_me(current: User = Depends(get_current_user)):
     return user_to_schema(current)
+
+class SearchResponseItem(BaseModel):
+    item_id: int
+    name: str
+    item_type: str
+    slug: str
+
+def to_search_item(itm: Item) -> SearchResponseItem:
+    return SearchResponseItem(item_id=itm.item_id, name=itm.name, item_type=itm.item_type, slug=itm.slug)
+
+@app.get("/search")
+def search_items(q: str, limit: int = 10, db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    results = repo.search_items(q, limit=limit)
+    return [to_search_item(r) for r in results]
 
 @app.get("/")
 def read_root():

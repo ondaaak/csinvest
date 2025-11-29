@@ -47,6 +47,19 @@ class ItemRepository:
     def get_case_items_by_types(self, case_id: int, types: list[str]):
         return self.db.query(Item).filter(Item.case_id == case_id, Item.item_type.in_(types)).all()
 
+    def search_items(self, query: str, limit: int = 10):
+        q = (query or '').strip()
+        if not q:
+            return []
+        # case-insensitive partial match on name
+        return (
+            self.db.query(Item)
+            .filter(func.lower(Item.name).like(f"%{q.lower()}%"))
+            .order_by(Item.item_type.asc(), Item.name.asc())
+            .limit(limit)
+            .all()
+        )
+
     # Prices
     def update_price(self, user_item_id: int, new_price: float):
         itm = self.db.query(UserItem).filter(UserItem.user_item_id == user_item_id).first()

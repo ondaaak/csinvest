@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+const API_BASE = 'http://127.0.0.1:8000';
 
 const CATEGORIES = [
   { key: 'cases', label: 'Cases' },
@@ -20,6 +21,9 @@ const CATEGORIES = [
 
 function SearchPage() {
   const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const boxRef = useRef(null);
   const navigate = useNavigate();
 
   // Load category images from src/assets/search with common extensions.
@@ -34,21 +38,111 @@ function SearchPage() {
     })
   );
 
+  // Build asset maps for item thumbnails from skins, gloves, and cases by slug
+  const slugNormalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const assetFromFolder = (globObj) => Object.fromEntries(
+    Object.entries(globObj).map(([p, url]) => {
+      const filename = p.split('/').pop() || '';
+      const keyRaw = filename.substring(0, filename.lastIndexOf('.'));
+      return [slugNormalize(keyRaw), url];
+    })
+  );
+  const itemThumbs = {
+    ...assetFromFolder(skinsGlob),
+    ...assetFromFolder(glovesGlob),
+    ...assetFromFolder(casesGlob),
+  };
+
   const onCategoryClick = (cat) => {
     navigate(`/search/${cat.key}`);
   };
+
+  // Debounced search fetch
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) { setSuggestions([]); return; }
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&limit=8`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(Array.isArray(data) ? data : []);
+        } else {
+          setSuggestions([]);
+        }
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 200);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Close dropdown on click outside or Escape key
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (!boxRef.current) return;
+      if (!boxRef.current.contains(e.target)) {
+        setSuggestions([]);
+      }
+    };
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setSuggestions([]);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, []);
 
   return (
     <div className="dashboard-container">
       <h2 style={{ textAlign: 'center' }}>Search any item</h2>
 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <input
-          className="search-input"
-          placeholder="Search..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <div ref={boxRef} style={{ position:'relative', width:'100%', maxWidth:600 }}>
+          <input
+            className="search-input"
+            placeholder="Search..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && suggestions.length > 0 && (
+            <div className="search-suggestions">
+              {suggestions.map((s) => (
+                <button
+                  key={s.slug}
+                  onClick={() => {
+                    navigate(s.item_type === 'case' ? `/case/${s.slug}` : `/skin/${s.slug}`);
+                  }}
+                  className="search-suggestion-row"
+                >
+                  {(() => {
+                    const thumb = itemThumbs[s.slug] || null;
+                    return thumb ? (
+                      <div className="search-thumb">
+                        <img src={thumb} alt={s.name} />
+                      </div>
+                    ) : (
+                      <div className="category-icon" aria-hidden="true"></div>
+                    );
+                  })()}
+                  <div className="search-text">
+                    <div className="search-name">{s.name}</div>
+                    <div className="search-type">{s.item_type}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="categories-grid">
