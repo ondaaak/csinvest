@@ -101,6 +101,56 @@ def get_items(item_type: str = None, limit: int = 100, db: Session = Depends(get
     repo = ItemRepository(db)
     return repo.get_items(item_type=item_type, limit=limit)
 
+class CreateUserItemRequest(BaseModel):
+    item_id: int
+    amount: int = 1
+    float_value: float | None = None
+    pattern: int | None = None
+    buy_price: float
+
+@app.post("/useritems")
+def create_user_item(payload: CreateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    repo = ItemRepository(db)
+    # validate item exists
+    itm = db.query(Item).filter(Item.item_id == payload.item_id).first()
+    if not itm:
+        raise HTTPException(status_code=404, detail="Item nenalezen")
+    created = repo.add_user_item(
+        user_id=current.user_id,
+        item_id=payload.item_id,
+        price=payload.buy_price,
+        amount=payload.amount,
+        float_value=payload.float_value,
+        pattern=payload.pattern,
+    )
+    return created
+
+@app.delete("/useritems/{user_item_id}", status_code=204)
+def delete_user_item(user_item_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    repo = ItemRepository(db)
+    ok = repo.delete_user_item(user_item_id, current.user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="User item nenalezen")
+    return
+
+class UpdateUserItemRequest(BaseModel):
+    amount: int | None = None
+    float_value: float | None = None
+    pattern: int | None = None
+    buy_price: float | None = None
+
+@app.patch("/useritems/{user_item_id}")
+def update_user_item(user_item_id: int, payload: UpdateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    repo = ItemRepository(db)
+    updated = repo.update_user_item(
+        user_item_id=user_item_id,
+        user_id=current.user_id,
+        **payload.model_dump(exclude_none=True)
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="User item nenalezen")
+    return updated
+
 # Endpoint pro nákup skinu (jen pro test)
 @app.post("/buy/{user_id}/{item_id}")
 def buy_item(user_id: int, item_id: int, price: float, db: Session = Depends(get_db)):

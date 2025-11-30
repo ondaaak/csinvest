@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage } from './pages';
+import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage, AddItemPage } from './pages';
 import LoginPage from './pages/Login.jsx';
 import RegisterPage from './pages/Register.jsx';
 import AccountPage from './pages/Account.jsx';
@@ -16,6 +16,7 @@ const BASE_URL = 'http://127.0.0.1:8000';
 // --- Komponenta pro vykreslení grafu ---
 // Používá historická data a simuluje časovou řadu
 const PortfolioChart = ({ history }) => {
+    const { formatPrice } = useCurrency();
     if (!history || history.length === 0) {
         return (
             <div style={{ height: 350, backgroundColor: 'var(--card-bg)', padding: '15px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', color:'var(--card-text-color)' }}>
@@ -25,8 +26,27 @@ const PortfolioChart = ({ history }) => {
     }
     const dataForChart = history.map(record => ({
         name: new Date(record.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        'Hodnota Portfolia': parseFloat(record.total_value),
+        ts: new Date(record.timestamp),
+        value: Number(record.total_value ?? 0),
     }));
+
+    const CustomTooltip = ({ active, payload }) => {
+        if (!active || !payload || payload.length === 0) return null;
+        const p = payload[0];
+        const point = p && p.payload ? p.payload : null;
+        const amount = point && typeof point.value === 'number' ? point.value : null;
+        const time = point && point.ts ? point.ts : null;
+        return (
+            <div style={{ background:'var(--card-bg)', border:'1px solid #3a3a3a', color:'var(--card-text-color)', padding:'8px 10px', borderRadius:8 }}>
+                <div style={{ fontWeight:600 }}>{amount !== null ? formatPrice(amount) : '-'}</div>
+                {time && (
+                    <div style={{ fontSize:'0.8rem', opacity:0.8 }}>
+                        {time.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                    </div>
+                )}
+            </div>
+        );
+    };
     return (
         <div style={{ height: 350, backgroundColor: 'var(--card-bg)', padding: '15px' }}>
             <ResponsiveContainer width="100%" height={350}>
@@ -34,8 +54,8 @@ const PortfolioChart = ({ history }) => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" />
                     <XAxis dataKey="name" stroke="var(--card-text-color)" />
                     <YAxis stroke="var(--card-text-color)" domain={['auto', 'auto']} tickFormatter={(value) => `$${value}`} />
-                    <Tooltip contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid #3a3a3a', color: 'var(--card-text-color)' }} />
-                    <Line type="monotone" dataKey="Hodnota Portfolia" stroke="#ffffff" strokeWidth={3} dot={false} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line type="monotone" dataKey="value" stroke="#ffffff" strokeWidth={3} dot={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -75,10 +95,13 @@ function OverviewPage() {
             const portfolioArray = Array.isArray(portfolioResponse.data) ? portfolioResponse.data : [];
             const historyArray = Array.isArray(historyResponse.data) ? historyResponse.data : [];
 
-            const portfolioData = portfolioArray.map(item => ({
-                ...item,
-                profit: item.current_price - item.buy_price
-            }));
+            const portfolioData = portfolioArray.map(item => {
+                const amt = typeof item.amount === 'number' ? item.amount : 1;
+                return {
+                    ...item,
+                    profit: (item.current_price - item.buy_price) * amt,
+                };
+            });
 
             setPortfolio(portfolioData);
             setHistory(historyArray);
@@ -105,7 +128,8 @@ function OverviewPage() {
     const handleRefresh = async () => {
         setLoading(true);
         try {
-            await axios.post(`${BASE_URL}/refresh-portfolio/${USER_ID}`);
+            if (!userId) throw new Error('Unauthenticated');
+            await axios.post(`${BASE_URL}/refresh-portfolio/${userId}`);
             await fetchData(); // Znovu načíst data po aktualizaci
         } catch (err) {
             console.error("Chyba při aktualizaci:", err);
@@ -210,12 +234,12 @@ function OverviewPage() {
                 <tbody>
                     {sortedPortfolio.map(item => (
                         <tr key={item.user_item_id}>
-                            <td>1</td>
+                            <td>{typeof item.amount === 'number' ? item.amount : 1}</td>
                             <td>{item.item?.name || '—'}</td>
                             <td>{formatPrice(item.buy_price)}</td>
                             <td>{formatPrice(item.current_price)}</td>
                             <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{formatPrice(item.profit)}</td>
-                            <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{((item.profit / (item.buy_price || 1)) * 100).toFixed(2)}%</td>
+                            <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{((item.profit / ((item.buy_price * (typeof item.amount === 'number' ? item.amount : 1)) || 1)) * 100).toFixed(2)}%</td>
                         </tr>
                     ))}
                 </tbody>
@@ -302,6 +326,7 @@ function App() {
                 <Routes>
                     <Route path="/" element={<OverviewPage />} />
                     <Route path="/inventory" element={<InventoryPage />} />
+                    <Route path="/add" element={<AddItemPage />} />
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/search/cases" element={<CasesPage />} />
                     <Route path="/case/:slug" element={<CaseDetailPage />} />

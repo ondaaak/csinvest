@@ -14,12 +14,24 @@ class ItemRepository:
             joinedload(UserItem.item)
         ).all()
 
-    def add_user_item(self, user_id: int, item_id: int, price: float):
+    def add_user_item(self, user_id: int, item_id: int, price: float, amount: int = 1, float_value: float | None = None, pattern: int | None = None):
+        # If catalog has current_price, use it, otherwise default to buy price
+        catalog_item = self.db.query(Item).filter(Item.item_id == item_id).first()
+        current_price = float(price)
+        if catalog_item and catalog_item.current_price is not None:
+            try:
+                current_price = float(catalog_item.current_price)
+            except Exception:
+                current_price = float(price)
+
         new_item = UserItem(
             user_id=user_id,
             item_id=item_id,
+            amount=amount or 1,
+            float_value=float_value,
+            pattern=pattern,
             buy_price=price,
-            current_price=price,
+            current_price=current_price,
             buy_date=datetime.date.today(),
             last_update=datetime.datetime.now()
         )
@@ -85,10 +97,52 @@ class ItemRepository:
             itm.last_update = datetime.datetime.now()
             self.db.commit()
 
+    # Delete
+    def delete_user_item(self, user_item_id: int, user_id: int) -> bool:
+        rec = (
+            self.db.query(UserItem)
+            .filter(UserItem.user_item_id == user_item_id, UserItem.user_id == user_id)
+            .first()
+        )
+        if not rec:
+            return False
+        self.db.delete(rec)
+        self.db.commit()
+        return True
+
+    def update_user_item(self, user_item_id: int, user_id: int, **fields) -> UserItem | None:
+        rec = (
+            self.db.query(UserItem)
+            .filter(UserItem.user_item_id == user_item_id, UserItem.user_id == user_id)
+            .first()
+        )
+        if not rec:
+            return None
+        # Allowed updatable fields
+        allowed = {
+            'amount', 'float_value', 'pattern', 'buy_price'
+        }
+        for k, v in fields.items():
+            if k in allowed and v is not None:
+                setattr(rec, k, v)
+        rec.last_update = datetime.datetime.now()
+        self.db.commit()
+        self.db.refresh(rec)
+        return rec
+
     # Totals
     def calculate_portfolio_totals(self, user_id: int):
-        total_invested = self.db.query(func.sum(UserItem.buy_price)).filter(UserItem.user_id == user_id).scalar() or 0
-        total_value = self.db.query(func.sum(UserItem.current_price)).filter(UserItem.user_id == user_id).scalar() or 0
+        # Treat prices as per-unit and multiply by amount
+        total_invested = (
+            self.db.query(func.sum(UserItem.buy_price * func.coalesce(UserItem.amount, 1)))
+            .filter(UserItem.user_id == user_id)
+            .scalar() or 0
+        )
+        total_value = (
+            self.db.query(func.sum(UserItem.current_price * func.coalesce(UserItem.amount, 1)))
+            .filter(UserItem.user_id == user_id)
+            .scalar() or 0
+        )
         total_profit = total_value - total_invested
         return {
             "total_invested": total_invested,
