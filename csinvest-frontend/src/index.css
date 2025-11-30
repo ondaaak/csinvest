@@ -114,6 +114,7 @@ body {
 .dashboard-container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
 .total-value-block { text-align: left; margin-bottom: 12px; }
 .stat-card { background-color: var(--card-bg); color: var(--card-text-color); padding: 4px; border-radius: 12px; box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12); margin-bottom: 8px; }
+.summary-card { background-color: var(--table-header-bg); color: var(--text-color); border: 1px solid var(--surface-border); }
 .stat-card .form-input { color: var(--card-text-color); }
 .stat-card .form-label { color: var(--card-text-color); }
 

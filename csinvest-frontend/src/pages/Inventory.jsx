@@ -353,7 +353,7 @@ function InventoryPage() {
 
             return (
               <div>
-                <div className="stat-card">
+                <div className="stat-card summary-card">
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', alignItems:'center', gap: 4 }}>
                     <div style={{ fontWeight: 600 }}>Market price</div>
                     <div>{/* spacer to align with fee input in other rows */}</div>
@@ -375,7 +375,7 @@ function InventoryPage() {
                     </div>
                   </div>
                 </div>
-                  <div className="stat-card">
+                  <div className="stat-card summary-card">
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', alignItems:'center', gap: 4 }}>
                       <div style={{ fontWeight: 600 }}>After sell fee</div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -401,7 +401,7 @@ function InventoryPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="stat-card">
+                  <div className="stat-card summary-card">
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', alignItems:'center', gap: 4 }}>
                       <div style={{ fontWeight: 600 }}>After withdraw fee</div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
