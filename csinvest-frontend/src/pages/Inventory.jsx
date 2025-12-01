@@ -9,7 +9,7 @@ const USER_ID = 1;
 const BASE_URL = 'http://127.0.0.1:8000';
 
 function InventoryPage() {
-  const { userId } = useAuth();
+  const { userId, logout } = useAuth();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -20,13 +20,13 @@ function InventoryPage() {
   const [sortAsc, setSortAsc] = useState(true);
   const [editing, setEditing] = useState({}); // { [user_item_id]: { amount, float_value, pattern, buy_price } }
   const [buyMode, setBuyMode] = useState({}); // { [user_item_id]: 'unit' | 'total' }
+  const [savingIds, setSavingIds] = useState(new Set()); // track rows being saved to prevent repeated clicks
   const [sellFeePct, setSellFeePct] = useState(2); // default marketplace fee %
   const [withdrawFeePct, setWithdrawFeePct] = useState(2); // default withdrawal fee %
   // Raw string values so user can freely type (can be blank or partial)
   const [rawSellFee, setRawSellFee] = useState('2');
   const [rawWithdrawFee, setRawWithdrawFee] = useState('2');
   const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
-
   const parseFee = (val) => {
     if (val === '' || val === null || val === undefined) return 0;
     const cleaned = String(val).replace(',', '.');
@@ -69,7 +69,6 @@ function InventoryPage() {
       setLoading(false);
     }
   };
-
   const reloadPrices = async () => {
     setLoading(true);
     try {
@@ -94,6 +93,10 @@ function InventoryPage() {
       const token = localStorage.getItem('csinvest:token');
       const payload = editing[id];
       if (!payload) return;
+      if (savingIds.has(id)) return;
+      setSavingIds(prev => new Set([...prev, id]));
+      // Close editor immediately for single-click behavior
+      cancelEdit(id);
       const amt = Number(payload.amount) || 1;
       let buyUnit = Number(payload.buy_price);
       if (!Number.isFinite(buyUnit)) buyUnit = 0;
@@ -114,6 +117,12 @@ function InventoryPage() {
         if (!resp.ok) {
           const text = await resp.text();
           console.error('Save failed:', text);
+          if (resp.status === 401 || resp.status === 403) {
+            alert('Session expired. Please login again.');
+            logout();
+            navigate('/login');
+            return;
+          }
           alert(`Saving failed: ${text}`);
           return;
         }
@@ -126,10 +135,15 @@ function InventoryPage() {
           console.warn('Portfolio refresh after save failed (continuing):', e);
         }
         await fetchItems();
-        cancelEdit(id);
       } catch (e) {
         console.error('Save failed', e);
         alert(`Saving failed: ${e.message || e}`);
+      } finally {
+        setSavingIds(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
       }
     };
   const getProfitPct = (it) => {
@@ -252,6 +266,16 @@ function InventoryPage() {
       <path d="M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14" />
     </svg>
   );
+  const ToggleIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* rightward arrow on top */}
+      <path d="M7 7h10" />
+      <path d="M15 5l2 2-2 2" />
+      {/* leftward arrow on bottom */}
+      <path d="M17 17H7" />
+      <path d="M9 19l-2-2 2-2" />
+    </svg>
+  );
 
   const unauthenticatedOverlay = (
     <div className="blur-overlay">
@@ -282,13 +306,12 @@ function InventoryPage() {
       </div>
 
       <div className="blur-container">
-        {!userId && unauthenticatedOverlay}
+        {userId ? (
         <table>
         <thead>
           <tr>
             <th className="sortable" onClick={() => requestSort('amount')}>Amount <Arrow keyName="amount" /></th>
             <th className="sortable" onClick={() => requestSort('name')}>Name <Arrow keyName="name" /></th>
-            <th>Float</th>
             <th className="sortable" onClick={() => requestSort('buyUnit')}>Buy (unit) <Arrow keyName="buyUnit" /></th>
             <th className="sortable" onClick={() => requestSort('sellUnit')}>Sell (unit) <Arrow keyName="sellUnit" /></th>
             <th className="sortable" onClick={() => requestSort('total')}>Total (all) <Arrow keyName="total" /></th>
@@ -315,32 +338,31 @@ function InventoryPage() {
               </td>
               <td>
                 {editing[item.user_item_id] ? (
-                  <input className="form-input" style={{ maxWidth: 160 }} value={editing[item.user_item_id].float_value}
-                    onChange={(e) => setEditing((prev) => ({ ...prev, [item.user_item_id]: { ...prev[item.user_item_id], float_value: e.target.value } }))} />
+                  <div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <label className="form-label" style={{ margin:0 }}>Buy ({buyMode[item.user_item_id] === 'total' ? 'total' : 'unit'})</label>
+                      <button className="icon-btn toggle-btn" title="Toggle unit/total" aria-label="Toggle unit or total"
+                        onClick={() => setBuyMode((prev) => ({ ...prev, [item.user_item_id]: (prev[item.user_item_id] === 'total' ? 'unit' : 'total') }))}>
+                        <ToggleIcon />
+                      </button>
+                    </div>
+                    <input className="form-input compact" style={{ maxWidth: 120 }} value={editing[item.user_item_id].buy_price}
+                      onChange={(e) => setEditing((prev) => ({ ...prev, [item.user_item_id]: { ...prev[item.user_item_id], buy_price: e.target.value } }))} />
+                    <div style={{ fontSize:'0.8rem', opacity:0.75, marginTop:4 }}>
+                      {buyMode[item.user_item_id] === 'total'
+                        ? `Unit preview: ${formatPrice(((Number(editing[item.user_item_id].buy_price) || 0) / (Number(editing[item.user_item_id].amount) || 1)) || 0)}`
+                        : `Total preview: ${formatPrice((Number(editing[item.user_item_id].buy_price) || 0) * (Number(editing[item.user_item_id].amount) || 1))}`}
+                    </div>
+                  </div>
                 ) : (
-                  (() => { const f = getFloat(item); return f === null ? '—' : f.toFixed(8); })()
+                  <>
+                    {savingIds.has(item.user_item_id) && <span className="spinner" title="Saving" aria-label="Saving" style={{ marginRight: 6 }} />}
+                    {formatPrice(item.buy_price)}
+                  </>
                 )}
               </td>
-              <td>
-                {formatPrice(item.buy_price)}
-              </td>
-              {editing[item.user_item_id] && (
-                <td colSpan={2} style={{ paddingTop: 6 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <label className="form-label" style={{ margin:0 }}>Buy ({buyMode[item.user_item_id] === 'total' ? 'total' : 'unit'})</label>
-                    <button className="icon-btn" title="Toggle unit/total" onClick={() => setBuyMode((prev) => ({ ...prev, [item.user_item_id]: (prev[item.user_item_id] === 'total' ? 'unit' : 'total') }))}>🔁</button>
-                  </div>
-                  <input className="form-input" style={{ maxWidth: 200 }} value={editing[item.user_item_id].buy_price}
-                    onChange={(e) => setEditing((prev) => ({ ...prev, [item.user_item_id]: { ...prev[item.user_item_id], buy_price: e.target.value } }))} />
-                  <div style={{ fontSize:'0.8rem', opacity:0.75, marginTop:4 }}>
-                    {buyMode[item.user_item_id] === 'total'
-                      ? `Unit preview: ${formatPrice(((Number(editing[item.user_item_id].buy_price) || 0) / (Number(editing[item.user_item_id].amount) || 1)) || 0)}`
-                      : `Total preview: ${formatPrice((Number(editing[item.user_item_id].buy_price) || 0) * (Number(editing[item.user_item_id].amount) || 1))}`}
-                  </div>
-                </td>
-              )}
-              {!editing[item.user_item_id] && <td>{formatPrice(item.current_price)}</td>}
-              {!editing[item.user_item_id] && <td>{formatPrice(getCurrentTotal(item))}</td>}
+              <td>{formatPrice(item.current_price)}</td>
+              <td>{formatPrice(getCurrentTotal(item))}</td>
               <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>
                 {formatPrice(item.profit)}
               </td>
@@ -350,13 +372,13 @@ function InventoryPage() {
               <td>
                 {editing[item.user_item_id] ? (
                   <>
-                    <button className="icon-btn" title="Save" onClick={() => saveEdit(item.user_item_id)}><SaveIcon /></button>
-                    <button className="icon-btn" title="Cancel" onClick={() => cancelEdit(item.user_item_id)}><CancelIcon /></button>
+                    <button className="icon-btn" title="Save" onClick={() => saveEdit(item.user_item_id)} disabled={savingIds.has(item.user_item_id)}><SaveIcon /></button>
+                    <button className="icon-btn" title="Cancel" onClick={() => cancelEdit(item.user_item_id)} disabled={savingIds.has(item.user_item_id)}><CancelIcon /></button>
                   </>
                 ) : (
-                  <button className="icon-btn" title="Edit" onClick={() => startEdit(item)}><PencilIcon /></button>
+                  <button className="icon-btn" title="Edit" onClick={() => startEdit(item)} disabled={savingIds.has(item.user_item_id)}><PencilIcon /></button>
                 )}
-                <button className="icon-btn" title="Delete" onClick={async () => {
+                <button className="icon-btn" title="Delete" disabled={savingIds.has(item.user_item_id)} onClick={async () => {
                   if (!window.confirm('Delete this item?')) return;
                   try {
                     const token = localStorage.getItem('csinvest:token');
@@ -374,6 +396,9 @@ function InventoryPage() {
           ))}
         </tbody>
         </table>
+        ) : (
+          unauthenticatedOverlay
+        )}
       </div>
 
       {/* Portfolio summary */}
