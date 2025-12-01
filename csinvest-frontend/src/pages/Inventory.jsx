@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import AddItemModal from '../components/AddItemModal.jsx';
 import axios from 'axios';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -19,8 +20,27 @@ function InventoryPage() {
   const [sortAsc, setSortAsc] = useState(true);
   const [editing, setEditing] = useState({}); // { [user_item_id]: { amount, float_value, pattern, buy_price } }
   const [buyMode, setBuyMode] = useState({}); // { [user_item_id]: 'unit' | 'total' }
-  const [sellFeePct, setSellFeePct] = useState(0); // e.g., marketplace fee %
-  const [withdrawFeePct, setWithdrawFeePct] = useState(0); // e.g., withdrawal fee %
+  const [sellFeePct, setSellFeePct] = useState(2); // default marketplace fee %
+  const [withdrawFeePct, setWithdrawFeePct] = useState(2); // default withdrawal fee %
+  // Raw string values so user can freely type (can be blank or partial)
+  const [rawSellFee, setRawSellFee] = useState('2');
+  const [rawWithdrawFee, setRawWithdrawFee] = useState('2');
+  const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+
+  const parseFee = (val) => {
+    if (val === '' || val === null || val === undefined) return 0;
+    const cleaned = String(val).replace(',', '.');
+    const num = parseFloat(cleaned);
+    if (isNaN(num)) return 0;
+    return round2(num);
+  };
+  const normalizeOnBlur = (rawValue, setRaw, setNumeric) => {
+    if (rawValue === '') { setNumeric(0); return; }
+    const n = parseFee(rawValue);
+    setNumeric(n);
+    setRaw(n.toFixed(2));
+  };
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -203,6 +223,36 @@ function InventoryPage() {
     <span className="sort-arrow">{sortKey === keyName ? (sortAsc ? '↑' : '↓') : ''}</span>
   );
 
+  // Inline SVG icons for actions (accessible, themable via currentColor)
+  const PencilIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5l4 4-11 11H5v-4z" />
+    </svg>
+  );
+  const SaveIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 5h11l4 4v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+      <path d="M12 9v6" />
+      <path d="M9 9h6" />
+    </svg>
+  );
+  const CancelIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6L6 18" />
+      <path d="M6 6l12 12" />
+    </svg>
+  );
+  const TrashIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14" />
+    </svg>
+  );
+
   const unauthenticatedOverlay = (
     <div className="blur-overlay">
       <div className="blur-message">Please login to view your inventory.</div>
@@ -223,8 +273,8 @@ function InventoryPage() {
       </div>
 
       <div className="inventory-actions">
-        <button className="account-button" onClick={() => navigate('/add')}>
-          Add new item ↗
+        <button className="account-button" onClick={() => setShowAddModal(true)}>
+          Add new item +
         </button>
         <button className="account-button" onClick={reloadPrices} disabled={loading}>
           {loading ? 'Loading…' : 'Reload Prices ↻'}
@@ -300,11 +350,11 @@ function InventoryPage() {
               <td>
                 {editing[item.user_item_id] ? (
                   <>
-                    <button className="icon-btn" title="Save" onClick={() => saveEdit(item.user_item_id)}>💾</button>
-                    <button className="icon-btn" title="Cancel" onClick={() => cancelEdit(item.user_item_id)}>↩</button>
+                    <button className="icon-btn" title="Save" onClick={() => saveEdit(item.user_item_id)}><SaveIcon /></button>
+                    <button className="icon-btn" title="Cancel" onClick={() => cancelEdit(item.user_item_id)}><CancelIcon /></button>
                   </>
                 ) : (
-                  <button className="icon-btn" title="Edit" onClick={() => startEdit(item)}>✏️</button>
+                  <button className="icon-btn" title="Edit" onClick={() => startEdit(item)}><PencilIcon /></button>
                 )}
                 <button className="icon-btn" title="Delete" onClick={async () => {
                   if (!window.confirm('Delete this item?')) return;
@@ -318,7 +368,7 @@ function InventoryPage() {
                   } catch (e) {
                     console.error('Delete failed', e);
                   }
-                }}>❌</button>
+                }}><TrashIcon /></button>
               </td>
             </tr>
           ))}
@@ -380,8 +430,26 @@ function InventoryPage() {
                       <div style={{ fontWeight: 600 }}>After sell fee</div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ opacity:0.7 }}>Sell fee %</span>
-                        <input className="form-input" style={{ maxWidth: 90 }} value={sellFeePct}
-                          onChange={(e) => setSellFeePct(e.target.value)} />
+                        <input
+                          className="form-input no-spin"
+                          type="text"
+                          inputMode="decimal"
+                          style={{ maxWidth: 90 }}
+                          placeholder="0"
+                          value={rawSellFee}
+                          onChange={(e) => { setRawSellFee(e.target.value); setSellFeePct(parseFee(e.target.value)); }}
+                          onBlur={() => normalizeOnBlur(rawSellFee, setRawSellFee, setSellFeePct)}
+                        />
+                        <div className="number-arrows">
+                          <button type="button" onClick={() => { setSellFeePct(p => {
+                            const v = round2(Math.min(100, (Number(p)||0) + 0.1));
+                            setRawSellFee(v.toFixed(2));
+                            return v; }); }}>▲</button>
+                          <button type="button" onClick={() => { setSellFeePct(p => {
+                            const v = round2(Math.max(0, (Number(p)||0) - 0.1));
+                            setRawSellFee(v.toFixed(2));
+                            return v; }); }}>▼</button>
+                        </div>
                       </div>
                       <div>
                         <div style={{ opacity:0.7 }}>Deposit</div>
@@ -406,8 +474,26 @@ function InventoryPage() {
                       <div style={{ fontWeight: 600 }}>After withdraw fee</div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ opacity:0.7 }}>Withdraw fee %</span>
-                        <input className="form-input" style={{ maxWidth: 90 }} value={withdrawFeePct}
-                          onChange={(e) => setWithdrawFeePct(e.target.value)} />
+                        <input
+                          className="form-input no-spin"
+                          type="text"
+                          inputMode="decimal"
+                          style={{ maxWidth: 90 }}
+                          placeholder="0"
+                          value={rawWithdrawFee}
+                          onChange={(e) => { setRawWithdrawFee(e.target.value); setWithdrawFeePct(parseFee(e.target.value)); }}
+                          onBlur={() => normalizeOnBlur(rawWithdrawFee, setRawWithdrawFee, setWithdrawFeePct)}
+                        />
+                        <div className="number-arrows">
+                          <button type="button" onClick={() => { setWithdrawFeePct(p => {
+                            const v = round2(Math.min(100, (Number(p)||0) + 0.1));
+                            setRawWithdrawFee(v.toFixed(2));
+                            return v; }); }}>▲</button>
+                          <button type="button" onClick={() => { setWithdrawFeePct(p => {
+                            const v = round2(Math.max(0, (Number(p)||0) - 0.1));
+                            setRawWithdrawFee(v.toFixed(2));
+                            return v; }); }}>▼</button>
+                        </div>
                       </div>
                       <div>
                         <div style={{ opacity:0.7 }}>Deposit</div>
@@ -433,6 +519,12 @@ function InventoryPage() {
             );
           })()}
         </div>
+      )}
+      {showAddModal && (
+        <AddItemModal
+          onClose={() => setShowAddModal(false)}
+          onAdded={async () => { await fetchItems(); setShowAddModal(false); }}
+        />
       )}
     </div>
   );

@@ -1,3 +1,14 @@
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; z-index: 200; }
+.modal-container { background: var(--card-bg); color: var(--card-text-color); border: 1px solid var(--surface-border); border-radius: 18px; padding: 20px 24px 24px; width: 520px; max-width: 92%; box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
+.modal-container h3 { font-size: 1.15rem; }
+.help-text { font-size: 0.7rem; opacity: 0.65; margin-top: 4px; }
+.number-arrows { display: flex; flex-direction: column; margin-left: 4px; }
+.number-arrows button { background: var(--surface-bg); border: 1px solid var(--surface-border); padding: 2px 4px; font-size: 0.6rem; line-height: 1; cursor: pointer; }
+.number-arrows button:hover { background: var(--table-header-bg); }
+/* Hide native number input spin buttons (keep our custom arrows) */
+input.no-spin[type=number]::-webkit-outer-spin-button,
+input.no-spin[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input.no-spin[type=number] { -moz-appearance: textfield; appearance: textfield; }
 /* Root theme variables (light default) */
 :root {
     --bg-color: #ffffff;
@@ -145,6 +156,9 @@ th.sortable { cursor: pointer; user-select: none; }
 .search-input::placeholder { color: #9ca3af; }
 .inventory-actions { display: flex; justify-content: center; gap: 18px; margin: 20px 0 10px 0; }
 .icon-btn { background: transparent; border: none; cursor: pointer; font-size: 1.1rem; margin-right: 6px; }
+.icon-btn svg { display: block; }
+body[data-theme="dark"] .icon-btn { color: #ffffff; }
+body[data-theme="dark"] .icon-btn:hover { color: #e5e5e5; }
 .link-btn { background: transparent; border: none; color: var(--text-color); cursor: pointer; padding: 0; text-decoration: none; font-size: inherit; }
 .link-btn:hover { opacity: 0.85; }
 
