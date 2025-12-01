@@ -24,11 +24,31 @@ const PortfolioChart = ({ history }) => {
             </div>
         );
     }
-    const dataForChart = history.map(record => ({
-        name: new Date(record.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        ts: new Date(record.timestamp),
-        value: Number(record.total_value ?? 0),
-    }));
+    const dataForChartBase = history.map(record => {
+        const t = new Date(record.timestamp);
+        return {
+            // keep a human label but we won't rely on it for axis scaling
+            name: t.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
+            ts: t.getTime(),
+            value: Number(record.total_value ?? 0),
+        };
+    });
+    const nowMs = Date.now();
+    const dataForChart = (() => {
+        if (dataForChartBase.length === 0) return dataForChartBase;
+        const last = dataForChartBase[dataForChartBase.length - 1];
+        if (last.ts < nowMs) {
+            return [
+                ...dataForChartBase,
+                {
+                    name: new Date(nowMs).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
+                    ts: nowMs,
+                    value: last.value,
+                },
+            ];
+        }
+        return dataForChartBase;
+    })();
 
     const CustomTooltip = ({ active, payload }) => {
         if (!active || !payload || payload.length === 0) return null;
@@ -36,12 +56,13 @@ const PortfolioChart = ({ history }) => {
         const point = p && p.payload ? p.payload : null;
         const amount = point && typeof point.value === 'number' ? point.value : null;
         const time = point && point.ts ? point.ts : null;
+        const dt = typeof time === 'number' ? new Date(time) : null;
         return (
             <div style={{ background:'var(--card-bg)', border:'1px solid #3a3a3a', color:'var(--card-text-color)', padding:'8px 10px', borderRadius:8 }}>
                 <div style={{ fontWeight:600 }}>{amount !== null ? formatPrice(amount) : '-'}</div>
-                {time && (
+                {dt && (
                     <div style={{ fontSize:'0.8rem', opacity:0.8 }}>
-                        {time.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                        {dt.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
                     </div>
                 )}
             </div>
@@ -52,7 +73,13 @@ const PortfolioChart = ({ history }) => {
             <ResponsiveContainer width="100%" height={350}>
                 <LineChart data={dataForChart} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" />
-                    <XAxis dataKey="name" stroke="var(--card-text-color)" />
+                    <XAxis
+                        dataKey="ts"
+                        type="number"
+                        domain={[ 'dataMin', nowMs ]}
+                        tickFormatter={(v) => new Date(v).toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                        stroke="var(--card-text-color)"
+                    />
                     <YAxis stroke="var(--card-text-color)" domain={['auto', 'auto']} tickFormatter={(value) => `$${value}`} />
                     <Tooltip content={<CustomTooltip />} />
                     <Line type="monotone" dataKey="value" stroke="#ffffff" strokeWidth={3} dot={false} />
@@ -141,7 +168,8 @@ function OverviewPage() {
 
     useEffect(() => {
         fetchData();
-    }, []); 
+        // re-fetch when user changes (login/logout) to get correct data
+    }, [userId]); 
 
     // --- FILTRACE HISTORIE PRO GRAF ---
     const now = new Date();
@@ -207,7 +235,7 @@ function OverviewPage() {
             </div>
 
             <button onClick={handleRefresh} disabled={loading} className="account-button refresh-button">
-                {loading ? 'Aktualizuji ceny...' : 'Refresh Ceny'}
+                {loading ? 'Aktualizuji ceny...' : 'Refresh Portfolia'}
             </button>
             
             <h2 className="mpi-header">
@@ -303,7 +331,7 @@ function App() {
                           borderRadius:10,
                           cursor: loadingRates ? 'not-allowed':'pointer',
                           fontSize:'0.75rem'
-                      }}>{loadingRates ? '↻…' : '↻'}</button>
+                      }}>{loadingRates ? (<span className="spinner" aria-label="Loading FX rates" />) : '↻'}</button>
                     </div>
                     {user ? (
                         <NavLink to="/account" className="account-button">Account</NavLink>
@@ -339,9 +367,7 @@ function App() {
                 </Routes>
             </div>
             <footer className="footer">
-                <span>© 2025 CSInvest (beta)</span>
-                <a href="#" aria-label="About placeholder">About</a>
-                <a href="#" aria-label="Contact placeholder">Contact</a>
+                <span>2025 CSInvest (beta) | ondaaak@gmail.com </span>
             </footer>
         </>
     );

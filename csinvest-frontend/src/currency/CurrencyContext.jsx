@@ -3,10 +3,10 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 // Fallback static approximate FX rates (base = USD) used until live fetch succeeds.
 const FALLBACK_RATES = {
   USD: 1,
-  EUR: 0.92,   // Euro
-  GBP: 0.79,   // British Pound
-  CZK: 23.00,  // Czech Koruna
-  RUB: 92.00,  // Russian Ruble
+  EUR: 0.86,   // Euro
+  GBP: 0.75,   // British Pound
+  CZK: 20.77,  // Czech Koruna
+  RUB: 77.73,  // Russian Ruble
 };
 
 const SYMBOLS = {
@@ -55,18 +55,40 @@ export const CurrencyProvider = ({ children }) => {
 
   const fetchRates = async () => {
     setLoadingRates(true);
-    try {
-      // Using exchangerate.host free endpoint
-      const symbols = ['EUR','GBP','CZK','RUB'].join(',');
-      const resp = await fetch(`https://api.exchangerate.host/latest?base=USD&symbols=${symbols}`);
-      if (!resp.ok) throw new Error('Rate API failed: ' + resp.status);
-      const data = await resp.json();
-      if (!data || !data.rates) throw new Error('Malformed rate response');
-      const merged = { ...FALLBACK_RATES, ...data.rates, USD: 1 };
+    const symbols = ['EUR','GBP','CZK','RUB'];
+    const store = (obj) => {
+      const merged = { ...FALLBACK_RATES, ...obj, USD: 1 };
       setRates(merged);
       const ts = Date.now();
       setLastUpdated(ts);
-      localStorage.setItem('csinvest:fx', JSON.stringify({ timestamp: ts, rates: data.rates }));
+      localStorage.setItem('csinvest:fx', JSON.stringify({ timestamp: ts, rates: obj }));
+    };
+    try {
+      // Helper: fetch JSON and throw on HTTP error
+      const fetchJson = async (url) => {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      };
+
+      // 1) Try exchangerate.host
+      try {
+        const data = await fetchJson(`https://api.exchangerate.host/latest?base=USD&symbols=${symbols.join(',')}`);
+        const ratesObj = data?.rates || data?.data?.rates || null;
+        if (ratesObj) {
+          const picked = Object.fromEntries(symbols.map(s => [s, ratesObj[s]]).filter(([,v]) => typeof v === 'number'));
+          if (Object.keys(picked).length) { store(picked); return; }
+        }
+        throw new Error('Malformed rate response');
+      } catch (e1) {
+        // 2) Fallback: open.er-api.com
+        const data2 = await fetchJson('https://open.er-api.com/v6/latest/USD');
+        const r2 = data2?.rates || data2?.conversion_rates || null;
+        if (!r2) throw new Error('No rates from fallback');
+        const picked2 = Object.fromEntries(symbols.map(s => [s, r2[s]]).filter(([,v]) => typeof v === 'number'));
+        if (!Object.keys(picked2).length) throw new Error('Missing symbols in fallback');
+        store(picked2);
+      }
     } catch (e) {
       console.warn('FX fetch failed, using fallback:', e.message);
     } finally {

@@ -12,7 +12,6 @@ function AddItemModal({ onClose, onAdded }) {
   const boxRef = useRef(null);
   const [amount, setAmount] = useState(1);
   const [floatValue, setFloatValue] = useState('');
-  const [pattern, setPattern] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -33,6 +32,8 @@ function AddItemModal({ onClose, onAdded }) {
 
   useEffect(() => {
     const q = query.trim();
+    // If user selected an item and the input matches its name, don't re-open suggestions
+    if (selected && q === (selected.name || '').trim()) { setSuggestions([]); setOpen(false); return; }
     if (!q) { setSuggestions([]); setOpen(false); return; }
     const t = setTimeout(async () => {
       try {
@@ -70,7 +71,6 @@ function AddItemModal({ onClose, onAdded }) {
       item_id: selected.item_id,
       amount: Number(amount) || 1,
       float_value: floatValue ? Number(floatValue) : null,
-      pattern: pattern ? Number(pattern) : null,
       buy_price: parsePrice(buyPrice),
     };
     setLoading(true); setError(null);
@@ -90,14 +90,13 @@ function AddItemModal({ onClose, onAdded }) {
     } catch (e) { setError(e.message || 'Saving failed.'); } finally { setLoading(false); }
   };
 
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+  const handleOverlayMouseDown = (e) => {
+    // Close only when the mousedown originated on the overlay itself
+    if (e.target === e.currentTarget) onClose();
   };
 
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
+    <div className="modal-overlay" onMouseDown={handleOverlayMouseDown}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         <h3 style={{ marginTop:0, marginBottom:16 }}>Add New Item</h3>
         <form onSubmit={onSubmit}>
@@ -105,12 +104,12 @@ function AddItemModal({ onClose, onAdded }) {
           <div ref={boxRef} style={{ position:'relative' }}>
             <input className="form-input" placeholder="Search item" value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => { if (query.trim() && suggestions.length > 0) setOpen(true); }} />
+              onFocus={() => { const q = query.trim(); if (q && suggestions.length > 0 && !(selected && q === (selected.name || '').trim())) setOpen(true); }} />
             {open && query && suggestions.length > 0 && (
               <div className="search-suggestions">
                 {suggestions.map((s) => (
                   <button key={s.slug} type="button" className="search-suggestion-row"
-                    onClick={() => { setSelected(s); setQuery(s.name); setOpen(false); }}>
+                    onClick={() => { setSelected(s); setQuery(s.name); setSuggestions([]); setOpen(false); }}>
                     {(() => { const thumb = itemThumbs[s.slug] || null; return thumb ? (<div className="search-thumb"><img src={thumb} alt={s.name} /></div>) : (<div className="category-icon" aria-hidden="true"></div>); })()}
                     <div className="search-text">
                       <div className="search-name">{s.name}</div>
@@ -126,15 +125,13 @@ function AddItemModal({ onClose, onAdded }) {
           <input className="form-input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1" />
           <label className="form-label">Float</label>
           <input className="form-input" value={floatValue} onChange={(e) => setFloatValue(e.target.value)} placeholder="0.00243581975" />
-          <label className="form-label">Pattern</label>
-          <input className="form-input" value={pattern} onChange={(e) => setPattern(e.target.value)} placeholder="123" />
-          <label className="form-label">BuyPrice (unit)</label>
-          <input className="form-input" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} placeholder="1000€" />
-          <div className="help-text">Jednotková cena (za 1 kus)</div>
+          <label className="form-label">Buy Price (USD unit)</label>
+          <input className="form-input" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} placeholder="$100" />
+          <div className="help-text">Jednotková cena v USD (za 1 kus)</div>
 
           {error && <div className="error-text" style={{ marginTop: 8 }}>{error}</div>}
 
-          <div style={{ display:'flex', gap:12, marginTop:16 }}>
+          <div style={{ display:'flex', gap:12, marginTop:16, justifyContent:'center' }}>
             <button type="submit" className="account-button" disabled={loading}>{loading ? 'Saving…' : 'Add'}</button>
             <button type="button" className="account-button" onClick={onClose} style={{ background:'#444' }}>Cancel</button>
           </div>
