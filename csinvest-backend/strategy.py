@@ -1,4 +1,3 @@
-# strategy.py - KOMPLETNÍ, OPRAVENÝ KÓD
 from abc import ABC, abstractmethod
 import requests
 import os
@@ -6,8 +5,8 @@ from dotenv import load_dotenv
 import json
 import urllib.parse
 import time
+from config import Config
 
-# Načtení konfigurace hned na začátku
 load_dotenv() 
 
 class IMarketStrategy(ABC):
@@ -17,12 +16,13 @@ class IMarketStrategy(ABC):
 
 class CSFloatStrategy(IMarketStrategy):
     BASE_URL = "https://csfloat.com/api/v1/listings"
-    API_KEY = os.getenv("CSFLOAT_API_KEY") 
+    
+    def __init__(self, config: Config | None = None) -> None:
+        self.config = config or Config()
 
     def fetch_price(self, skin_name: str) -> dict:
         print(f"[CSFloatStrategy] Hledám cenu USD pro: {skin_name}")
         
-        # Klíčová změna: Používáme širší limit (limit=50) a spoléháme na robustní headers.
         params = {
             "market_hash_name": skin_name,
             "sort_by": "lowest_price",
@@ -31,25 +31,22 @@ class CSFloatStrategy(IMarketStrategy):
         }
         
         headers = {
-            "Authorization": self.API_KEY, 
+            "Authorization": self.config.CSFLOAT_API_KEY,
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
 
         try:
             response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=10)
             
-            # --- DIAGNOSTIKA STAVU ---
             print(f"DEBUG: Status kód z CSFloat: {response.status_code}")
             
             if response.status_code != 200:
                 print(f"⚠️ Chyba API: {response.status_code}. Raw Response: {response.text}")
                 return None
             
-            # --- Zpracování dat ---
             data = response.json()
             listings = data if isinstance(data, list) else data.get("data", [])
             
-            # VYPÍŠEME, CO SE NAŠLO, ABYCHOM VIDĚLI, PROČ NENÍ CENA
             print(f"DEBUG: Nalezeno inzerátů: {len(listings)}") 
             
             if not listings:
@@ -58,7 +55,6 @@ class CSFloatStrategy(IMarketStrategy):
 
             cheapest = min(listings, key=lambda x: x.get("price"))
             
-            # Návrat: Vracíme pouze USD centy
             return {
                 "success": True,
                 "price_cents_usd": cheapest.get("price"),

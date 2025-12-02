@@ -8,14 +8,12 @@ from models import PortfolioHistory, User, Item
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from auth import hash_password, verify_password, create_access_token, get_current_user
+from config import Config
 
 app = FastAPI()
 
-# --- DEFINITIVNÍ KOREKCE CORSU ---
-origins = [
-    "http://localhost:5173",      # NOVÁ ADRESA: Povolení pro jméno "localhost"
-    "http://127.0.0.1:5173",      # Povolení pro IP adresu
-]
+cfg = Config()
+origins = cfg.CORS_ORIGINS
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,7 +23,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 # ------------------------------------
-# --- Endpointy pro API ---
 
 class RegisterRequest(BaseModel):
     username: str
@@ -46,7 +43,6 @@ def user_to_schema(u: User) -> AuthUser:
 
 @app.post("/auth/register")
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
-    # Check uniqueness
     existing = db.query(User).filter((User.username == data.username) | (User.email == data.email)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username nebo email již existuje")
@@ -86,7 +82,7 @@ def search_items(q: str, limit: int = 10, db: Session = Depends(get_db)):
 
 @app.get("/")
 def read_root():
-    return {"message": "Vítejte v CSInvest API 🚀"}
+    return {"message": "Vítejte v CSInvest API "}
 
 @app.get("/portfolio/{user_id}")
 def get_portfolio(user_id: int, db: Session = Depends(get_db)):
@@ -111,7 +107,6 @@ class CreateUserItemRequest(BaseModel):
 @app.post("/useritems")
 def create_user_item(payload: CreateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     repo = ItemRepository(db)
-    # validate item exists
     itm = db.query(Item).filter(Item.item_id == payload.item_id).first()
     if not itm:
         raise HTTPException(status_code=404, detail="Item nenalezen")
@@ -150,13 +145,6 @@ def update_user_item(user_item_id: int, payload: UpdateUserItemRequest, db: Sess
     if not updated:
         raise HTTPException(status_code=404, detail="User item nenalezen")
     return updated
-
-# Endpoint pro nákup skinu (jen pro test)
-@app.post("/buy/{user_id}/{item_id}")
-def buy_item(user_id: int, item_id: int, price: float, db: Session = Depends(get_db)):
-    repo = ItemRepository(db)
-    new_item = repo.add_user_item(user_id, item_id, price)
-    return {"message": "Item zakoupen!", "item": new_item}
 
 @app.post("/refresh-portfolio/{user_id}")
 def refresh_portfolio(user_id: int, db: Session = Depends(get_db)):
@@ -204,8 +192,8 @@ def get_case_detail(slug: str, db: Session = Depends(get_db)):
     if not case:
         raise HTTPException(status_code=404, detail="Case nenalezena")
     skins = repo.get_case_items_by_types(case.item_id, ["skin"])
-    knives = repo.get_case_items_by_types(case.item_id, ["knife"])  # future-proof if knives are seeded
-    gloves = repo.get_case_items_by_types(case.item_id, ["glove"])  # newly seeded as glove
+    knives = repo.get_case_items_by_types(case.item_id, ["knife"])  
+    gloves = repo.get_case_items_by_types(case.item_id, ["glove"]) 
     return {
         "case": case,
         "skins": skins,

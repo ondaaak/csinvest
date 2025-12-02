@@ -1,8 +1,7 @@
-# service.py - KOMPLETNÍ KÓD
 from sqlalchemy.orm import Session
 from repository import ItemRepository
 from strategy import IMarketStrategy
-from factory import PriceFactory
+from price_factory import PriceFactory
 import time
 
 class PriceService:
@@ -17,12 +16,10 @@ class PriceService:
 
         print(f"Začínám aktualizaci pro uživatele {user_id}. Počet položek: {len(user_items)}")
 
-        # Process each owned item, regardless of type
         for owned in user_items:
             time.sleep(1)
             itm = owned.item
 
-            # Build market query name per type
             if getattr(itm, 'item_type', None) == 'skin':
                 wear_status = f"({getattr(itm, 'wear', '')})" if getattr(itm, 'wear', None) else ""
                 market_name = f"{itm.name} {wear_status}".strip()
@@ -41,17 +38,13 @@ class PriceService:
                 print(f"Přeskakuji {itm.name} - chyba zpracování.")
                 continue
 
-            # Persist market snapshot
             self.repo.save_market_price(
                 market_id=clean_data["market_id"],
-                item_id=clean_data["skin_id"],  # factory returns skin_id; treat as item_id
+                item_id=clean_data["skin_id"], 
                 price=clean_data["price"]
             )
 
-            # Update catalog price so other users benefit
             self.repo.update_item_current_price(itm.item_id, clean_data["price"])
-
-            # Update all users' useritems for this catalog item, including current user
             self.repo.update_useritems_current_price_for_item(itm.item_id, clean_data["price"])
 
             results.append({
@@ -71,7 +64,6 @@ class PriceService:
         if item_type:
             items = self.repo.get_items(item_type=item_type, limit=limit)
         else:
-            # Default: only refresh skins and cases for now
             items = self.repo.get_items(item_type='skin', limit=limit) + self.repo.get_items(item_type='case', limit=limit)
 
         results = []
@@ -79,7 +71,6 @@ class PriceService:
         for itm in items:
             try:
                 time.sleep(1)
-                # Build market name: skins may carry wear in API name; cases are plain names
                 if itm.item_type == 'skin':
                     wear_status = f"({itm.wear})" if getattr(itm, 'wear', None) else ""
                     market_name = f"{itm.name} {wear_status}".strip()
@@ -98,10 +89,10 @@ class PriceService:
 
                 self.repo.save_market_price(
                     market_id=clean["market_id"],
-                    item_id=clean["skin_id"],  # factory key name
+                    item_id=clean["skin_id"], 
                     price=clean["price"],
                 )
-                # Update catalog item current_price
+                
                 self.repo.update_item_current_price(itm.item_id, clean["price"])
 
                 results.append({

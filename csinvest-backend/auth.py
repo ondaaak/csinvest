@@ -2,7 +2,6 @@ import os
 import hashlib
 import datetime
 from typing import Optional
-from dotenv import load_dotenv
 import json
 import base64
 import hmac
@@ -12,19 +11,17 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User
+from config import Config
 
-load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY is missing in environment (.env)")
+cfg = Config()
+SECRET_KEY = cfg.SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_SECONDS = 3600
+ACCESS_TOKEN_EXPIRE_SECONDS = cfg.ACCESS_TOKEN_EXPIRE_SECONDS
 
-SALT = os.getenv("PASSWORD_SALT", "csinvest_static_salt")
+SALT = cfg.PASSWORD_SALT
 security = HTTPBearer()
 
 def hash_password(password: str) -> str:
-    # Simple salted SHA256 (replace with stronger hash in production)
     return hashlib.sha256(f"{SALT}:{password}".encode()).hexdigest()
 
 def verify_password(password: str, password_hash: str) -> bool:

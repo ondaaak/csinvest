@@ -5,7 +5,6 @@ import datetime
 import re
 import sys
 
-# Vytvoření nových tabulek podle aktuálních modelů
 Base.metadata.create_all(bind=engine)
 
 def slugify(name: str) -> str:
