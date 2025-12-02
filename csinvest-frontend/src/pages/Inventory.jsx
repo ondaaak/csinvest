@@ -16,14 +16,14 @@ function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState(''); // 'amount' | 'name' | 'buy' | 'current' | 'profit' | 'profitPct'
+  const [sortKey, setSortKey] = useState(''); 
   const [sortAsc, setSortAsc] = useState(true);
-  const [editing, setEditing] = useState({}); // { [user_item_id]: { amount, float_value, pattern, buy_price } }
-  const [buyMode, setBuyMode] = useState({}); // { [user_item_id]: 'unit' | 'total' }
-  const [savingIds, setSavingIds] = useState(new Set()); // track rows being saved to prevent repeated clicks
-  const [sellFeePct, setSellFeePct] = useState(2); // default marketplace fee %
-  const [withdrawFeePct, setWithdrawFeePct] = useState(2); // default withdrawal fee %
-  // Raw string values so user can freely type (can be blank or partial)
+  const [editing, setEditing] = useState({}); 
+  const [buyMode, setBuyMode] = useState({}); 
+  const [savingIds, setSavingIds] = useState(new Set()); 
+  const [sellFeePct, setSellFeePct] = useState(2); 
+  const [withdrawFeePct, setWithdrawFeePct] = useState(2); 
+
   const [rawSellFee, setRawSellFee] = useState('2');
   const [rawWithdrawFee, setRawWithdrawFee] = useState('2');
   const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
@@ -47,7 +47,6 @@ function InventoryPage() {
     setError(null);
     try {
       if (!userId) {
-        // Bez přihlášení jen vyprázdníme a skončíme tiše
         setItems([]);
         setLoading(false);
         return;
@@ -95,7 +94,7 @@ function InventoryPage() {
       if (!payload) return;
       if (savingIds.has(id)) return;
       setSavingIds(prev => new Set([...prev, id]));
-      // Close editor immediately for single-click behavior
+
       cancelEdit(id);
       const amt = Number(payload.amount) || 1;
       let buyUnit = Number(payload.buy_price);
@@ -126,7 +125,7 @@ function InventoryPage() {
           alert(`Saving failed: ${text}`);
           return;
         }
-        // Also refresh portfolio prices/totals so Overview reflects changes immediately
+        
         try {
           if (userId) {
             await axios.post(`${BASE_URL}/refresh-portfolio/${userId}`);
@@ -237,7 +236,6 @@ function InventoryPage() {
     <span className="sort-arrow">{sortKey === keyName ? (sortAsc ? '↑' : '↓') : ''}</span>
   );
 
-  // Inline SVG icons for actions (accessible, themable via currentColor)
   const PencilIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 20h9" />

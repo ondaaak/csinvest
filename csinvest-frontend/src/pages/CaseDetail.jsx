@@ -14,7 +14,6 @@ function CaseDetailPage() {
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
 
-  // Images by slug from src/assets/cases
   const caseImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
@@ -26,7 +25,6 @@ function CaseDetailPage() {
     return map;
   }, []);
 
-  // Skin images by slug from src/assets/skins
   const skinImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
@@ -72,10 +70,8 @@ function CaseDetailPage() {
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
   if (!data) return null;
 
-  // Backend now returns separate arrays; provide safe defaults
   const { case: cs, skins = [], knives = [], gloves = [] } = data;
 
-  // If older data still has gloves/knives inside skins (wrong item_type), filter them out
   const rawSkinItems = Array.isArray(skins) ? skins : [];
   const knifeLike = (item) => {
     const r = (item.rarity || '').toLowerCase();
@@ -90,7 +86,6 @@ function CaseDetailPage() {
   const knifeItems = [...knives, ...rawSkinItems.filter(knifeLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i);
   const gloveItems = [...gloves, ...rawSkinItems.filter(gloveLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i);
 
-  // Per-item odds for knives/gloves: base 0.26% divided by count
   const knifePerItemOdds = (() => {
     const count = knifeItems.length || 1;
     return (0.26 / count).toFixed(4) + '%';
@@ -169,7 +164,6 @@ function CaseDetailPage() {
     }
   };
 
-  // Count skins per rarity to distribute odds evenly per item
   const rarityCounts = (() => {
     const counts = { milspec: 0, restricted: 0, classified: 0, covert: 0 };
     skinItems.forEach(s => {

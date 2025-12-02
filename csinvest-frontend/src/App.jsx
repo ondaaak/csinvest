@@ -13,8 +13,7 @@ import { useCurrency } from './currency/CurrencyContext.jsx';
 const USER_ID = 1;
 const BASE_URL = 'http://127.0.0.1:8000'; 
 
-// --- Komponenta pro vykreslení grafu ---
-// Používá historická data a simuluje časovou řadu
+
 const PortfolioChart = ({ history }) => {
     const { formatPrice } = useCurrency();
     if (!history || history.length === 0) {
@@ -27,7 +26,6 @@ const PortfolioChart = ({ history }) => {
     const dataForChartBase = history.map(record => {
         const t = new Date(record.timestamp);
         return {
-            // keep a human label but we won't rely on it for axis scaling
             name: t.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
             ts: t.getTime(),
             value: Number(record.total_value ?? 0),
@@ -89,7 +87,7 @@ const PortfolioChart = ({ history }) => {
     );
 };
 
-// --- STRÁNKA: OVERVIEW ---
+
 function OverviewPage() {
     const { userId } = useAuth();
     const { formatPrice } = useCurrency();
@@ -101,11 +99,10 @@ function OverviewPage() {
     const [timeframe, setTimeframe] = useState('all');
     const [sortAsc, setSortAsc] = useState(false);
 
-    // Načítání a zpracování dat
     const fetchData = async () => {
         setLoading(true);
         setError(null);
-        // Pokud není přihlášen uživatel, nastavíme prázdná data bez chyby
+
         if (!userId) {
             setPortfolio([]);
             setHistory([]);
@@ -151,13 +148,13 @@ function OverviewPage() {
         }
     };
 
-    // Spouštěč aktualizace cen
+
     const handleRefresh = async () => {
         setLoading(true);
         try {
             if (!userId) throw new Error('Unauthenticated');
             await axios.post(`${BASE_URL}/refresh-portfolio/${userId}`);
-            await fetchData(); // Znovu načíst data po aktualizaci
+            await fetchData(); 
         } catch (err) {
             console.error("Chyba při aktualizaci:", err);
             setError("Aktualizace selhala. Zkontrolujte logy backendu.");
@@ -168,10 +165,9 @@ function OverviewPage() {
 
     useEffect(() => {
         fetchData();
-        // re-fetch when user changes (login/logout) to get correct data
+        
     }, [userId]); 
 
-    // --- FILTRACE HISTORIE PRO GRAF ---
     const now = new Date();
     const filteredHistory = history.filter((record) => {
         const t = new Date(record.timestamp);
@@ -190,19 +186,15 @@ function OverviewPage() {
             yearAgo.setFullYear(now.getFullYear() - 1);
             return t >= yearAgo;
         }
-        return true; // all
+        return true; 
     });
 
-    // --- LOGIKA ŘAZENÍ ---
     const sortedPortfolio = [...portfolio].sort((a, b) => {
         const diff = a.profit - b.profit;
         return sortAsc ? diff : -diff;
     });
     const profitPercent = (totals.profit / totals.invested) * 100 || 0;
     const isProfit = totals.profit >= 0;
-
-    // --- RENDERING ---
-    // Per-section overlay removed; global overlay handled in App layout
     
     return (
         <div className="dashboard-container">
@@ -276,7 +268,6 @@ function OverviewPage() {
     );
 }
 
-// --- HLAVNÍ APLIKACE / LAYOUT ---
 function App() {
     const { user } = useAuth();
     const { currency, cycleCurrency, refreshRates, loadingRates, lastUpdated } = useCurrency();
@@ -284,11 +275,10 @@ function App() {
     const path = location.pathname || '/';
     const isSearch = path.startsWith('/search');
     const isAuthPage = path === '/login' || path === '/register' || path === '/account';
-    // Only blur selected protected pages (overview and inventory) when logged out
+    
     const blurPaths = ['/', '/inventory'];
     const shouldBlur = !user && blurPaths.includes(path) && !isAuthPage;
 
-    // Theme handling
     const [theme, setTheme] = useState('light');
     useEffect(() => {
         const saved = localStorage.getItem('csinvest:theme');
@@ -374,4 +364,3 @@ function App() {
 }
 
 export default App;
-// Footer injected below in root render wrapper

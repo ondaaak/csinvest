@@ -32,7 +32,6 @@ function AddItemModal({ onClose, onAdded }) {
 
   useEffect(() => {
     const q = query.trim();
-    // If user selected an item and the input matches its name, don't re-open suggestions
     if (selected && q === (selected.name || '').trim()) { setSuggestions([]); setOpen(false); return; }
     if (!q) { setSuggestions([]); setOpen(false); return; }
     const t = setTimeout(async () => {
@@ -91,7 +90,6 @@ function AddItemModal({ onClose, onAdded }) {
   };
 
   const handleOverlayMouseDown = (e) => {
-    // Close only when the mousedown originated on the overlay itself
     if (e.target === e.currentTarget) onClose();
   };
 

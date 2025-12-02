@@ -15,7 +15,7 @@ function CasesPage() {
   const navigate = useNavigate();
   const { formatPrice } = useCurrency();
 
-  // Load case images from src/assets/cases by slug (e.g., revolution-case.png)
+
   const caseImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
@@ -49,7 +49,7 @@ function CasesPage() {
     try {
       setRefreshing(true);
       await axios.post(`${BASE_URL}/refresh-items`, null, { params: { item_type: 'case' } });
-      // After server refresh, re-fetch list
+
       const res = await axios.get(`${BASE_URL}/cases`);
       const arr = Array.isArray(res.data) ? res.data : [];
       setCases(arr);
@@ -80,7 +80,7 @@ function CasesPage() {
       default:
         break;
     }
-    // Filter by query (name or slug)
+
     const q = query.trim().toLowerCase();
     const filtered = q
       ? arr.filter(c => (c.name || '').toLowerCase().includes(q) || (c.slug || '').toLowerCase().includes(q))

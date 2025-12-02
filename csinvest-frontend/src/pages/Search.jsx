@@ -27,8 +27,6 @@ function SearchPage() {
   const boxRef = useRef(null);
   const navigate = useNavigate();
 
-  // Load category images from src/assets/search with common extensions.
-  // Robust to naming like "music-kits.png", "music_kits.png", "MusicKits.png" etc.
   const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const glob = import.meta.glob('../assets/search/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const imgMap = Object.fromEntries(
@@ -39,7 +37,6 @@ function SearchPage() {
     })
   );
 
-  // Build asset maps for item thumbnails from skins, gloves, and cases by slug
   const slugNormalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
@@ -61,7 +58,6 @@ function SearchPage() {
     navigate(`/search/${cat.key}`);
   };
 
-  // Debounced search fetch
   useEffect(() => {
     const q = query.trim();
     if (!q) { setSuggestions([]); return; }
@@ -88,7 +84,6 @@ function SearchPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Close dropdown on click outside or Escape key
   useEffect(() => {
     const handleClick = (e) => {
       if (!boxRef.current) return;
@@ -159,7 +154,6 @@ function SearchPage() {
       <div className="categories-grid">
         {CATEGORIES.map((c) => {
           const keyNorm = normalize(c.key);
-          // support a few aliases (e.g., graffiti vs graffities, musickits without hyphen)
           const aliases = [keyNorm];
           if (keyNorm === 'graffities') aliases.push('graffiti', 'graffitis');
           if (keyNorm === 'musickits') aliases.push('musickits', 'music_kits', 'musickit');

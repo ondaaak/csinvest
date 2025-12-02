@@ -22,7 +22,6 @@ function AddItemPage() {
 
   const token = localStorage.getItem('csinvest:token');
 
-  // Asset maps similar to Search page for thumbnails
   const slugNormalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
@@ -40,7 +39,6 @@ function AddItemPage() {
     ...assetFromFolder(casesGlob),
   };
 
-  // Debounced search fetch
   useEffect(() => {
     const q = query.trim();
     if (!q) { setSuggestions([]); setOpen(false); return; }
@@ -64,7 +62,6 @@ function AddItemPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Close dropdown on click outside / Escape
   useEffect(() => {
     const handleClick = (e) => {
       if (!boxRef.current) return;
