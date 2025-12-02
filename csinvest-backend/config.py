@@ -13,9 +13,6 @@ class _Singleton(type):
 
 
 class Config(metaclass=_Singleton):
-    """
-    Singleton configuration holder. Loads .env once and exposes app settings.
-    """
 
     def __init__(self) -> None:
         load_dotenv()
