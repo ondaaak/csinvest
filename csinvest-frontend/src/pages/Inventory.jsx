@@ -307,6 +307,7 @@ function InventoryPage() {
 
       <div className="blur-container">
         {userId ? (
+          items.length > 0 ? (
         <table>
         <thead>
           <tr>
@@ -361,7 +362,7 @@ function InventoryPage() {
                   </>
                 )}
               </td>
-              <td>{formatPrice(item.current_price)}</td>
+              <td title={`last update: ${(() => { const d = item?.item?.last_update || item?.last_update; try { return d ? new Date(d).toLocaleString() : '—'; } catch { return '—'; } })()}`}>{formatPrice(item.current_price)}</td>
               <td>{formatPrice(getCurrentTotal(item))}</td>
               <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>
                 {formatPrice(item.profit)}
@@ -396,6 +397,9 @@ function InventoryPage() {
           ))}
         </tbody>
         </table>
+          ) : (
+            !loading ? <div className="loading">Portfolio is empty.</div> : null
+          )
         ) : (
           unauthenticatedOverlay
         )}

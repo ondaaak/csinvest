@@ -17,18 +17,21 @@ class PriceService:
 
         print(f"Začínám aktualizaci pro uživatele {user_id}. Počet položek: {len(user_items)}")
 
+        # Process each owned item, regardless of type
         for owned in user_items:
             time.sleep(1)
             itm = owned.item
-            if itm.item_type != 'skin':
-                continue  # pricing only for skins for now
 
-            base_name = itm.name
-            wear_status = f"({itm.wear})" if itm.wear else ""
-            full_market_hash_name = f"{base_name} {wear_status}".strip()
-            print(f"Skládám název pro API: {full_market_hash_name}")
+            # Build market query name per type
+            if getattr(itm, 'item_type', None) == 'skin':
+                wear_status = f"({getattr(itm, 'wear', '')})" if getattr(itm, 'wear', None) else ""
+                market_name = f"{itm.name} {wear_status}".strip()
+            else:
+                market_name = itm.name
 
-            raw_data = self.strategy.fetch_price(full_market_hash_name)
+            print(f"Skládám název pro API: {market_name}")
+
+            raw_data = self.strategy.fetch_price(market_name)
             if not raw_data:
                 print(f"Přeskakuji {itm.name} - chyba stahování/nenalezeno.")
                 continue
@@ -38,18 +41,25 @@ class PriceService:
                 print(f"Přeskakuji {itm.name} - chyba zpracování.")
                 continue
 
+            # Persist market snapshot
             self.repo.save_market_price(
                 market_id=clean_data["market_id"],
                 item_id=clean_data["skin_id"],  # factory returns skin_id; treat as item_id
                 price=clean_data["price"]
             )
-            self.repo.update_price(owned.user_item_id, clean_data["price"])
+
+            # Update catalog price so other users benefit
+            self.repo.update_item_current_price(itm.item_id, clean_data["price"])
+
+            # Update all users' useritems for this catalog item, including current user
+            self.repo.update_useritems_current_price_for_item(itm.item_id, clean_data["price"])
 
             results.append({
                 "item": itm.name,
                 "old_price": float(owned.current_price) if owned.current_price else 0,
                 "new_price": clean_data["price"],
-                "currency": "USD"
+                "currency": "USD",
+                "item_type": getattr(itm, 'item_type', None)
             })
 
         totals = self.repo.calculate_portfolio_totals(user_id)

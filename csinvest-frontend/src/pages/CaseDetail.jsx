@@ -205,9 +205,9 @@ function CaseDetailPage() {
         <div style={{
           fontSize:'0.7rem', padding:'4px 8px', borderRadius:8, background:badge.bg, color:badge.color, fontWeight:600
         }}>{badge.label.toUpperCase()}</div>
-        <button onClick={doRefresh} disabled={refreshing} style={{
+        <button disabled style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'8px 12px', cursor: refreshing ? 'not-allowed':'pointer'
-        }}>{refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
+        }}>Refresh prices</button>
       </div>
       <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)' }}>
         {caseImgMap[slug] && (
@@ -245,8 +245,10 @@ function CaseDetailPage() {
             >
               <div className="card-header">
                 <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{s.name}</div>
-                <span className={`badge ${rarityClass(s.rarity)}`}>{s.rarity || '—'}</span>
-                <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>{perItemOddsText(s.rarity)}</span>
+                <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:8 }}>
+                  <span className={`badge ${rarityClass(s.rarity)}`}>{s.rarity || '—'}</span>
+                  <span style={{ fontSize:'0.8rem', opacity:0.8, color:'var(--text-color)' }}>{perItemOddsText(s.rarity)}</span>
+                </div>
               </div>
               {skinImgMap[s.slug] ? (
                 <img className="category-img" src={skinImgMap[s.slug]} alt={s.name} style={{ width: 120, height: 120 }} />
@@ -275,8 +277,10 @@ function CaseDetailPage() {
               >
                 <div className="card-header">
                   <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{kn.name}</div>
-                  <span className={`badge ${rarityClass(kn.rarity)}`}>{kn.rarity || '—'}</span>
-                  <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>{knifePerItemOdds}</span>
+                  <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:8 }}>
+                    <span className={`badge ${rarityClass(kn.rarity)}`}>{kn.rarity || '—'}</span>
+                    <span style={{ fontSize:'0.8rem', opacity:0.8, color:'var(--text-color)' }}>{knifePerItemOdds}</span>
+                  </div>
                 </div>
                 {skinImgMap[kn.slug] ? (
                   <img className="category-img" src={skinImgMap[kn.slug]} alt={kn.name} style={{ width: 120, height: 120 }} />
@@ -306,8 +310,10 @@ function CaseDetailPage() {
               >
                 <div className="card-header">
                   <div className="category-label" style={{ fontSize:'1.05rem', color:'var(--text-color)' }}>{gl.name}</div>
-                  <span className={`badge ${rarityClass(gl.rarity)}`}>{gl.rarity || '—'}</span>
-                  <span style={{ fontSize:'0.8rem', opacity:0.8, marginLeft:8, color:'var(--text-color)' }}>{glovePerItemOdds}</span>
+                  <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:8 }}>
+                    <span className={`badge ${rarityClass(gl.rarity)}`}>{gl.rarity || '—'}</span>
+                    <span style={{ fontSize:'0.8rem', opacity:0.8, color:'var(--text-color)' }}>{glovePerItemOdds}</span>
+                  </div>
                 </div>
                 {skinImgMap[gl.slug] ? (
                   <img className="category-img" src={skinImgMap[gl.slug]} alt={gl.name} style={{ width: 120, height: 120 }} />

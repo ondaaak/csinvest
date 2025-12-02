@@ -80,6 +80,16 @@ class ItemRepository:
             itm.last_update = datetime.datetime.now()
             self.db.commit()
 
+    def update_useritems_current_price_for_item(self, item_id: int, new_price: float):
+        # Bulk update current_price for all user items of a given catalog item
+        now = datetime.datetime.now()
+        (
+            self.db.query(UserItem)
+            .filter(UserItem.item_id == item_id)
+            .update({UserItem.current_price: new_price, UserItem.last_update: now}, synchronize_session=False)
+        )
+        self.db.commit()
+
     def save_market_price(self, market_id: int, item_id: int, price: float):
         rec = MarketPrice(
             market_id=market_id,

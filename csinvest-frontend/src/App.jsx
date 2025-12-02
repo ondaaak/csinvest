@@ -344,7 +344,7 @@ function App() {
                 {shouldBlur && (
                     <div className="screen-blur">
                         <div className="screen-message">
-                            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>Login to preview your skins</div>
+                            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>Login to check your portfolio</div>
                                                         <div style={{ textAlign:'center' }}>
                                                             <NavLink to="/login" className="account-button">Login</NavLink>
                                                         </div>

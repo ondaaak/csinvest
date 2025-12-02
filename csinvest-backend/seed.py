@@ -3,6 +3,7 @@ from models import Market, User, Item, UserItem
 from auth import hash_password
 import datetime
 import re
+import sys
 
 # Vytvoření nových tabulek podle aktuálních modelů
 Base.metadata.create_all(bind=engine)
@@ -224,5 +225,139 @@ def seed_data():
     print("✅ Seed hotov (ITEM, USERITEM, CASE).")
     db.close()
 
+def update_case_statuses():
+    """
+    Update drop_type for all cases based on curated lists:
+      - active: Revolution, Sealed Genesis Terminal, Kilowatt, Dreams & Nightmares, Recoil Case, Fever Case
+      - discontinued: Gallery, Operation Riptide, Operation Broken Fang, Shattered Web, eSports 2014 Summer, eSports 2013 Winter, eSports 2013
+      - rare: all remaining cases
+    """
+    db = SessionLocal()
+    # Canonical names as present in DB (seeded above) to ensure slug match
+    active_names = [
+        "Revolution Case",
+        "Sealed Genesis Terminal",
+        "Kilowatt Case",
+        "Dreams & Nightmares Case",
+        "Recoil Case",
+        "Fever Case",
+    ]
+    discontinued_names = [
+        "Gallery Case",
+        "Operation Riptide Case",
+        "Operation Broken Fang Case",
+        "Shattered Web Case",
+        "eSports 2014 Summer Case",
+        "eSports 2013 Winter Case",
+        "eSports 2013 Case",
+    ]
+
+    def slg(x: str) -> str:
+        return slugify(x)
+
+    active_slugs = {slg(n) for n in active_names}
+    disc_slugs = {slg(n) for n in discontinued_names}
+
+    cases = db.query(Item).filter(Item.item_type == 'case').all()
+    changed = 0
+    for c in cases:
+        sl = c.slug or slg(c.name or "")
+        if sl in active_slugs:
+            new_type = 'active'
+        elif sl in disc_slugs:
+            new_type = 'discontinued'
+        else:
+            new_type = 'rare'
+        if c.drop_type != new_type:
+            c.drop_type = new_type
+            changed += 1
+    if changed:
+        db.commit()
+    print(f"Case status update done. Changed: {changed}")
+    db.close()
+
 if __name__ == "__main__":
-    seed_data()
+    # Simple CLI: python seed.py [seed|update-case-statuses]
+    cmd = sys.argv[1] if len(sys.argv) > 1 else 'seed'
+    
+    def update_case_release_dates():
+        db = SessionLocal()
+        # Map canonical names to dates (DD. MM. YYYY)
+        raw = {
+            "Kilowatt Case": "06. 02. 2024",
+            "Revolution Case": "09. 02. 2023",
+            "Recoil Case": "01. 07. 2022",
+            "Dreams & Nightmares Case": "20. 01. 2022",
+            "Sealed Genesis Terminal": "17. 09. 2025",
+            "Snakebite Case": "03. 05. 2021",
+            "Fracture Case": "06. 08. 2020",
+            "Prisma 2 Case": "31. 03. 2020",
+            "CS20 Case": "18. 10. 2019",
+            "Prisma Case": "13. 03. 2019",
+            "Danger Zone Case": "06. 12. 2018",
+            "Horizon Case": "02. 08. 2018",
+            "Clutch Case": "14. 02. 2018",
+            "Spectrum 2 Case": "14. 09. 2017",
+            "Operation Hydra Case": "23. 05. 2017",
+            "Spectrum Case": "15. 03. 2017",
+            "Glove Case": "28. 11. 2016",
+            "Gamma 2 Case": "18. 08. 2016",
+            "Gamma Case": "15. 06. 2016",
+            "Chroma 3 Case": "27. 04. 2016",
+            "Operation Wildfire Case": "17. 02. 2016",
+            "Revolver Case": "08. 12. 2015",
+            "Shadow Case": "17. 09. 2015",
+            "Falchion Case": "26. 05. 2015",
+            "Chroma 2 Case": "15. 04. 2015",
+            "Chroma Case": "08. 01. 2015",
+            "Operation Vanguard Weapon Case": "11. 11. 2014",
+            "Operation Breakout Weapon Case": "01. 07. 2014",
+            "Huntsman Weapon Case": "01. 05. 2014",
+            "Operation Phoenix Weapon Case": "20. 02. 2014",
+            "CS:GO Weapon Case 3": "12. 02. 2014",
+            "Winter Offensive Weapon Case": "18. 12. 2013",
+            "CS:GO Weapon Case 2": "08. 11. 2013",
+            "Operation Bravo Case": "19. 09. 2013",
+            "CS:GO Weapon Case": "14. 08. 2013",
+            "Fever Case": "31. 03. 2025",
+            "Gallery Case": "02. 10. 2024",
+            "Operation Riptide Case": "22. 09. 2021",
+            "Operation Broken Fang Case": "03. 12. 2020",
+            "Shattered Web Case": "18. 11. 2019",
+            "eSports 2014 Summer Case": "10. 07. 2014",
+            "eSports 2013 Winter Case": "18. 12. 2013",
+            "eSports 2013 Case": "14. 08. 2013",
+        }
+        fmt = "%d. %m. %Y"
+        changed = 0
+        for name, date_str in raw.items():
+            slug = slugify(name)
+            itm = db.query(Item).filter(Item.slug == slug, Item.item_type == 'case').first()
+            if not itm:
+                continue
+            try:
+                d = datetime.datetime.strptime(date_str, fmt).date()
+            except Exception:
+                # fallback: try stripping dots
+                try:
+                    clean = date_str.replace(". ", ".").replace(".", "-")
+                    # now like DD-MM-YYYY
+                    d = datetime.datetime.strptime(clean, "%d-%m-%Y").date()
+                except Exception:
+                    continue
+            if itm.release_date != d:
+                itm.release_date = d
+                changed += 1
+        if changed:
+            db.commit()
+        print(f"Case release dates update done. Changed: {changed}")
+        db.close()
+
+    if cmd in ('update', 'update-case-statuses', 'update_case_statuses'):
+        update_case_statuses()
+    elif cmd in ('update-case-dates', 'update_case_dates', 'update-dates'):
+        update_case_release_dates()
+    elif cmd in ('update-cases', 'update_all_cases'):
+        update_case_statuses(); update_case_release_dates()
+    else:
+        seed_data()

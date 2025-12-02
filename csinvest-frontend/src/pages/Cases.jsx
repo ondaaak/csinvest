@@ -145,7 +145,7 @@ function CasesPage() {
           }}
         >{refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
       </div>
-      <div className="categories-grid">
+      <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
         {sortedCases.map(cs => (
           <div
             key={cs.item_id}
@@ -158,10 +158,12 @@ function CasesPage() {
             ) : (
               <div className="category-icon" aria-hidden="true"></div>
             )}
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <span className="category-label" style={{ fontSize:'0.95rem' }}>{cs.name}</span>
+            <div style={{ marginBottom:8 }}>
+              <div className="category-label" style={{ fontSize:'0.95rem' }}>{cs.name}</div>
               {(() => { const c = badgeColors(cs.drop_type); return (
                 <span style={{
+                  display:'inline-block',
+                  marginTop:6,
                   fontSize:'0.65rem',
                   padding:'3px 6px',
                   borderRadius:6,
