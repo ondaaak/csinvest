@@ -4,7 +4,7 @@ from database import get_db
 from repository import ItemRepository
 from service import PriceService
 from strategy import CSFloatStrategy
-from models import PortfolioHistory, User, Item
+from models import PortfolioHistory, User, Item, MarketPrice
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from auth import hash_password, verify_password, create_access_token, get_current_user
@@ -229,3 +229,25 @@ def get_item_detail(slug: str, db: Session = Depends(get_db)):
     if not itm:
         raise HTTPException(status_code=404, detail="Item nenalezen")
     return itm
+
+@app.get("/items/{slug}/history")
+def get_item_price_history(slug: str, limit: int = 200, db: Session = Depends(get_db)):
+    """
+    Vrátí poslední záznamy cen pro daný item (case/skin) seřazené podle času.
+    """
+    repo = ItemRepository(db)
+    itm = repo.get_item_by_slug(slug)
+    if not itm:
+        raise HTTPException(status_code=404, detail="Item nenalezen")
+    prices = (
+        db.query(MarketPrice)
+        .filter(MarketPrice.item_id == itm.item_id)
+        .order_by(MarketPrice.timestamp.asc())
+        .all()
+    )
+    # Zredukuj výstup na pole {timestamp, price}
+    result = [
+        {"timestamp": p.timestamp.isoformat(), "price": float(p.price)}
+        for p in prices[-limit:]
+    ]
+    return {"item_id": itm.item_id, "slug": slug, "history": result}

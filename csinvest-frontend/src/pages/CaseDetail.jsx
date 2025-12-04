@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
+import csfloatLogo from '../assets/site/csfloat.png';
+import haloskinsLogo from '../assets/site/haloskins.png';
 
 const BASE_URL = 'http://127.0.0.1:8000';
 
@@ -12,6 +14,7 @@ function CaseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [history, setHistory] = useState([]);
   const navigate = useNavigate();
 
   const caseImgMap = useMemo(() => {
@@ -43,6 +46,9 @@ function CaseDetailPage() {
       try {
         const res = await axios.get(`${BASE_URL}/cases/${slug}`);
         setData(res.data);
+        // načti historii ceny pro graf
+        const h = await axios.get(`${BASE_URL}/items/${slug}/history`, { params: { limit: 200 } });
+        setHistory(Array.isArray(h.data?.history) ? h.data.history : []);
       } catch (e) {
         console.error(e);
         setError('Case not found');
@@ -109,6 +115,83 @@ function CaseDetailPage() {
   };
 
   const badge = badgeColors(cs.drop_type);
+
+  // formátování release date a ceny
+  const releaseText = (() => {
+    const d = cs.release_date;
+    if (!d) return '—';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return d;
+    return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+  })();
+  const currentPriceText = formatPrice(cs.current_price);
+  const lastUpdateText = (() => {
+    const src = (history && history.length > 0) ? history[history.length - 1]?.timestamp : cs.last_update;
+    if (!src) return null;
+    const dt = new Date(src);
+    if (isNaN(dt.getTime())) return String(src);
+    return dt.toLocaleString(undefined, { year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  })();
+
+  // připrav jednoduchý SVG line chart
+  const Chart = ({ points }) => {
+    const w = 800, h = 200, pad = 24;
+    const [hover, setHover] = React.useState(null);
+    if (!points || points.length < 2) return <div style={{ opacity: 0.7, fontSize: '0.85rem' }}>No history yet.</div>;
+    const xs = points.map((p) => new Date(p.timestamp).getTime());
+    const ys = points.map((p) => Number(p.price) || 0);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const normX = (t) => pad + ((t - minX) / (maxX - minX || 1)) * (w - 2 * pad);
+    const normY = (v) => h - pad - ((v - minY) / (maxY - minY || 1)) * (h - 2 * pad);
+    const coords = points.map((p) => ({
+      x: normX(new Date(p.timestamp).getTime()),
+      y: normY(Number(p.price) || 0),
+      p,
+    }));
+    const path = coords
+      .map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`)
+      .join(' ');
+    const last = points[points.length - 1];
+    const first = points[0];
+    const onMove = (e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const relX = ((e.clientX - rect.left) / rect.width) * w;
+      // find nearest point by x
+      let nearest = null;
+      let best = Infinity;
+      for (const c of coords) {
+        const d = Math.abs(c.x - relX);
+        if (d < best) { best = d; nearest = c; }
+      }
+      setHover(nearest);
+    };
+    const onLeave = () => setHover(null);
+    return (
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: h }} onMouseMove={onMove} onMouseLeave={onLeave}>
+        <rect x={0} y={0} width={w} height={h} fill="var(--surface-bg)" rx={8} />
+        <path d={path} stroke="var(--accent-color)" strokeWidth={2} fill="none" />
+        {/* axes */}
+        <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="var(--surface-border)" />
+        <line x1={pad} y1={pad} x2={pad} y2={h - pad} stroke="var(--surface-border)" />
+        {/* hover dot and tooltip */}
+        {hover && (
+          <g>
+            <circle cx={hover.x} cy={hover.y} r={4} fill="var(--accent-color)" />
+            <rect x={Math.min(Math.max(hover.x + 8, pad), w - 160)} y={hover.y - 28} width={150} height={24} rx={6} fill="var(--surface-border)" />
+            <text x={Math.min(Math.max(hover.x + 16, pad + 8), w - 152)} y={hover.y - 12} fill="var(--text-color)" fontSize={12}>
+              {formatPrice(hover.p.price)} • {new Date(hover.p.timestamp).toLocaleDateString()}
+            </text>
+          </g>
+        )}
+        {/* labels */}
+        <text x={pad} y={pad - 6} fill="var(--text-color)" fontSize={12}>{formatPrice(first.price)}</text>
+        <text x={pad} y={h - 6} fill="var(--text-color)" fontSize={12}>{new Date(first.timestamp).toLocaleDateString()}</text>
+        <text x={w - pad - 60} y={pad - 6} fill="var(--text-color)" fontSize={12} textAnchor="end">{formatPrice(last.price)}</text>
+        <text x={w - pad} y={h - 6} fill="var(--text-color)" fontSize={12} textAnchor="end">{new Date(last.timestamp).toLocaleDateString()}</text>
+      </svg>
+    );
+  };
 
   const rarityClass = (rarity) => {
     switch ((rarity || '').toLowerCase()) {
@@ -191,28 +274,81 @@ function CaseDetailPage() {
 
   return (
     <div className="dashboard-container">
-      <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:12 }}>
-        <button onClick={() => navigate(-1)} aria-label="Back" style={{
-          background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
-        }}>←</button>
-        <h2 style={{ margin:0, flex:1, paddingLeft:145 }}>{cs.name}</h2>
-        <div style={{
-          fontSize:'0.7rem', padding:'4px 8px', borderRadius:8, background:badge.bg, color:badge.color, fontWeight:600
-        }}>{badge.label.toUpperCase()}</div>
-        <button disabled style={{
-          background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'8px 12px', cursor: refreshing ? 'not-allowed':'pointer'
-        }}>Refresh prices</button>
-      </div>
-      <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)' }}>
-        {caseImgMap[slug] && (
-          <div style={{ width:140, height:140, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--surface-bg)', border:'1px solid var(--surface-border)', borderRadius:16, margin:'0 auto 12px auto', padding:10 }}>
-            <img src={caseImgMap[slug]} alt={cs.name} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }} />
+      {/* Header: center the whole row within a max-width container */}
+      <div style={{ display:'flex', justifyContent:'center', marginBottom:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', alignItems:'center', gap:12, width:'100%', maxWidth:820 }}>
+          <button onClick={() => navigate(-1)} aria-label="Back" style={{
+            background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
+          }}>←</button>
+          <h2 style={{ margin:0, textAlign:'center' }}>{cs.name}</h2>
+          <div style={{ display:'flex', alignItems:'center', gap:12, justifyContent:'flex-end' }}>
+            <div style={{
+              fontSize:'0.7rem', padding:'4px 8px', borderRadius:8, background:badge.bg, color:badge.color, fontWeight:600
+            }}>{badge.label.toUpperCase()}</div>
+            <button disabled style={{
+              background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'8px 12px', cursor: refreshing ? 'not-allowed':'pointer'
+            }}>Refresh prices</button>
           </div>
-        )}
-        <div style={{ display:'flex', gap:'12px', flexWrap:'wrap', fontSize:'0.85rem' }}>
-          <div><strong>Release:</strong> {cs.release_date || '—'}</div>
-          <div><strong>Status:</strong> {badge.label}</div>
-          <div><strong>Current Price:</strong> {formatPrice(cs.current_price)}</div>
+        </div>
+      </div>
+      {/* Details card: centered container with fixed max width */}
+      <div style={{ display:'flex', justifyContent:'center' }}>
+        <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', position:'relative', maxWidth:820, width:'100%' }}>
+        {/* Release top-left, above image (restore old) */}
+        <div style={{ position:'absolute', top:12, left:12, fontSize:'0.95rem' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ padding:'4px 8px', borderRadius:999, background:'var(--surface-border)', color:'var(--text-color)', fontWeight:600 }}>Release</span>
+            <span style={{ opacity:0.9 }}>{releaseText}</span>
+          </div>
+        </div>
+          {/* Two-column row: center Image + right Buy/Sell links; centered container */}
+          <div style={{ display:'grid', gridTemplateColumns:'none', gap:18, alignItems:'center', margin:'24px 0 12px 0', justifyContent:'center' }}>
+            {/* Image */}
+            <div style={{ width:160, height:160, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--surface-bg)', border:'1px solid var(--surface-border)', borderRadius:16, margin:'0 auto', padding:12 }}>
+              {caseImgMap[slug] && (
+                <img src={caseImgMap[slug]} alt={cs.name} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }} />
+              )}
+            </div>
+            {/* Buy/Sell links */}
+            <div style={{ display:'flex', justifyContent:'center', marginLeft:16 }}>
+              <div>
+                <div style={{ fontWeight:700, marginBottom:16 }}>Buy / Sell</div>
+                <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+                  <a href={`https://csfloat.com/?query=${encodeURIComponent(cs.name)}`} target="_blank" rel="noreferrer" title="CSFloat" style={{
+                    width:44, height:44, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
+                    background:'rgba(84, 84, 99, 0.27)', color:'var(--text-color)', border:'1px solid var(--surface-border)', textDecoration:'none'
+                  }}>
+                    <img src={csfloatLogo} alt="CSFloat" style={{ width:24, height:24, objectFit:'contain' }} />
+                  </a>
+                  <a href={`https://haloskins.com/search?q=${encodeURIComponent(cs.name)}`} target="_blank" rel="noreferrer" title="HaloSkins" style={{
+                    width:44, height:44, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
+                    background:'rgba(34,197,94,0.2)', color:'var(--text-color)', border:'1px solid var(--surface-border)', textDecoration:'none'
+                  }}>
+                    <img src={haloskinsLogo} alt="HaloSkins" style={{ width:24, height:24, objectFit:'contain' }} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        {/* Current Price centered under image with extra top spacing */}
+        <div style={{ display:'flex', justifyContent:'center', marginTop:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ opacity:0.75 }}>Current Price</span>
+            <span title={lastUpdateText ? `Last update: ${lastUpdateText}` : undefined} style={{ padding:'6px 12px', borderRadius:8, background:'rgba(99,102,241,0.15)', color:'var(--text-color)', fontWeight:700, border:'1px solid var(--surface-border)' }}>
+              {currentPriceText}
+            </span>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      {/* Price History as its own section, outside and centered card */}
+      <div style={{ marginTop:12, display:'flex', justifyContent:'center' }}>
+        <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', maxWidth:820, width:'100%' }}>
+          <h3 style={{ marginTop:0, textAlign:'center' }}>Price History</h3>
+          <div style={{ display:'flex', justifyContent:'center', alignItems:'center' }}>
+            <Chart points={history} />
+          </div>
         </div>
       </div>
 
