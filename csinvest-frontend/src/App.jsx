@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage } from './pages';
+import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage } from './pages';
 import LoginPage from './pages/Login.jsx';
 import RegisterPage from './pages/Register.jsx';
 import AccountPage from './pages/Account.jsx';
@@ -346,6 +346,8 @@ function App() {
                     <Route path="/inventory" element={<InventoryPage />} />
                     {/** Add route removed; Add Item is now handled via modal in Inventory */}
                     <Route path="/search" element={<SearchPage />} />
+                    <Route path="/search/knives" element={<KnivesPage />} />
+                    <Route path="/search/gloves" element={<GlovesPage />} />
                     <Route path="/search/cases" element={<CasesPage />} />
                     <Route path="/case/:slug" element={<CaseDetailPage />} />
                     <Route path="/skin/:slug" element={<SkinDetailPage />} />

@@ -17,6 +17,8 @@ def slugify(name: str) -> str:
 def seed_data():
     db = SessionLocal()
 
+    # (Removed Doppler phase insertion guards per request; cleanup kept later.)
+
     # Market
     if not db.query(Market).first():
         print("Seeduji markety...")
@@ -88,18 +90,11 @@ def seed_data():
         exists = db.query(Item).filter(Item.slug == slug, Item.item_type == 'case').first()
         if exists:
             continue
-        lower = name.lower()
-        if 'weapon case' in lower or 'operation bravo' in lower or 'esports' in lower or 'winter offensive' in lower:
-            drop_type = 'discontinued'
-        elif 'phoenix' in lower or 'breakout' in lower or 'vanguard' in lower:
-            drop_type = 'rare'
-        else:
-            drop_type = 'active'
         itm = Item(
             name=name,
             item_type='case',
             release_date=None,
-            drop_type=drop_type,
+            drop_type=None,
             current_price=None,
             slug=slug,
         )
@@ -133,6 +128,25 @@ def seed_data():
     glove_case = db.query(Item).filter(Item.slug == slugify("Glove Case")).first()
     gamma2_case = db.query(Item).filter(Item.slug == slugify("Gamma 2 Case")).first()
     gamma_case = db.query(Item).filter(Item.slug == slugify("Gamma Case")).first()
+    chroma3_case = db.query(Item).filter(Item.slug == slugify("Chroma 3 Case")).first()
+    wildfire_case = db.query(Item).filter(Item.slug == slugify("Operation Wildfire Case")).first()
+    revolver_case = db.query(Item).filter(Item.slug == slugify("Revolver Case")).first()
+    shadow_case = db.query(Item).filter(Item.slug == slugify("Shadow Case")).first()
+    falchion_case = db.query(Item).filter(Item.slug == slugify("Falchion Case")).first()
+    chroma2_case = db.query(Item).filter(Item.slug == slugify("Chroma 2 Case")).first()
+    chroma_case = db.query(Item).filter(Item.slug == slugify("Chroma Case")).first()
+    vanguard_case = db.query(Item).filter(Item.slug == slugify("Operation Vanguard Weapon Case")).first()
+    esports2014_case = db.query(Item).filter(Item.slug == slugify("eSports 2014 Summer Case")).first()
+    breakout_case = db.query(Item).filter(Item.slug == slugify("Operation Breakout Weapon Case")).first()
+    huntsman_case = db.query(Item).filter(Item.slug == slugify("Huntsman Weapon Case")).first()
+    phoenix_case = db.query(Item).filter(Item.slug == slugify("Operation Phoenix Weapon Case")).first()
+    csgo3_case = db.query(Item).filter(Item.slug == slugify("CS:GO Weapon Case 3")).first()
+    esports2013_w_case = db.query(Item).filter(Item.slug == slugify("eSports 2013 Winter Case")).first()
+    winter_offensive_case = db.query(Item).filter(Item.slug == slugify("Winter Offensive Weapon Case")).first()
+    csgo2_case = db.query(Item).filter(Item.slug == slugify("CS:GO Weapon Case 2")).first()
+    bravo_case = db.query(Item).filter(Item.slug == slugify("Operation Bravo Case")).first()
+    esports2013_case = db.query(Item).filter(Item.slug == slugify("eSports 2013 Case")).first()
+    csgo1_case = db.query(Item).filter(Item.slug == slugify("CS:GO Weapon Case")).first()
 
     # Revolution Case skins
     if revolution:
@@ -296,13 +310,6 @@ def seed_data():
             "Skeleton Knife | Ultraviolet",
             "Skeleton Knife | Marble Fade",
             "Skeleton Knife | Doppler",
-            "Skeleton Knife | Doppler Sapphire",
-            "Skeleton Knife | Doppler Ruby",
-            "Skeleton Knife | Doppler Phase 4",
-            "Skeleton Knife | Doppler Phase 3",
-            "Skeleton Knife | Doppler Phase 2",
-            "Skeleton Knife | Doppler Phase 1",
-            "Skeleton Knife | Doppler Black Pearl",
             "Skeleton Knife | Rust Coat",
             # Survival Knife variants
             "Survival Knife | Tiger Tooth",
@@ -311,13 +318,6 @@ def seed_data():
             "Survival Knife | Damascus Steel",
             "Survival Knife | Rust Coat",
             "Survival Knife | Marble Fade",
-            "Survival Knife | Doppler Sapphire",
-            "Survival Knife | Doppler Ruby",
-            "Survival Knife | Doppler Phase 4",
-            "Survival Knife | Doppler Phase 3",
-            "Survival Knife | Doppler Phase 2",
-            "Survival Knife | Doppler Phase 1",
-            "Survival Knife | Doppler Black Pearl",
             # Paracord Knife variants
             "Paracord Knife | Doppler",
             "Paracord Knife | Tiger Tooth",
@@ -325,13 +325,6 @@ def seed_data():
             "Paracord Knife | Damascus Steel",
             "Paracord Knife | Rust Coat",
             "Paracord Knife | Ultraviolet",
-            "Paracord Knife | Doppler Sapphire",
-            "Paracord Knife | Doppler Ruby",
-            "Paracord Knife | Doppler Phase 4",
-            "Paracord Knife | Doppler Phase 3",
-            "Paracord Knife | Doppler Phase 2",
-            "Paracord Knife | Doppler Phase 1",
-            "Paracord Knife | Doppler Black Pearl",
             # Nomad Knife variants
             "Nomad Knife | Ultraviolet",
             "Nomad Knife | Marble Fade",
@@ -339,9 +332,6 @@ def seed_data():
             "Nomad Knife | Tiger Tooth",
             "Nomad Knife | Damascus Steel",
             "Nomad Knife | Rust Coat",
-            "Nomad Knife | Doppler Sapphire",
-            "Nomad Knife | Doppler Ruby",
-            "Nomad Knife | Doppler Phase 4",
         ]
         fk_added = 0
         for name in fever_knives:
@@ -351,6 +341,7 @@ def seed_data():
                 if exists.case_id != fever.item_id:
                     exists.case_id = fever.item_id
                 continue
+            # No Doppler phase guards; handled by cleanup at end
             itm = Item(
                 name=name,
                 item_type='knife',
@@ -368,6 +359,65 @@ def seed_data():
         if fk_added:
             db.commit()
             print(f"Přidáno Fever nožů: {fk_added}")
+
+    # Fracture Case knives (Shattered Web knife pool)
+    if fracture:
+        print("Kontroluji/seeduji Fracture Case nože...")
+        fracture_knives = [
+            # Skeleton Knife variants
+            "Skeleton Knife | Doppler",
+            "Skeleton Knife | Tiger Tooth",
+            "Skeleton Knife | Marble Fade",
+            "Skeleton Knife | Damascus Steel",
+            "Skeleton Knife | Ultraviolet",
+            "Skeleton Knife | Rust Coat",
+            # Survival Knife variants
+            "Survival Knife | Doppler",
+            "Survival Knife | Tiger Tooth",
+            "Survival Knife | Marble Fade",
+            "Survival Knife | Damascus Steel",
+            "Survival Knife | Ultraviolet",
+            "Survival Knife | Rust Coat",
+            # Paracord Knife variants
+            "Paracord Knife | Doppler",
+            "Paracord Knife | Tiger Tooth",
+            "Paracord Knife | Marble Fade",
+            "Paracord Knife | Damascus Steel",
+            "Paracord Knife | Ultraviolet",
+            "Paracord Knife | Rust Coat",
+            # Nomad Knife variants
+            "Nomad Knife | Doppler",
+            "Nomad Knife | Tiger Tooth",
+            "Nomad Knife | Marble Fade",
+            "Nomad Knife | Damascus Steel",
+            "Nomad Knife | Ultraviolet",
+            "Nomad Knife | Rust Coat",
+        ]
+        fr_added = 0
+        for name in fracture_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != fracture.item_id:
+                    exists.case_id = fracture.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=fracture.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            fr_added += 1
+        if fr_added:
+            db.commit()
+            print(f"Přidáno Fracture nožů: {fr_added}")
 
     # Gallery Case skins
     if gallery:
@@ -446,6 +496,7 @@ def seed_data():
                 if exists.case_id != gallery.item_id:
                     exists.case_id = gallery.item_id
                 continue
+            # No Doppler phase guards; handled by cleanup at end
             itm = Item(
                 name=name,
                 item_type='knife',
@@ -585,6 +636,7 @@ def seed_data():
                 if exists.case_id != kilowatt.item_id:
                     exists.case_id = kilowatt.item_id
                 continue
+            # No Doppler phase guards; handled by cleanup at end
             itm = Item(
                 name=name,
                 item_type='knife',
@@ -715,10 +767,7 @@ def seed_data():
             ("Butterfly Knife | Freehand"),
             ("Butterfly Knife | Lore"),
             ("Butterfly Knife | Black Laminate"),
-            ("Butterfly Knife | Gamma Doppler Phase 4"),
-            ("Butterfly Knife | Gamma Doppler Phase 3"),
-            ("Butterfly Knife | Gamma Doppler Phase 2"),
-            ("Butterfly Knife | Gamma Doppler Phase 1"),
+            ("Butterfly Knife | Gamma Doppler"),
             # Falchion Knife
             ("Falchion Knife | Gamma Doppler"),
             ("Falchion Knife | Lore"),
@@ -726,11 +775,6 @@ def seed_data():
             ("Falchion Knife | Freehand"),
             ("Falchion Knife | Autotronic"),
             ("Falchion Knife | Black Laminate"),
-            ("Falchion Knife | Gamma Doppler Phase 4"),
-            ("Falchion Knife | Gamma Doppler Phase 3"),
-            ("Falchion Knife | Gamma Doppler Phase 2"),
-            ("Falchion Knife | Gamma Doppler Phase 1"),
-            ("Falchion Knife | Gamma Doppler Emerald"),
             # Bowie Knife
             ("Bowie Knife | Gamma Doppler"),
             ("Bowie Knife | Lore"),
@@ -744,11 +788,6 @@ def seed_data():
             ("Shadow Daggers | Freehand"),
             ("Shadow Daggers | Black Laminate"),
             ("Shadow Daggers | Autotronic"),
-            ("Shadow Daggers | Gamma Doppler Phase 4"),
-            ("Shadow Daggers | Gamma Doppler Phase 3"),
-            ("Shadow Daggers | Gamma Doppler Phase 2"),
-            ("Shadow Daggers | Gamma Doppler Phase 1"),
-            ("Shadow Daggers | Gamma Doppler Emerald"),
             # Huntsman Knife
             ("Huntsman Knife | Autotronic"),
             ("Huntsman Knife | Gamma Doppler"),
@@ -756,11 +795,6 @@ def seed_data():
             ("Huntsman Knife | Freehand"),
             ("Huntsman Knife | Bright Water"),
             ("Huntsman Knife | Black Laminate"),
-            ("Huntsman Knife | Gamma Doppler Phase 4"),
-            ("Huntsman Knife | Gamma Doppler Phase 3"),
-            ("Huntsman Knife | Gamma Doppler Phase 2"),
-            ("Huntsman Knife | Gamma Doppler Phase 1"),
-            ("Huntsman Knife | Gamma Doppler Emerald"),
         ]
         dk_added = 0
         for name in dnn_knives:
@@ -848,10 +882,7 @@ def seed_data():
             ("Butterfly Knife | Freehand"),
             ("Butterfly Knife | Lore"),
             ("Butterfly Knife | Black Laminate"),
-            ("Butterfly Knife | Gamma Doppler Phase 4"),
-            ("Butterfly Knife | Gamma Doppler Phase 3"),
-            ("Butterfly Knife | Gamma Doppler Phase 2"),
-            ("Butterfly Knife | Gamma Doppler Phase 1"),
+            ("Butterfly Knife | Gamma Doppler"),
             # Falchion Knife
             ("Falchion Knife | Gamma Doppler"),
             ("Falchion Knife | Lore"),
@@ -859,11 +890,6 @@ def seed_data():
             ("Falchion Knife | Freehand"),
             ("Falchion Knife | Autotronic"),
             ("Falchion Knife | Black Laminate"),
-            ("Falchion Knife | Gamma Doppler Phase 4"),
-            ("Falchion Knife | Gamma Doppler Phase 3"),
-            ("Falchion Knife | Gamma Doppler Phase 2"),
-            ("Falchion Knife | Gamma Doppler Phase 1"),
-            ("Falchion Knife | Gamma Doppler Emerald"),
             # Bowie Knife
             ("Bowie Knife | Gamma Doppler"),
             ("Bowie Knife | Lore"),
@@ -877,11 +903,6 @@ def seed_data():
             ("Shadow Daggers | Freehand"),
             ("Shadow Daggers | Black Laminate"),
             ("Shadow Daggers | Autotronic"),
-            ("Shadow Daggers | Gamma Doppler Phase 4"),
-            ("Shadow Daggers | Gamma Doppler Phase 3"),
-            ("Shadow Daggers | Gamma Doppler Phase 2"),
-            ("Shadow Daggers | Gamma Doppler Phase 1"),
-            ("Shadow Daggers | Gamma Doppler Emerald"),
             # Huntsman Knife
             ("Huntsman Knife | Autotronic"),
             ("Huntsman Knife | Gamma Doppler"),
@@ -889,11 +910,6 @@ def seed_data():
             ("Huntsman Knife | Freehand"),
             ("Huntsman Knife | Bright Water"),
             ("Huntsman Knife | Black Laminate"),
-            ("Huntsman Knife | Gamma Doppler Phase 4"),
-            ("Huntsman Knife | Gamma Doppler Phase 3"),
-            ("Huntsman Knife | Gamma Doppler Phase 2"),
-            ("Huntsman Knife | Gamma Doppler Phase 1"),
-            ("Huntsman Knife | Gamma Doppler Emerald"),
         ]
         rk_added = 0
         for name in riptide_knives:
@@ -1098,30 +1114,6 @@ def seed_data():
             "Navaja Knife | Damascus Steel",
             "Ursus Knife | Marble Fade",
             "Talon Knife | Doppler",
-            "Ursus Knife | Doppler Sapphire",
-            "Ursus Knife | Doppler Ruby",
-            "Ursus Knife | Doppler Phase 4",
-            "Ursus Knife | Doppler Phase 3",
-            "Ursus Knife | Doppler Phase 2",
-            "Ursus Knife | Doppler Phase 1",
-            "Talon Knife | Doppler Sapphire",
-            "Talon Knife | Doppler Ruby",
-            "Talon Knife | Doppler Phase 4",
-            "Talon Knife | Doppler Phase 3",
-            "Talon Knife | Doppler Phase 2",
-            "Talon Knife | Doppler Phase 1",
-            "Talon Knife | Doppler Black Pearl",
-            "Stiletto Knife | Doppler Sapphire",
-            "Stiletto Knife | Doppler Ruby",
-            "Stiletto Knife | Doppler Phase 4",
-            "Stiletto Knife | Doppler Phase 3",
-            "Stiletto Knife | Doppler Phase 2",
-            "Stiletto Knife | Doppler Phase 1",
-            "Stiletto Knife | Doppler Black Pearl",
-            "Navaja Knife | Doppler Sapphire",
-            "Navaja Knife | Doppler Ruby",
-            "Navaja Knife | Doppler Phase 4",
-            "Navaja Knife | Doppler Phase 3",
         ]
         p2k_added = 0
         for name in prisma2_knives:
@@ -1420,30 +1412,6 @@ def seed_data():
             "Navaja Knife | Damascus Steel",
             "Ursus Knife | Marble Fade",
             "Talon Knife | Doppler",
-            "Ursus Knife | Doppler Sapphire",
-            "Ursus Knife | Doppler Ruby",
-            "Ursus Knife | Doppler Phase 4",
-            "Ursus Knife | Doppler Phase 3",
-            "Ursus Knife | Doppler Phase 2",
-            "Ursus Knife | Doppler Phase 1",
-            "Talon Knife | Doppler Sapphire",
-            "Talon Knife | Doppler Ruby",
-            "Talon Knife | Doppler Phase 4",
-            "Talon Knife | Doppler Phase 3",
-            "Talon Knife | Doppler Phase 2",
-            "Talon Knife | Doppler Phase 1",
-            "Talon Knife | Doppler Black Pearl",
-            "Stiletto Knife | Doppler Sapphire",
-            "Stiletto Knife | Doppler Ruby",
-            "Stiletto Knife | Doppler Phase 4",
-            "Stiletto Knife | Doppler Phase 3",
-            "Stiletto Knife | Doppler Phase 2",
-            "Stiletto Knife | Doppler Phase 1",
-            "Stiletto Knife | Doppler Black Pearl",
-            "Navaja Knife | Doppler Sapphire",
-            "Navaja Knife | Doppler Ruby",
-            "Navaja Knife | Doppler Phase 4",
-            "Navaja Knife | Doppler Phase 3",
         ]
         prk_added = 0
         for name in prisma_knives:
@@ -1914,26 +1882,7 @@ def seed_data():
             "Butterfly Knife | Damascus Steel",
             "Huntsman Knife | Rust Coat",
             "Bowie Knife | Damascus Steel",
-            "Shadow Daggers | Doppler Sapphire",
-            "Shadow Daggers | Doppler Phase 4",
-            "Shadow Daggers | Doppler Phase 3",
-            "Shadow Daggers | Doppler Phase 2",
-            "Shadow Daggers | Doppler Phase 1",
-            "Shadow Daggers | Doppler Black Pearl",
-            "Huntsman Knife | Doppler Sapphire",
-            "Huntsman Knife | Doppler Ruby",
-            "Huntsman Knife | Doppler Phase 4",
-            "Huntsman Knife | Doppler Phase 3",
-            "Huntsman Knife | Doppler Phase 2",
-            "Huntsman Knife | Doppler Phase 1",
-            "Falchion Knife | Doppler Sapphire",
-            "Falchion Knife | Doppler Ruby",
-            "Falchion Knife | Doppler Phase 4",
-            "Falchion Knife | Doppler Phase 3",
-            "Falchion Knife | Doppler Phase 2",
-            "Falchion Knife | Doppler Phase 1",
-            "Falchion Knife | Doppler Black Pearl",
-            "Butterfly Knife | Doppler Sapphire",
+            "Butterfly Knife | Doppler",
         ]
         sp2k_added = 0
         for name in sp2_knives:
@@ -2135,26 +2084,7 @@ def seed_data():
             "Butterfly Knife | Damascus Steel",
             "Huntsman Knife | Rust Coat",
             "Bowie Knife | Damascus Steel",
-            "Shadow Daggers | Doppler Sapphire",
-            "Shadow Daggers | Doppler Phase 4",
-            "Shadow Daggers | Doppler Phase 3",
-            "Shadow Daggers | Doppler Phase 2",
-            "Shadow Daggers | Doppler Phase 1",
-            "Shadow Daggers | Doppler Black Pearl",
-            "Huntsman Knife | Doppler Sapphire",
-            "Huntsman Knife | Doppler Ruby",
-            "Huntsman Knife | Doppler Phase 4",
-            "Huntsman Knife | Doppler Phase 3",
-            "Huntsman Knife | Doppler Phase 2",
-            "Huntsman Knife | Doppler Phase 1",
-            "Falchion Knife | Doppler Sapphire",
-            "Falchion Knife | Doppler Ruby",
-            "Falchion Knife | Doppler Phase 4",
-            "Falchion Knife | Doppler Phase 3",
-            "Falchion Knife | Doppler Phase 2",
-            "Falchion Knife | Doppler Phase 1",
-            "Falchion Knife | Doppler Black Pearl",
-            "Butterfly Knife | Doppler Sapphire",
+            "Butterfly Knife | Doppler",
         ]
         spk_added = 0
         for name in spectrum_knives:
@@ -2369,27 +2299,8 @@ def seed_data():
             "Gut Knife | Freehand",
             "Gut Knife | Black Laminate",
             "M9 Bayonet | Lore",
-            "M9 Bayonet | Gamma Doppler Phase 4",
-            "M9 Bayonet | Gamma Doppler Phase 3",
-            "M9 Bayonet | Gamma Doppler Phase 2",
-            "M9 Bayonet | Gamma Doppler Phase 1",
-            "M9 Bayonet | Gamma Doppler Emerald",
-            "Karambit | Gamma Doppler Phase 4",
-            "Karambit | Gamma Doppler Phase 3",
-            "Karambit | Gamma Doppler Phase 2",
-            "Karambit | Gamma Doppler Phase 1",
-            "Karambit | Gamma Doppler Emerald",
-            "Gut Knife | Gamma Doppler Phase 4",
-            "Gut Knife | Gamma Doppler Phase 3",
-            "Gut Knife | Gamma Doppler Phase 2",
-            "Gut Knife | Gamma Doppler Phase 1",
-            "Gut Knife | Gamma Doppler Emerald",
-            "Flip Knife | Gamma Doppler Phase 4",
-            "Flip Knife | Gamma Doppler Phase 3",
-            "Flip Knife | Gamma Doppler Phase 2",
-            "Flip Knife | Gamma Doppler Phase 1",
-            "Flip Knife | Gamma Doppler Emerald",
-            "Bayonet | Gamma Doppler Phase 4",
+            "M9 Bayonet | Gamma Doppler",
+
         ]
         g2k_added = 0
         for name in gamma2_knives:
@@ -2498,27 +2409,8 @@ def seed_data():
             "Gut Knife | Freehand",
             "Gut Knife | Black Laminate",
             "M9 Bayonet | Lore",
-            "M9 Bayonet | Gamma Doppler Phase 4",
-            "M9 Bayonet | Gamma Doppler Phase 3",
-            "M9 Bayonet | Gamma Doppler Phase 2",
-            "M9 Bayonet | Gamma Doppler Phase 1",
-            "M9 Bayonet | Gamma Doppler Emerald",
-            "Karambit | Gamma Doppler Phase 4",
-            "Karambit | Gamma Doppler Phase 3",
-            "Karambit | Gamma Doppler Phase 2",
-            "Karambit | Gamma Doppler Phase 1",
-            "Karambit | Gamma Doppler Emerald",
-            "Gut Knife | Gamma Doppler Phase 4",
-            "Gut Knife | Gamma Doppler Phase 3",
-            "Gut Knife | Gamma Doppler Phase 2",
-            "Gut Knife | Gamma Doppler Phase 1",
-            "Gut Knife | Gamma Doppler Emerald",
-            "Flip Knife | Gamma Doppler Phase 4",
-            "Flip Knife | Gamma Doppler Phase 3",
-            "Flip Knife | Gamma Doppler Phase 2",
-            "Flip Knife | Gamma Doppler Phase 1",
-            "Flip Knife | Gamma Doppler Emerald",
-            "Bayonet | Gamma Doppler Phase 4",
+            "M9 Bayonet | Gamma Doppler",
+
         ]
         gk_added = 0
         for name in gamma_knives:
@@ -2545,6 +2437,1862 @@ def seed_data():
         if gk_added:
             db.commit()
             print(f"Přidáno Gamma nožů: {gk_added}")
+
+    # Chroma 3 Case skins and knives
+    if chroma3_case:
+        print("Kontroluji/seeduji Chroma 3 Case skiny...")
+        chroma3_skins = [
+            # Covert
+            ("M4A1-S | Chantico's Fire", "Covert"),
+            ("PP-Bizon | Judgement of Anubis", "Covert"),
+            # Classified
+            ("P250 | Asiimov", "Classified"),
+            ("UMP-45 | Primal Saber", "Classified"),
+            ("AUG | Fleet Flock", "Classified"),
+            # Restricted
+            ("SSG 08 | Ghost Crusader", "Restricted"),
+            ("Galil AR | Firefight", "Restricted"),
+            ("XM1014 | Black Tie", "Restricted"),
+            ("Tec-9 | Re-Entry", "Restricted"),
+            ("CZ75-Auto | Red Astor", "Restricted"),
+            # Mil-Spec
+            ("MP9 | Bioleak", "Mil-Spec"),
+            ("M249 | Spectre", "Mil-Spec"),
+            ("P2000 | Oceanic", "Mil-Spec"),
+            ("Dual Berettas | Ventilators", "Mil-Spec"),
+            ("Sawed-Off | Fubar", "Mil-Spec"),
+            ("G3SG1 | Orange Crash", "Mil-Spec"),
+            ("SG 553 | Atlas", "Mil-Spec"),
+        ]
+        c3_added = 0
+        for name, rarity in chroma3_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != chroma3_case.item_id:
+                    exists.case_id = chroma3_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=chroma3_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c3_added += 1
+        if c3_added:
+            db.commit()
+            print(f"Přidáno Chroma 3 skinů: {c3_added}")
+
+        print("Kontroluji/seeduji Chroma 3 Case nože...")
+        chroma3_knives = [
+            "Bayonet | Doppler",
+            "Gut Knife | Doppler",
+            "Karambit | Doppler",
+            "Flip Knife | Doppler",
+            "Karambit | Tiger Tooth",
+            "M9 Bayonet | Marble Fade",
+            "Bayonet | Marble Fade",
+            "M9 Bayonet | Doppler",
+            "Flip Knife | Tiger Tooth",
+            "M9 Bayonet | Damascus Steel",
+            "Karambit | Ultraviolet",
+            "Flip Knife | Marble Fade",
+            "Bayonet | Tiger Tooth",
+            "Gut Knife | Marble Fade",
+            "M9 Bayonet | Tiger Tooth",
+            "Bayonet | Ultraviolet",
+            "Bayonet | Damascus Steel",
+            "M9 Bayonet | Ultraviolet",
+            "M9 Bayonet | Rust Coat",
+            "Flip Knife | Ultraviolet",
+            "Gut Knife | Tiger Tooth",
+            "Gut Knife | Damascus Steel",
+            "Bayonet | Rust Coat",
+            "Gut Knife | Rust Coat",
+            "Karambit | Damascus Steel",
+            "Flip Knife | Rust Coat",
+            "Flip Knife | Damascus Steel",
+            "Karambit | Rust Coat",
+            "Gut Knife | Ultraviolet",
+        ]
+        c3k_added = 0
+        for name in chroma3_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != chroma3_case.item_id:
+                    exists.case_id = chroma3_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=chroma3_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+        
+            db.add(itm)
+            c3k_added += 1
+        if c3k_added:
+            db.commit()
+            print(f"Přidáno Chroma 3 nožů: {c3k_added}")
+
+    # Operation Wildfire Case skins and knives (Bowie Knife variants)
+    if wildfire_case:
+        print("Kontroluji/seeduji Operation Wildfire Case skiny...")
+        wildfire_skins = [
+            # Covert
+            ("M4A4 | The Battlestar", "Covert"),
+            ("AK-47 | Fuel Injector", "Covert"),
+            # Classified
+            ("Desert Eagle | Kumicho Dragon", "Classified"),
+            ("AWP | Elite Build", "Classified"),
+            ("Nova | Hyper Beast", "Classified"),
+            # Restricted
+            ("FAMAS | Valence", "Restricted"),
+            ("Glock-18 | Royal Legion", "Restricted"),
+            ("MP7 | Impire", "Restricted"),
+            ("Five-SeveN | Triumvirate", "Restricted"),
+            ("MAG-7 | Praetorian", "Restricted"),
+            # Mil-Spec
+            ("USP-S | Lead Conduit", "Mil-Spec"),
+            ("SSG 08 | Necropos", "Mil-Spec"),
+            ("MAC-10 | Lapis Gator", "Mil-Spec"),
+            ("Dual Berettas | Cartel", "Mil-Spec"),
+            ("PP-Bizon | Photic Zone", "Mil-Spec"),
+            ("Tec-9 | Jambiya", "Mil-Spec"),
+        ]
+        wf_added = 0
+        for name, rarity in wildfire_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != wildfire_case.item_id:
+                    exists.case_id = wildfire_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=wildfire_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            wf_added += 1
+        if wf_added:
+            db.commit()
+            print(f"Přidáno Wildfire skinů: {wf_added}")
+
+        print("Kontroluji/seeduji Operation Wildfire Case nože (Bowie Knife varianty)...")
+        wildfire_knives = [
+            "Bowie Knife | Slaughter",
+            "Bowie Knife | Safari Mesh",
+            "Bowie Knife | Blue Steel",
+            "Bowie Knife | Fade",
+            "Bowie Knife | Crimson Web",
+            "Bowie Knife | Forest DDPAT",
+            "Bowie Knife | Case Hardened",
+            "Bowie Knife | Boreal Forest",
+            "Bowie Knife | Night",
+            "Bowie Knife | Stained",
+            "Bowie Knife | Vanilla",
+            "Bowie Knife | Urban Masked",
+            "Bowie Knife | Scorched",
+        ]
+        wfk_added = 0
+        for name in wildfire_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != wildfire_case.item_id:
+                    exists.case_id = wildfire_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=wildfire_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            wfk_added += 1
+        if wfk_added:
+            db.commit()
+            print(f"Přidáno Wildfire nožů: {wfk_added}")
+
+    # Revolver Case skins and knives
+    if revolver_case:
+        print("Kontroluji/seeduji Revolver Case skiny...")
+        revolver_skins = [
+            # Covert
+            ("R8 Revolver | Fade", "Covert"),
+            ("M4A4 | Royal Paladin", "Covert"),
+            # Classified
+            ("AK-47 | Point Disarray", "Classified"),
+            ("G3SG1 | The Executioner", "Classified"),
+            ("P90 | Shapewood", "Classified"),
+            # Restricted
+            ("Tec-9 | Avalanche", "Restricted"),
+            ("Five-SeveN | Retrobution", "Restricted"),
+            ("SG 553 | Tiger Moth", "Restricted"),
+            ("Negev | Power Loader", "Restricted"),
+            ("XM1014 | Teclu Burner", "Restricted"),
+            ("PP-Bizon | Fuel Rod", "Restricted"),
+            # Mil-Spec
+            ("Desert Eagle | Corinthian", "Mil-Spec"),
+            ("R8 Revolver | Crimson Web", "Mil-Spec"),
+            ("P2000 | Imperial", "Mil-Spec"),
+            ("AUG | Ricochet", "Mil-Spec"),
+            ("Sawed-Off | Yorick", "Mil-Spec"),
+            ("SCAR-20 | Outbreak", "Mil-Spec"),
+        ]
+        rv_added = 0
+        for name, rarity in revolver_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != revolver_case.item_id:
+                    exists.case_id = revolver_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=revolver_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            rv_added += 1
+        if rv_added:
+            db.commit()
+            print(f"Přidáno Revolver skinů: {rv_added}")
+
+        print("Kontroluji/seeduji Revolver Case nože...")
+        revolver_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        rvk_added = 0
+        for name in revolver_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != revolver_case.item_id:
+                    exists.case_id = revolver_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=revolver_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            rvk_added += 1
+        if rvk_added:
+            db.commit()
+            print(f"Přidáno Revolver nožů: {rvk_added}")
+
+    # Operation Vanguard Weapon Case skins and knives (knives same as Revolver)
+    if vanguard_case:
+        print("Kontroluji/seeduji Operation Vanguard Weapon Case skiny...")
+        vanguard_skins = [
+            # Covert
+            ("P2000 | Fire Elemental", "Covert"),
+            ("AK-47 | Wasteland Rebel", "Covert"),
+            # Classified
+            ("XM1014 | Tranquility", "Classified"),
+            ("P250 | Cartel", "Classified"),
+            ("SCAR-20 | Cardiac", "Classified"),
+            # Restricted
+            ("M4A1-S | Basilisk", "Restricted"),
+            ("M4A4 | Griffin", "Restricted"),
+            ("Glock-18 | Grinder", "Restricted"),
+            ("Sawed-Off | Highwayman", "Restricted"),
+            # Mil-Spec
+            ("Five-SeveN | Urban Hazard", "Mil-Spec"),
+            ("MP9 | Dart", "Mil-Spec"),
+            ("MAG-7 | Firestarter", "Mil-Spec"),
+            ("UMP-45 | Delusion", "Mil-Spec"),
+            ("G3SG1 | Murky", "Mil-Spec"),
+        ]
+        vg_added = 0
+        for name, rarity in vanguard_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != vanguard_case.item_id:
+                    exists.case_id = vanguard_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=vanguard_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            vg_added += 1
+        if vg_added:
+            db.commit()
+            print(f"Přidáno Vanguard skinů: {vg_added}")
+
+        print("Kontroluji/seeduji Vanguard Case nože (stejné jako Revolver)...")
+        vanguard_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        vgk_added = 0
+        for name in vanguard_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != vanguard_case.item_id:
+                    exists.case_id = vanguard_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=vanguard_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            vgk_added += 1
+        if vgk_added:
+            db.commit()
+            print(f"Přidáno Vanguard nožů: {vgk_added}")
+
+    # eSports 2014 Summer Case skins and knives (knives same as Revolver)
+    if esports2014_case:
+        print("Kontroluji/seeduji eSports 2014 Summer Case skiny...")
+        esports2014_skins = [
+            # Covert
+            ("M4A4 | Bullet Rain", "Covert"),
+            ("AK-47 | Jaguar", "Covert"),
+            # Classified
+            ("AWP | Corticera", "Classified"),
+            ("AUG | Bengal Tiger", "Classified"),
+            ("P2000 | Corticera", "Classified"),
+            ("Nova | Bloomstick", "Classified"),
+            # Restricted
+            ("Desert Eagle | Crimson Web", "Restricted"),
+            ("Glock-18 | Steel Disruption", "Restricted"),
+            ("MP7 | Ocean Foam", "Restricted"),
+            ("P90 | Virus", "Restricted"),
+            ("PP-Bizon | Blue Streak", "Restricted"),
+            # Mil-Spec
+            ("USP-S | Blood Tiger", "Mil-Spec"),
+            ("MAC-10 | Ultraviolet", "Mil-Spec"),
+            ("SSG 08 | Dark Water", "Mil-Spec"),
+            ("Negev | Bratatat", "Mil-Spec"),
+            ("XM1014 | Red Python", "Mil-Spec"),
+            ("CZ75-Auto | Hexane", "Mil-Spec"),
+        ]
+        es_added = 0
+        for name, rarity in esports2014_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != esports2014_case.item_id:
+                    exists.case_id = esports2014_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=esports2014_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            es_added += 1
+        if es_added:
+            db.commit()
+            print(f"Přidáno eSports 2014 Summer skinů: {es_added}")
+
+        print("Kontroluji/seeduji eSports 2014 Summer Case nože (stejné jako Revolver)...")
+        esports2014_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        esk_added = 0
+        for name in esports2014_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != esports2014_case.item_id:
+                    exists.case_id = esports2014_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=esports2014_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            esk_added += 1
+        if esk_added:
+            db.commit()
+            print(f"Přidáno eSports 2014 Summer nožů: {esk_added}")
+
+    # Operation Breakout Weapon Case skins and knives (Butterfly Knife variants)
+    if breakout_case:
+        print("Kontroluji/seeduji Operation Breakout Case skiny...")
+        breakout_skins = [
+            # Covert
+            ("P90 | Asiimov", "Covert"),
+            ("M4A1-S | Cyrex", "Covert"),
+            # Classified
+            ("Glock-18 | Water Elemental", "Classified"),
+            ("Desert Eagle | Conspiracy", "Classified"),
+            ("Five-SeveN | Fowl Play", "Classified"),
+            # Restricted
+            ("P250 | Supernova", "Restricted"),
+            ("CZ75-Auto | Tigris", "Restricted"),
+            ("PP-Bizon | Osiris", "Restricted"),
+            ("Nova | Koi", "Restricted"),
+            # Mil-Spec
+            ("SSG 08 | Abyss", "Mil-Spec"),
+            ("P2000 | Ivory", "Mil-Spec"),
+            ("MP7 | Urban Hazard", "Mil-Spec"),
+            ("UMP-45 | Labyrinth", "Mil-Spec"),
+            ("Negev | Desert-Strike", "Mil-Spec"),
+        ]
+        bo_added = 0
+        for name, rarity in breakout_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != breakout_case.item_id:
+                    exists.case_id = breakout_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=breakout_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            bo_added += 1
+        if bo_added:
+            db.commit()
+            print(f"Přidáno Breakout skinů: {bo_added}")
+
+        print("Kontroluji/seeduji Operation Breakout Case nože (Butterfly Knife varianty)...")
+        breakout_knives = [
+            "Butterfly Knife | Scorched",
+            "Butterfly Knife | Stained",
+            "Butterfly Knife | Crimson Web",
+            "Butterfly Knife | Forest DDPAT",
+            "Butterfly Knife | Boreal Forest",
+            "Butterfly Knife | Urban Masked",
+            "Butterfly Knife | Night",
+            "Butterfly Knife | Safari Mesh",
+            "Butterfly Knife | Case Hardened",
+            "Butterfly Knife | Vanilla",
+            "Butterfly Knife | Blue Steel",
+            "Butterfly Knife | Slaughter",
+            "Butterfly Knife | Fade",
+        ]
+        bok_added = 0
+        for name in breakout_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != breakout_case.item_id:
+                    exists.case_id = breakout_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=breakout_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            bok_added += 1
+        if bok_added:
+            db.commit()
+            print(f"Přidáno Breakout nožů: {bok_added}")
+
+    # Huntsman Weapon Case skins and knives
+    if huntsman_case:
+        print("Kontroluji/seeduji Huntsman Weapon Case skiny...")
+        huntsman_skins = [
+            ("AK-47 | Vulcan", "Covert"),
+            ("M4A4 | Desert-Strike", "Covert"),
+            ("M4A1-S | Atomic Alloy", "Classified"),
+            ("USP-S | Caiman", "Classified"),
+            ("SCAR-20 | Cyrex", "Classified"),
+            ("PP-Bizon | Antique", "Restricted"),
+            ("AUG | Torque", "Restricted"),
+            ("MAC-10 | Tatter", "Restricted"),
+            ("XM1014 | Heaven Guard", "Restricted"),
+            ("Tec-9 | Isaac", "Mil-Spec"),
+            ("Galil AR | Kami", "Mil-Spec"),
+            ("SSG 08 | Slashed", "Mil-Spec"),
+            ("P90 | Module", "Mil-Spec"),
+            ("P2000 | Pulse", "Mil-Spec"),
+            ("CZ75-Auto | Twist", "Mil-Spec"),
+        ]
+        hu_added = 0
+        for name, rarity in huntsman_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != huntsman_case.item_id:
+                    exists.case_id = huntsman_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=huntsman_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            hu_added += 1
+        if hu_added:
+            db.commit()
+            print(f"Přidáno Huntsman skinů: {hu_added}")
+
+        print("Kontroluji/seeduji Huntsman Weapon Case nože (Huntsman Knife varianty)...")
+        huntsman_knives = [
+            "Huntsman Knife | Fade",
+            "Huntsman Knife | Blue Steel",
+            "Huntsman Knife | Case Hardened",
+            "Huntsman Knife | Slaughter",
+            "Huntsman Knife | Night",
+            "Huntsman Knife | Stained",
+            "Huntsman Knife | Forest DDPAT",
+            "Huntsman Knife | Scorched",
+            "Huntsman Knife | Crimson Web",
+            "Huntsman Knife | Vanilla",
+            "Huntsman Knife | Boreal Forest",
+            "Huntsman Knife | Urban Masked",
+            "Huntsman Knife | Safari Mesh",
+        ]
+        huk_added = 0
+        for name in huntsman_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != huntsman_case.item_id:
+                    exists.case_id = huntsman_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=huntsman_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            huk_added += 1
+        if huk_added:
+            db.commit()
+            print(f"Přidáno Huntsman nožů: {huk_added}")
+
+    # Operation Phoenix Weapon Case skins and knives (knives same as Revolver)
+    if phoenix_case:
+        print("Kontroluji/seeduji Operation Phoenix Weapon Case skiny...")
+        phoenix_skins = [
+            ("AUG | Chameleon", "Classified"),
+            ("AWP | Asiimov", "Covert"),
+            ("AK-47 | Redline", "Classified"),
+            ("P90 | Trigon", "Covert"),
+            ("Nova | Antique", "Classified"),
+            ("USP-S | Guardian", "Restricted"),
+            ("SG 553 | Pulse", "Restricted"),
+            ("FAMAS | Sergeant", "Restricted"),
+            ("MAC-10 | Heat", "Restricted"),
+            ("Tec-9 | Sandstorm", "Mil-Spec"),
+            ("Negev | Terrain", "Mil-Spec"),
+            ("MAG-7 | Heaven Guard", "Mil-Spec"),
+            ("UMP-45 | Corporal", "Mil-Spec"),
+        ]
+        ph_added = 0
+        for name, rarity in phoenix_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != phoenix_case.item_id:
+                    exists.case_id = phoenix_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=phoenix_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            ph_added += 1
+        if ph_added:
+            db.commit()
+            print(f"Přidáno Phoenix skinů: {ph_added}")
+
+        print("Kontroluji/seeduji Phoenix Case nože (stejné jako Revolver)...")
+        phoenix_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        phk_added = 0
+        for name in phoenix_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != phoenix_case.item_id:
+                    exists.case_id = phoenix_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=phoenix_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            phk_added += 1
+        if phk_added:
+            db.commit()
+            print(f"Přidáno Phoenix nožů: {phk_added}")
+
+    # CS:GO Weapon Case 3 skins and knives (knives same as Revolver)
+    if csgo3_case:
+        print("Kontroluji/seeduji CS:GO Weapon Case 3 skiny...")
+        csgo3_skins = [
+            ("CZ75-Auto | Victoria", "Classified"),
+            ("P250 | Undertow", "Classified"),
+            ("CZ75-Auto | The Fuschia Is Now", "Restricted"),
+            ("Five-SeveN | Copper Galaxy", "Restricted"),
+            ("Desert Eagle | Heirloom", "Restricted"),
+            ("Tec-9 | Titanium Bit", "Restricted"),
+            ("CZ75-Auto | Tread Plate", "Mil-Spec"),
+            ("USP-S | Stainless", "Mil-Spec"),
+            ("Glock-18 | Blue Fissure", "Mil-Spec"),
+            ("Dual Berettas | Panther", "Mil-Spec"),
+            ("CZ75-Auto | Crimson Web", "Mil-Spec"),
+            ("P2000 | Red FragCam", "Mil-Spec"),
+        ]
+        c3_added = 0
+        for name, rarity in csgo3_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != csgo3_case.item_id:
+                    exists.case_id = csgo3_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=csgo3_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c3_added += 1
+        if c3_added:
+            db.commit()
+            print(f"Přidáno CS:GO Weapon Case 3 skinů: {c3_added}")
+
+        print("Kontroluji/seeduji CS:GO Weapon Case 3 nože (stejné jako Revolver)...")
+        csgo3_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        c3k_added = 0
+        for name in csgo3_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != csgo3_case.item_id:
+                    exists.case_id = csgo3_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=csgo3_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c3k_added += 1
+        if c3k_added:
+            db.commit()
+            print(f"Přidáno CS:GO Weapon Case 3 nožů: {c3k_added}")
+
+    # eSports 2013 Winter Case skins and knives (knives same as Revolver)
+    if esports2013_w_case:
+        print("Kontroluji/seeduji eSports 2013 Winter Case skiny...")
+        esports2013w_skins = [
+            ("M4A4 | X-Ray", "Covert"),
+            ("AWP | Electric Hive", "Classified"),
+            ("Desert Eagle | Cobalt Disruption", "Classified"),
+            ("FAMAS | Afterimage", "Classified"),
+            ("AK-47 | Blue Laminate", "Restricted"),
+            ("P90 | Blind Spot", "Restricted"),
+            ("Galil AR | Blue Titanium", "Restricted"),
+            ("P250 | Steel Disruption", "Restricted"),
+            ("G3SG1 | Azure Zebra", "Mil-Spec"),
+            ("Five-SeveN | Nightshade", "Mil-Spec"),
+            ("Nova | Ghost Camo", "Mil-Spec"),
+            ("PP-Bizon | Water Sigil", "Mil-Spec"),
+        ]
+        e13_added = 0
+        for name, rarity in esports2013w_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != esports2013_w_case.item_id:
+                    exists.case_id = esports2013_w_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=esports2013_w_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            e13_added += 1
+        if e13_added:
+            db.commit()
+            print(f"Přidáno eSports 2013 Winter skinů: {e13_added}")
+
+        print("Kontroluji/seeduji eSports 2013 Winter Case nože (stejné jako Revolver)...")
+        esports2013w_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        e13k_added = 0
+        for name in esports2013w_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != esports2013_w_case.item_id:
+                    exists.case_id = esports2013_w_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=esports2013_w_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            e13k_added += 1
+        if e13k_added:
+            db.commit()
+            print(f"Přidáno eSports 2013 Winter nožů: {e13k_added}")
+
+    # Winter Offensive Weapon Case skins and knives (knives same as Revolver)
+    if winter_offensive_case:
+        print("Kontroluji/seeduji Winter Offensive Weapon Case skiny...")
+        winter_skins = [
+            # Covert
+            ("Sawed-Off | The Kraken", "Covert"),
+            ("M4A4 | Asiimov", "Covert"),
+            # Classified
+            ("AWP | Redline", "Classified"),
+            ("M4A1-S | Guardian", "Classified"),
+            ("P250 | Mehndi", "Classified"),
+            # Restricted
+            ("FAMAS | Pulse", "Restricted"),
+            ("MP9 | Rose Iron", "Restricted"),
+            ("Dual Berettas | Marina", "Restricted"),
+            ("Nova | Rising Skull", "Restricted"),
+            # Mil-Spec
+            ("Five-SeveN | Kami", "Mil-Spec"),
+            ("Galil AR | Sandstorm", "Mil-Spec"),
+            ("PP-Bizon | Cobalt Halftone", "Mil-Spec"),
+            ("M249 | Magma", "Mil-Spec"),
+        ]
+        wo_added = 0
+        for name, rarity in winter_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != winter_offensive_case.item_id:
+                    exists.case_id = winter_offensive_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=winter_offensive_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            wo_added += 1
+        if wo_added:
+            db.commit()
+            print(f"Přidáno Winter Offensive skinů: {wo_added}")
+
+        print("Kontroluji/seeduji Winter Offensive Case nože (stejné jako Revolver)...")
+        winter_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        wok_added = 0
+        for name in winter_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != winter_offensive_case.item_id:
+                    exists.case_id = winter_offensive_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=winter_offensive_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            wok_added += 1
+        if wok_added:
+            db.commit()
+            print(f"Přidáno Winter Offensive nožů: {wok_added}")
+
+    # CS:GO Weapon Case 2 skins and knives (knives same as Revolver)
+    if csgo2_case:
+        print("Kontroluji/seeduji CS:GO Weapon Case 2 skiny...")
+        csgo2_skins = [
+            # Covert
+            ("SSG 08 | Blood in the Water", "Covert"),
+            # Classified
+            ("USP-S | Serum", "Classified"),
+            ("P90 | Cold Blooded", "Classified"),
+            # Restricted
+            ("Five-SeveN | Case Hardened", "Restricted"),
+            ("MP9 | Hypnotic", "Restricted"),
+            ("Dual Berettas | Hemoglobin", "Restricted"),
+            ("Nova | Graphite", "Restricted"),
+            # Mil-Spec
+            ("M4A1-S | Blood Tiger", "Mil-Spec"),
+            ("SCAR-20 | Crimson Web", "Mil-Spec"),
+            ("Tec-9 | Blue Titanium", "Mil-Spec"),
+            ("FAMAS | Hexane", "Mil-Spec"),
+            ("P250 | Hive", "Mil-Spec"),
+        ]
+        c2_added = 0
+        for name, rarity in csgo2_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != csgo2_case.item_id:
+                    exists.case_id = csgo2_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=csgo2_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c2_added += 1
+        if c2_added:
+            db.commit()
+            print(f"Přidáno CS:GO Weapon Case 2 skinů: {c2_added}")
+
+        print("Kontroluji/seeduji CS:GO Weapon Case 2 nože (stejné jako Revolver)...")
+        csgo2_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        c2k_added = 0
+        for name in csgo2_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != csgo2_case.item_id:
+                    exists.case_id = csgo2_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=csgo2_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c2k_added += 1
+        if c2k_added:
+            db.commit()
+            print(f"Přidáno CS:GO Weapon Case 2 nožů: {c2k_added}")
+
+    # Operation Bravo Case skins and knives (knives same as Revolver)
+    if bravo_case:
+        print("Kontroluji/seeduji Operation Bravo Case skiny...")
+        bravo_skins = [
+            # Covert
+            ("Desert Eagle | Golden Koi", "Covert"),
+            ("AK-47 | Fire Serpent", "Covert"),
+            # Classified
+            ("AWP | Graphite", "Classified"),
+            ("P90 | Emerald Dragon", "Classified"),
+            ("P2000 | Ocean Foam", "Classified"),
+            # Restricted
+            ("M4A1-S | Bright Water", "Restricted"),
+            ("USP-S | Overgrowth", "Restricted"),
+            ("M4A4 | Zirka", "Restricted"),
+            ("MAC-10 | Graven", "Restricted"),
+            # Mil-Spec
+            ("Nova | Tempest", "Mil-Spec"),
+            ("Galil AR | Shattered", "Mil-Spec"),
+            ("Dual Berettas | Black Limba", "Mil-Spec"),
+            ("G3SG1 | Demeter", "Mil-Spec"),
+            ("UMP-45 | Bone Pile", "Mil-Spec"),
+            ("SG 553 | Wave Spray", "Mil-Spec"),
+        ]
+        br_added = 0
+        for name, rarity in bravo_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != bravo_case.item_id:
+                    exists.case_id = bravo_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=bravo_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            br_added += 1
+        if br_added:
+            db.commit()
+            print(f"Přidáno Operation Bravo skinů: {br_added}")
+
+        print("Kontroluji/seeduji Operation Bravo Case nože (stejné jako Revolver)...")
+        bravo_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        brk_added = 0
+        for name in bravo_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != bravo_case.item_id:
+                    exists.case_id = bravo_case.item_id
+                continue
+            # No Doppler phase guards; handled by cleanup at end
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=bravo_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            brk_added += 1
+        if brk_added:
+            db.commit()
+            print(f"Přidáno Operation Bravo nožů: {brk_added}")
+
+    # eSports 2013 Case skins and knives (knives same as Revolver)
+    if esports2013_case:
+        print("Kontroluji/seeduji eSports 2013 Case skiny...")
+        es13_skins = [
+            # Covert
+            ("P90 | Death by Kitty", "Covert"),
+            # Classified
+            ("AK-47 | Red Laminate", "Classified"),
+            ("AWP | BOOM", "Classified"),
+            # Restricted
+            ("P250 | Splash", "Restricted"),
+            ("Galil AR | Orange DDPAT", "Restricted"),
+            ("Sawed-Off | Orange DDPAT", "Restricted"),
+            # Mil-Spec
+            ("M4A4 | Faded Zebra", "Mil-Spec"),
+            ("MAG-7 | Memento", "Mil-Spec"),
+            ("FAMAS | Doomkitty", "Mil-Spec"),
+        ]
+        es13_added = 0
+        for name, rarity in es13_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != esports2013_case.item_id:
+                    exists.case_id = esports2013_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=esports2013_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            es13_added += 1
+        if es13_added:
+            db.commit()
+            print(f"Přidáno eSports 2013 skinů: {es13_added}")
+
+        print("Kontroluji/seeduji eSports 2013 Case nože (stejné jako Revolver)...")
+        es13_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        es13k_added = 0
+        for name in es13_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != esports2013_case.item_id:
+                    exists.case_id = esports2013_case.item_id
+                continue
+            # No Doppler phase guards; handled by cleanup at end
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=esports2013_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            es13k_added += 1
+        if es13k_added:
+            db.commit()
+            print(f"Přidáno eSports 2013 nožů: {es13k_added}")
+
+    # CS:GO Weapon Case (first) skins and knives (knives same as Revolver)
+    if csgo1_case:
+        print("Kontroluji/seeduji CS:GO Weapon Case skiny...")
+        csgo1_skins = [
+            # Covert
+            ("AWP | Lightning Strike", "Covert"),
+            # Classified
+            ("AK-47 | Case Hardened", "Classified"),
+            ("Desert Eagle | Hypnotic", "Classified"),
+            # Restricted
+            ("Glock-18 | Dragon Tattoo", "Restricted"),
+            ("M4A1-S | Dark Water", "Restricted"),
+            ("USP-S | Dark Water", "Restricted"),
+            # Mil-Spec
+            ("SG 553 | Ultraviolet", "Mil-Spec"),
+            ("AUG | Wings", "Mil-Spec"),
+            ("MP7 | Skulls", "Mil-Spec"),
+        ]
+        c1_added = 0
+        for name, rarity in csgo1_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != csgo1_case.item_id:
+                    exists.case_id = csgo1_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=csgo1_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c1_added += 1
+        if c1_added:
+            db.commit()
+            print(f"Přidáno CS:GO Weapon Case skinů: {c1_added}")
+
+        print("Kontroluji/seeduji CS:GO Weapon Case nože (stejné jako Revolver)...")
+        csgo1_knives = [
+            "Karambit | Slaughter",
+            "Gut Knife | Safari Mesh",
+            "M9 Bayonet | Scorched",
+            "Bayonet | Case Hardened",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Case Hardened",
+            "Karambit | Scorched",
+            "M9 Bayonet | Boreal Forest",
+            "Bayonet | Vanilla",
+            "Karambit | Forest DDPAT",
+            "Karambit | Stained",
+            "M9 Bayonet | Blue Steel",
+            "Bayonet | Slaughter",
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Crimson Web",
+            "Bayonet | Blue Steel",
+            "Karambit | Blue Steel",
+            "Karambit | Boreal Forest",
+            "Karambit | Urban Masked",
+            "Bayonet | Fade",
+        ]
+        c1k_added = 0
+        for name in csgo1_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != csgo1_case.item_id:
+                    exists.case_id = csgo1_case.item_id
+                continue
+            # No Doppler phase guards; handled by cleanup at end
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=csgo1_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c1k_added += 1
+        if c1k_added:
+            db.commit()
+            print(f"Přidáno CS:GO Weapon Case nožů: {c1k_added}")
+
+    # Cleanup: remove Doppler/Gamma Doppler phase-specific variants, keep only generic Doppler
+    print("Čistím Doppler varianty (Phase/Sapphire/Ruby/Black Pearl/Emerald)...")
+    doppler_variants = ["Phase", "Sapphire", "Ruby", "Black Pearl", "Emerald"]
+    removed_count = 0
+    knives = db.query(Item).filter(Item.item_type == 'knife').all()
+    for k in knives:
+        nm = k.name or ""
+        if ("Doppler" in nm) and any(v in nm for v in doppler_variants):
+            db.delete(k)
+            removed_count += 1
+    if removed_count:
+        db.commit()
+    print(f"Odstraněno Doppler variant: {removed_count}")
+
+    # Shadow Case skins and knives
+    if shadow_case:
+        print("Kontroluji/seeduji Shadow Case skiny...")
+        shadow_skins = [
+            # Covert
+            ("M4A1-S | Golden Coil", "Covert"),
+            ("USP-S | Kill Confirmed", "Covert"),
+            # Classified
+            ("AK-47 | Frontside Misty", "Classified"),
+            ("SSG 08 | Big Iron", "Classified"),
+            ("G3SG1 | Flux", "Classified"),
+            # Restricted
+            ("Galil AR | Stone Cold", "Restricted"),
+            ("P250 | Wingshot", "Restricted"),
+            ("M249 | Nebula Crusader", "Restricted"),
+            ("MP7 | Special Delivery", "Restricted"),
+            # Mil-Spec
+            ("FAMAS | Survivor Z", "Mil-Spec"),
+            ("Glock-18 | Wraiths", "Mil-Spec"),
+            ("Dual Berettas | Dualing Dragons", "Mil-Spec"),
+            ("MAC-10 | Rangeen", "Mil-Spec"),
+            ("XM1014 | Scumbria", "Mil-Spec"),
+            ("MAG-7 | Cobalt Core", "Mil-Spec"),
+            ("SCAR-20 | Green Marine", "Mil-Spec"),
+        ]
+        sh_added = 0
+        for name, rarity in shadow_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != shadow_case.item_id:
+                    exists.case_id = shadow_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=shadow_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            sh_added += 1
+        if sh_added:
+            db.commit()
+            print(f"Přidáno Shadow skinů: {sh_added}")
+
+        print("Kontroluji/seeduji Shadow Case nože (Shadow Daggers varianty)...")
+        shadow_knives = [
+            "Shadow Daggers | Crimson Web",
+            "Shadow Daggers | Case Hardened",
+            "Shadow Daggers | Fade",
+            "Shadow Daggers | Boreal Forest",
+            "Shadow Daggers | Slaughter",
+            "Shadow Daggers | Stained",
+            "Shadow Daggers | Vanilla",
+            "Shadow Daggers | Scorched",
+            "Shadow Daggers | Night",
+            "Shadow Daggers | Urban Masked",
+            "Shadow Daggers | Blue Steel",
+            "Shadow Daggers | Forest DDPAT",
+            "Shadow Daggers | Safari Mesh",
+        ]
+        shk_added = 0
+        for name in shadow_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != shadow_case.item_id:
+                    exists.case_id = shadow_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=shadow_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            shk_added += 1
+        if shk_added:
+            db.commit()
+            print(f"Přidáno Shadow nožů: {shk_added}")
+
+    # Falchion Case skins and knives
+    if falchion_case:
+        print("Kontroluji/seeduji Falchion Case skiny...")
+        falchion_skins = [
+            # Covert
+            ("AWP | Hyper Beast", "Covert"),
+            ("AK-47 | Aquamarine Revenge", "Covert"),
+            # Classified
+            ("SG 553 | Cyrex", "Classified"),
+            ("MP7 | Nemesis", "Classified"),
+            ("CZ75-Auto | Yellow Jacket", "Classified"),
+            # Restricted
+            ("M4A4 | Evil Daimyo", "Restricted"),
+            ("MP9 | Ruby Poison Dart", "Restricted"),
+            ("FAMAS | Neural Net", "Restricted"),
+            ("P2000 | Handgun", "Restricted"),
+            ("Negev | Loudmouth", "Restricted"),
+            # Mil-Spec
+            ("USP-S | Torque", "Mil-Spec"),
+            ("Galil AR | Rocket Pop", "Mil-Spec"),
+            ("Glock-18 | Bunsen Burner", "Mil-Spec"),
+            ("P90 | Elite Build", "Mil-Spec"),
+            ("UMP-45 | Riot", "Mil-Spec"),
+            ("Nova | Ranger", "Mil-Spec"),
+        ]
+        fc_added = 0
+        for name, rarity in falchion_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != falchion_case.item_id:
+                    exists.case_id = falchion_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=falchion_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            fc_added += 1
+        if fc_added:
+            db.commit()
+            print(f"Přidáno Falchion skinů: {fc_added}")
+
+        print("Kontroluji/seeduji Falchion Case nože (Falchion Knife varianty)...")
+        falchion_knives = [
+            "Falchion Knife | Boreal Forest",
+            "Falchion Knife | Blue Steel",
+            "Falchion Knife | Fade",
+            "Falchion Knife | Scorched",
+            "Falchion Knife | Vanilla",
+            "Falchion Knife | Case Hardened",
+            "Falchion Knife | Urban Masked",
+            "Falchion Knife | Night",
+            "Falchion Knife | Stained",
+            "Falchion Knife | Forest DDPAT",
+            "Falchion Knife | Safari Mesh",
+            "Falchion Knife | Slaughter",
+            "Falchion Knife | Crimson Web",
+        ]
+        fck_added = 0
+        for name in falchion_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != falchion_case.item_id:
+                    exists.case_id = falchion_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=falchion_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            fck_added += 1
+        if fck_added:
+            db.commit()
+            print(f"Přidáno Falchion nožů: {fck_added}")
+
+    # Chroma 2 Case skins and knives (knives same as Chroma 3)
+    if chroma2_case:
+        print("Kontroluji/seeduji Chroma 2 Case skiny...")
+        chroma2_skins = [
+            # Covert
+            ("M4A1-S | Hyper Beast", "Covert"),
+            ("MAC-10 | Neon Rider", "Covert"),
+            # Classified
+            ("Galil AR | Eco", "Classified"),
+            ("Five-SeveN | Monkey Business", "Classified"),
+            ("FAMAS | Djinn", "Classified"),
+            # Restricted
+            ("AWP | Worm God", "Restricted"),
+            ("MAG-7 | Heat", "Restricted"),
+            ("CZ75-Auto | Pole Position", "Restricted"),
+            ("UMP-45 | Grand Prix", "Restricted"),
+            # Mil-Spec
+            ("AK-47 | Elite Build", "Mil-Spec"),
+            ("Desert Eagle | Bronze Deco", "Mil-Spec"),
+            ("P250 | Valence", "Mil-Spec"),
+            ("MP7 | Armor Core", "Mil-Spec"),
+            ("Sawed-Off | Origami", "Mil-Spec"),
+            ("Negev | Man-o'-war", "Mil-Spec"),
+        ]
+        c2_added = 0
+        for name, rarity in chroma2_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != chroma2_case.item_id:
+                    exists.case_id = chroma2_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=chroma2_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c2_added += 1
+        if c2_added:
+            db.commit()
+            print(f"Přidáno Chroma 2 skinů: {c2_added}")
+
+        print("Kontroluji/seeduji Chroma 2 Case nože (stejné jako Chroma 3)...")
+        chroma2_knives = [
+            "Bayonet | Doppler",
+            "Gut Knife | Doppler",
+            "Karambit | Doppler",
+            "Flip Knife | Doppler",
+            "Karambit | Tiger Tooth",
+            "M9 Bayonet | Marble Fade",
+            "Bayonet | Marble Fade",
+            "M9 Bayonet | Doppler",
+            "Flip Knife | Tiger Tooth",
+            "M9 Bayonet | Damascus Steel",
+            "Karambit | Ultraviolet",
+            "Flip Knife | Marble Fade",
+            "Bayonet | Tiger Tooth",
+            "Gut Knife | Marble Fade",
+            "M9 Bayonet | Tiger Tooth",
+            "Bayonet | Ultraviolet",
+            "Bayonet | Damascus Steel",
+            "M9 Bayonet | Ultraviolet",
+            "M9 Bayonet | Rust Coat",
+            "Flip Knife | Ultraviolet",
+            "Gut Knife | Tiger Tooth",
+            "Gut Knife | Damascus Steel",
+            "Bayonet | Rust Coat",
+            "Gut Knife | Rust Coat",
+            "Karambit | Damascus Steel",
+            "Flip Knife | Rust Coat",
+            "Flip Knife | Damascus Steel",
+            "Karambit | Rust Coat",
+            "Gut Knife | Ultraviolet",
+        ]
+        c2k_added = 0
+        for name in chroma2_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != chroma2_case.item_id:
+                    exists.case_id = chroma2_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=chroma2_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c2k_added += 1
+        if c2k_added:
+            db.commit()
+            print(f"Přidáno Chroma 2 nožů: {c2k_added}")
+
+    # Chroma Case skins and knives (knives same as Chroma 3/2)
+    if chroma_case:
+        print("Kontroluji/seeduji Chroma Case skiny...")
+        chroma_skins = [
+            # Covert
+            ("Galil AR | Chatterbox", "Covert"),
+            ("AWP | Man-o'-war", "Covert"),
+            # Classified
+            ("M4A4 | 龍王 (Dragon King)", "Classified"),
+            ("AK-47 | Cartel", "Classified"),
+            ("P250 | Muertos", "Classified"),
+            # Restricted
+            ("Desert Eagle | Naga", "Restricted"),
+            ("MAC-10 | Malachite", "Restricted"),
+            ("Dual Berettas | Urban Shock", "Restricted"),
+            ("Sawed-Off | Serenity", "Restricted"),
+            # Mil-Spec
+            ("Glock-18 | Catacombs", "Mil-Spec"),
+            ("MP9 | Deadly Poison", "Mil-Spec"),
+            ("SCAR-20 | Grotto", "Mil-Spec"),
+            ("XM1014 | Quicksilver", "Mil-Spec"),
+            ("M249 | System Lock", "Mil-Spec"),
+        ]
+        c_added = 0
+        for name, rarity in chroma_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != chroma_case.item_id:
+                    exists.case_id = chroma_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='skin',
+                rarity=rarity,
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=chroma_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            c_added += 1
+        if c_added:
+            db.commit()
+            print(f"Přidáno Chroma skinů: {c_added}")
+
+        print("Kontroluji/seeduji Chroma Case nože (stejné jako Chroma 3/2)...")
+        chroma_knives = [
+            "Bayonet | Doppler",
+            "Gut Knife | Doppler",
+            "Karambit | Doppler",
+            "Flip Knife | Doppler",
+            "Karambit | Tiger Tooth",
+            "M9 Bayonet | Marble Fade",
+            "Bayonet | Marble Fade",
+            "M9 Bayonet | Doppler",
+            "Flip Knife | Tiger Tooth",
+            "M9 Bayonet | Damascus Steel",
+            "Karambit | Ultraviolet",
+            "Flip Knife | Marble Fade",
+            "Bayonet | Tiger Tooth",
+            "Gut Knife | Marble Fade",
+            "M9 Bayonet | Tiger Tooth",
+            "Bayonet | Ultraviolet",
+            "Bayonet | Damascus Steel",
+            "M9 Bayonet | Ultraviolet",
+            "M9 Bayonet | Rust Coat",
+            "Flip Knife | Ultraviolet",
+            "Gut Knife | Tiger Tooth",
+            "Gut Knife | Damascus Steel",
+            "Bayonet | Rust Coat",
+            "Gut Knife | Rust Coat",
+            "Karambit | Damascus Steel",
+            "Flip Knife | Rust Coat",
+            "Flip Knife | Damascus Steel",
+            "Karambit | Rust Coat",
+            "Gut Knife | Ultraviolet",
+        ]
+        ck_added = 0
+        for name in chroma_knives:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
+            if exists:
+                if exists.case_id != chroma_case.item_id:
+                    exists.case_id = chroma_case.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='knife',
+                rarity='Knife',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=chroma_case.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            ck_added += 1
+        if ck_added:
+            db.commit()
+            print(f"Přidáno Chroma nožů: {ck_added}")
 
     # Operation Broken Fang Case skins
     if broken_fang:
@@ -2934,11 +4682,74 @@ if __name__ == "__main__":
         print(f"Case release dates update done. Changed: {changed}")
         db.close()
 
+    def normalize_knives_gloves():
+        """
+        Ensure DB consistency:
+        - Knives must have item_type='knife' and rarity='Knife'
+        - Gloves must have item_type='glove' and rarity='Glove'
+        - Remove ambiguous 'knife/glove' rarity by assigning proper type based on name
+        - Fix any knives/gloves mistakenly marked as 'skin' or with rarities like 'Covert'
+        """
+        db = SessionLocal()
+        changed = 0
+        # Heuristics based on name keywords
+        KNIFE_KEYWORDS = [
+            'knife', 'karambit', 'bayonet', 'flip knife', 'gut knife', 'm9 bayonet', 'butterfly knife', 'falchion knife',
+            'bowie knife', 'shadow daggers', 'huntsman knife', 'stiletto knife', 'ursus knife', 'navaja knife',
+            'talon knife', 'skeleton knife', 'survival knife', 'paracord knife', 'nomad knife'
+        ]
+        GLOVE_KEYWORDS = [
+            'gloves', 'hand wraps', 'sport gloves', 'driver gloves', 'motogloves', 'moto gloves', 'hydra gloves', 'specialist gloves'
+        ]
+        def is_knife_name(name: str) -> bool:
+            n = (name or '').lower()
+            return any(k in n for k in KNIFE_KEYWORDS)
+        def is_glove_name(name: str) -> bool:
+            n = (name or '').lower()
+            return any(k in n for k in GLOVE_KEYWORDS)
+
+        items = db.query(Item).all()
+        for itm in items:
+            name = itm.name or ''
+            rlow = (itm.rarity or '').lower()
+            t = (itm.item_type or '').lower()
+            # Coerce plural/synonyms
+            if t == 'gloves':
+                itm.item_type = 'glove'
+                changed += 1
+                t = 'glove'
+            if t == 'knives':
+                itm.item_type = 'knife'
+                changed += 1
+                t = 'knife'
+            # Determine intended type from name or rarity
+            intended_type = None
+            if is_glove_name(name) or rlow == 'glove':
+                intended_type = 'glove'
+            elif is_knife_name(name) or rlow == 'knife' or rlow == 'knife/glove':
+                intended_type = 'knife'
+            # Apply corrections
+            if intended_type:
+                if t != intended_type:
+                    itm.item_type = intended_type
+                    changed += 1
+                # Normalize rarity strictly
+                correct_rarity = 'Knife' if intended_type == 'knife' else 'Glove'
+                if itm.rarity != correct_rarity:
+                    itm.rarity = correct_rarity
+                    changed += 1
+        if changed:
+            db.commit()
+        print(f"Normalization done. Changed fields: {changed}")
+        db.close()
+
     if cmd in ('update', 'update-case-statuses', 'update_case_statuses'):
         update_case_statuses()
     elif cmd in ('update-case-dates', 'update_case_dates', 'update-dates'):
         update_case_release_dates()
     elif cmd in ('update-cases', 'update_all_cases'):
         update_case_statuses(); update_case_release_dates()
+    elif cmd in ('normalize', 'normalize-items', 'normalize_items'):
+        normalize_knives_gloves()
     else:
         seed_data()

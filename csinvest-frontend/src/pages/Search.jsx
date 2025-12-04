@@ -55,7 +55,8 @@ function SearchPage() {
   };
 
   const onCategoryClick = (cat) => {
-    navigate(`/search/${cat.key}`);
+    const qs = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
+    navigate(`/search/${cat.key}${qs}`);
   };
 
   useEffect(() => {

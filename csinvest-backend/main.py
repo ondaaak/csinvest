@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from config import Config
+from sqlalchemy import func
 
 app = FastAPI()
 
@@ -79,6 +80,34 @@ def search_items(q: str, limit: int = 10, db: Session = Depends(get_db)):
     repo = ItemRepository(db)
     results = repo.search_items(q, limit=limit)
     return [to_search_item(r) for r in results]
+
+# ----------- Knives & Gloves listing/search -----------
+@app.get("/knives")
+def list_knives(q: str | None = None, db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    if q:
+        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'knife']
+    else:
+        items = repo.get_items(item_type='knife', limit=10_000_000)
+    return [to_search_item(it) for it in items]
+
+@app.get("/gloves")
+def list_gloves(q: str | None = None, db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    if q:
+        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'glove']
+    else:
+        items = repo.get_items(item_type='glove', limit=10_000_000)
+    return [to_search_item(it) for it in items]
+
+# Aliases for Search buttons
+@app.get("/search/knives")
+def search_knives(q: str | None = None, db: Session = Depends(get_db)):
+    return list_knives(q=q, db=db)
+
+@app.get("/search/gloves")
+def search_gloves(q: str | None = None, db: Session = Depends(get_db)):
+    return list_gloves(q=q, db=db)
 
 @app.get("/")
 def read_root():
@@ -192,8 +221,24 @@ def get_case_detail(slug: str, db: Session = Depends(get_db)):
     if not case:
         raise HTTPException(status_code=404, detail="Case nenalezena")
     skins = repo.get_case_items_by_types(case.item_id, ["skin"])
-    knives = repo.get_case_items_by_types(case.item_id, ["knife"])  
-    gloves = repo.get_case_items_by_types(case.item_id, ["glove"]) 
+    # Include explicit knives plus any skin entries marked with knife-like rarity
+    knives_explicit = repo.get_case_items_by_types(case.item_id, ["knife"])  
+    gloves_explicit = repo.get_case_items_by_types(case.item_id, ["glove"]) 
+    # Fallback classification to be robust against data changes
+    knife_like_from_skins = [s for s in skins if (s.rarity or "").lower() in ("knife", "knife/glove")]
+    glove_like_from_skins = [s for s in skins if (s.rarity or "").lower() in ("glove", "knife/glove")]
+    # Deduplicate by item_id
+    def dedupe(arr):
+        seen = set()
+        out = []
+        for x in arr:
+            if x.item_id in seen:
+                continue
+            seen.add(x.item_id)
+            out.append(x)
+        return out
+    knives = dedupe(knives_explicit + knife_like_from_skins)
+    gloves = dedupe(gloves_explicit + glove_like_from_skins)
     return {
         "case": case,
         "skins": skins,
@@ -251,3 +296,56 @@ def get_item_price_history(slug: str, limit: int = 200, db: Session = Depends(ge
         for p in prices[-limit:]
     ]
     return {"item_id": itm.item_id, "slug": slug, "history": result}
+
+# ----------- Admin: Normalize item types/rarities -----------
+@app.post("/admin/normalize-items")
+def normalize_items(db: Session = Depends(get_db)):
+    """
+    Fix inconsistent data:
+    - Knives -> item_type='knife', rarity='Knife'
+    - Gloves -> item_type='glove', rarity='Glove'
+    - Remove 'knife/glove' ambiguity and wrong rarities like 'Covert' on knives/gloves.
+    """
+    KNIFE_KEYS = [
+        'knife', 'karambit', 'bayonet', 'flip knife', 'gut knife', 'm9 bayonet', 'butterfly knife', 'falchion knife',
+        'bowie knife', 'shadow daggers', 'huntsman knife', 'stiletto knife', 'ursus knife', 'navaja knife',
+        'talon knife', 'skeleton knife', 'survival knife', 'paracord knife', 'nomad knife'
+    ]
+    GLOVE_KEYS = [
+        'gloves', 'hand wraps', 'sport gloves', 'driver gloves', 'motogloves', 'moto gloves', 'hydra gloves', 'specialist gloves'
+    ]
+    def is_knife(name: str) -> bool:
+        n = (name or '').lower()
+        return any(k in n for k in KNIFE_KEYS)
+    def is_glove(name: str) -> bool:
+        n = (name or '').lower()
+        return any(k in n for k in GLOVE_KEYS)
+
+    items = db.query(Item).all()
+    changed = 0
+    for itm in items:
+        rlow = (itm.rarity or '').lower()
+        t = (itm.item_type or '').lower()
+        # Coerce plural/synonyms
+        if t == 'gloves':
+            itm.item_type = 'glove'
+            t = 'glove'
+        if t == 'knives':
+            itm.item_type = 'knife'
+            t = 'knife'
+        intended = None
+        if is_glove(itm.name) or rlow == 'glove':
+            intended = 'glove'
+        elif is_knife(itm.name) or rlow in ('knife', 'knife/glove'):
+            intended = 'knife'
+        if intended:
+            if t != intended:
+                itm.item_type = intended
+                changed += 1
+            correct_rarity = 'Knife' if intended == 'knife' else 'Glove'
+            if itm.rarity != correct_rarity:
+                itm.rarity = correct_rarity
+                changed += 1
+    if changed:
+        db.commit()
+    return {"message": "Normalization done", "changed": changed}
