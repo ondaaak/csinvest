@@ -349,3 +349,98 @@ def normalize_items(db: Session = Depends(get_db)):
     if changed:
         db.commit()
     return {"message": "Normalization done", "changed": changed}
+
+# ----------- Admin: Case linkage diagnostics -----------
+@app.get("/admin/case-links/{slug}")
+def case_links(slug: str, db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    case = repo.get_case_by_slug(slug)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case nenalezena")
+    skins = repo.get_case_items_by_types(case.item_id, ["skin"]) or []
+    knives = repo.get_case_items_by_types(case.item_id, ["knife"]) or []
+    gloves = repo.get_case_items_by_types(case.item_id, ["glove"]) or []
+    knife_like_skins = [s for s in skins if (s.rarity or "").lower() in ("knife", "knife/glove")]
+    glove_like_skins = [s for s in skins if (s.rarity or "").lower() in ("glove", "knife/glove")]
+    return {
+        "case_id": case.item_id,
+        "slug": slug,
+        "counts": {
+            "skins": len(skins),
+            "knives_explicit": len(knives),
+            "gloves_explicit": len(gloves),
+            "knife_like_skins": len(knife_like_skins),
+            "glove_like_skins": len(glove_like_skins),
+        },
+        "sample_names": {
+            "knives": [k.name for k in knives[:5]],
+            "gloves": [g.name for g in gloves[:5]],
+            "knife_like_skins": [s.name for s in knife_like_skins[:5]],
+            "glove_like_skins": [s.name for s in glove_like_skins[:5]],
+        }
+    }
+
+# ----------- Admin: Attach Shattered Web knife pool to Fracture -----------
+@app.post("/admin/link-fracture-knives")
+def link_fracture_knives(db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    case = repo.get_case_by_slug("fracture-case")
+    if not case:
+        raise HTTPException(status_code=404, detail="Fracture Case nenalezena")
+    names = [
+        # Skeleton Knife
+        "Skeleton Knife | Doppler",
+        "Skeleton Knife | Tiger Tooth",
+        "Skeleton Knife | Marble Fade",
+        "Skeleton Knife | Damascus Steel",
+        "Skeleton Knife | Ultraviolet",
+        "Skeleton Knife | Rust Coat",
+        # Survival Knife
+        "Survival Knife | Doppler",
+        "Survival Knife | Tiger Tooth",
+        "Survival Knife | Marble Fade",
+        "Survival Knife | Damascus Steel",
+        "Survival Knife | Ultraviolet",
+        "Survival Knife | Rust Coat",
+        # Paracord Knife
+        "Paracord Knife | Doppler",
+        "Paracord Knife | Tiger Tooth",
+        "Paracord Knife | Marble Fade",
+        "Paracord Knife | Damascus Steel",
+        "Paracord Knife | Ultraviolet",
+        "Paracord Knife | Rust Coat",
+        # Nomad Knife
+        "Nomad Knife | Doppler",
+        "Nomad Knife | Tiger Tooth",
+        "Nomad Knife | Marble Fade",
+        "Nomad Knife | Damascus Steel",
+        "Nomad Knife | Ultraviolet",
+        "Nomad Knife | Rust Coat",
+    ]
+    def slugify(name: str) -> str:
+        import re
+        s = name.lower()
+        s = re.sub(r"[|]+", "", s)
+        s = re.sub(r"[^a-z0-9]+", "-", s)
+        s = re.sub(r"-+", "-", s).strip('-')
+        return s
+    created = 0
+    linked = 0
+    for n in names:
+        sl = slugify(n)
+        itm = db.query(Item).filter(Item.slug == sl).first()
+        if not itm:
+            itm = Item(name=n, item_type='knife', rarity='Knife', slug=sl, case_id=case.item_id)
+            db.add(itm)
+            created += 1
+        else:
+            # Fix type/rarity and link to case
+            if itm.item_type != 'knife':
+                itm.item_type = 'knife'
+            if (itm.rarity or '').lower() != 'knife':
+                itm.rarity = 'Knife'
+            if itm.case_id != case.item_id:
+                itm.case_id = case.item_id
+            linked += 1
+    db.commit()
+    return {"message": "Fracture knives linked", "created": created, "updated": linked}

@@ -419,6 +419,71 @@ def seed_data():
             db.commit()
             print(f"Přidáno Fracture nožů: {fr_added}")
 
+    # Utility: mirror a knife pool into multiple cases without overwriting original linkage.
+    def mirror_knives_to_cases(pool_names: list[str], target_cases: list[Item]):
+        created_total = 0
+        for case in target_cases:
+            case_created = 0
+            for name in pool_names:
+                base_slug = slugify(name)
+                per_case_slug = f"{base_slug}-{slugify(case.name)}"
+                exists_same_case = db.query(Item).filter(Item.slug == per_case_slug, Item.item_type == 'knife').first()
+                if exists_same_case:
+                    continue
+                base_item = db.query(Item).filter(Item.slug == base_slug, Item.item_type == 'knife').first()
+                itm = Item(
+                    name=name,
+                    item_type='knife',
+                    rarity='Knife',
+                    wear=None,
+                    wearValue=None,
+                    pattern=None,
+                    collection=None,
+                    case_id=case.item_id,
+                    current_price=(base_item.current_price if base_item and base_item.current_price is not None else None),
+                    slug=per_case_slug,
+                )
+                db.add(itm)
+                case_created += 1
+                created_total += 1
+            if case_created:
+                db.commit()
+                print(f"Mirrored {case_created} knives into case: {case.name}")
+        if created_total:
+            print(f"Total mirrored knives created: {created_total}")
+
+    # Apply mirroring for legacy cases that should share the same knife pool
+    revolver_case = db.query(Item).filter(Item.slug == slugify("Revolver Case"), Item.item_type == 'case').first()
+    shattered_web_pool = [
+        "Skeleton Knife | Doppler",
+        "Skeleton Knife | Tiger Tooth",
+        "Skeleton Knife | Marble Fade",
+        "Skeleton Knife | Damascus Steel",
+        "Skeleton Knife | Ultraviolet",
+        "Skeleton Knife | Rust Coat",
+        "Survival Knife | Doppler",
+        "Survival Knife | Tiger Tooth",
+        "Survival Knife | Marble Fade",
+        "Survival Knife | Damascus Steel",
+        "Survival Knife | Ultraviolet",
+        "Survival Knife | Rust Coat",
+        "Paracord Knife | Doppler",
+        "Paracord Knife | Tiger Tooth",
+        "Paracord Knife | Marble Fade",
+        "Paracord Knife | Damascus Steel",
+        "Paracord Knife | Ultraviolet",
+        "Paracord Knife | Rust Coat",
+        "Nomad Knife | Doppler",
+        "Nomad Knife | Tiger Tooth",
+        "Nomad Knife | Marble Fade",
+        "Nomad Knife | Damascus Steel",
+        "Nomad Knife | Ultraviolet",
+        "Nomad Knife | Rust Coat",
+    ]
+    targets = [c for c in [fracture, revolver_case] if c]
+    if targets:
+        mirror_knives_to_cases(shattered_web_pool, targets)
+
     # Gallery Case skins
     if gallery:
         print("Kontroluji/seeduji Gallery Case skiny...")
@@ -1921,6 +1986,20 @@ def seed_data():
             ("M4A4 | Hellfire", "Classified"),
             ("Galil AR | Sugar Rush", "Classified"),
             ("Dual Berettas | Cobra Strike", "Classified"),
+            # Restricted
+            ("AK-47 | Orbit Mk01", "Restricted"),
+            ("SSG 08 | Death's Head", "Restricted"),
+            ("P250 | Red Rock", "Restricted"),
+            ("P2000 | Woodsman", "Restricted"),
+            ("P90 | Death Grip", "Restricted"),
+            # Mil-spec
+            ("USP-S | Blueprint", "Mil-spec"),
+            ("M4A1-S | Briefing", "Mil-spec"),
+            ("Tec-9 | Cut Out", "Mil-spec"),
+            ("UMP-45 | Metal Flowers", "Mil-spec"),
+            ("MAC-10 | Aloha", "Mil-spec"),
+            ("MAG-7 | Hard Water", "Mil-spec"),
+            ("FAMAS | Macabre", "Mil-spec"),
         ]
         hydra_added = 0
         for name, rarity in hydra_skins:
@@ -1950,30 +2029,30 @@ def seed_data():
 
         print("Kontroluji/seeduji Operation Hydra Case rukavice...")
         hydra_gloves = [
-            "Sport Gloves | Vice",
-            "Driver Gloves | Imperial Plaid",
-            "Moto Gloves | Polygon",
-            "Sport Gloves | Omega",
-            "Hand Wraps | Overprint",
-            "Driver Gloves | Racing Green",
-            "Sport Gloves | Bronze Morph",
-            "Hand Wraps | Cobalt Skulls",
-            "Hydra Gloves | Emerald",
-            "Hydra Gloves | Mangrove",
-            "Moto Gloves | Transport",
-            "Hydra Gloves | Case Hardened",
-            "Driver Gloves | Overtake",
-            "Sport Gloves | Amphibious",
-            "Moto Gloves | Turtle",
-            "Specialist Gloves | Mogul",
-            "Hand Wraps | Duct Tape",
-            "Driver Gloves | King Snake",
-            "Hydra Gloves | Rattler",
-            "Specialist Gloves | Buckshot",
-            "Specialist Gloves | Fade",
-            "Specialist Gloves | Crimson Web",
-            "Hand Wraps | Arboreal",
-            "Moto Gloves | POW!",
+            "Bloodhound Gloves | Charred",
+            "Hand Wraps | Badlands",
+            "Moto Gloves | Boom!",
+            "Bloodhound Gloves | Guerrilla",
+            "Moto Gloves | Eclipse",
+            "Driver Gloves | Convoy",
+            "Specialist Gloves | Forest DDPAT",
+            "Driver Gloves | Lunar Weave",
+            "Specialist Gloves | Emerald Web",
+            "Hand Wraps | Leather",
+            "Bloodhound Gloves | Bronzed",
+            "Driver Gloves | Crimson Weave",
+            "Driver Gloves | Diamondback",
+            "Specialist Gloves | Foundation",
+            "Moto Gloves | Cool Mint",
+            "Bloodhound Gloves | Snakebite",
+            "Sport Gloves | Pandora's Box",
+            "Sport Gloves | Arid",
+            "Sport Gloves | Superconductor",
+            "Sport Gloves | Hedge Maze",
+            "Specialist Gloves | Crimson Kimono",
+            "Moto Gloves | Spearmint",
+            "Hand Wraps | Slaughter",
+            "Hand Wraps | Spruce DDPAT",
         ]
         hydrag_added = 0
         for name in hydra_gloves:
@@ -2003,58 +2082,59 @@ def seed_data():
 
     # Spectrum Case skins and knives
     if spectrum:
-        print("Kontroluji/seeduji Spectrum Case skiny...")
-        spectrum_skins = [
-            # Covert
-            ("USP-S | Neo-Noir", "Covert"),
-            ("AK-47 | Bloodsport", "Covert"),
-            # Classified
-            ("CZ75-Auto | Xiangliu", "Classified"),
-            ("AWP | Fever Dream", "Classified"),
-            ("M4A1-S | Decimator", "Classified"),
-            # Restricted
-            ("Galil AR | Crimson Tsunami", "Restricted"),
-            ("MAC-10 | Last Dive", "Restricted"),
-            ("UMP-45 | Scaffold", "Restricted"),
-            ("XM1014 | Seasons", "Restricted"),
-            ("M249 | Emerald Poison Dart", "Restricted"),
-            # Mil-Spec
-            ("Desert Eagle | Oxide Blaze", "Mil-Spec"),
-            ("Five-SeveN | Capillary", "Mil-Spec"),
-            ("P250 | Ripple", "Mil-Spec"),
-            ("SCAR-20 | Blueprint", "Mil-Spec"),
-            ("PP-Bizon | Jungle Slipstream", "Mil-Spec"),
-            ("MP7 | Akoben", "Mil-Spec"),
-            ("Sawed-Off | Zander", "Mil-Spec"),
+        print("Kontroluji/seeduji Operation Hydra Case rukavice...")
+        hydra_gloves = [
+            "Bloodhound Gloves | Charred",
+            "Hand Wraps | Badlands",
+            "Moto Gloves | Boom!",
+            "Bloodhound Gloves | Guerrilla",
+            "Moto Gloves | Eclipse",
+            "Driver Gloves | Convoy",
+            "Specialist Gloves | Forest DDPAT",
+            "Driver Gloves | Lunar Weave",
+            "Specialist Gloves | Emerald Web",
+            "Hand Wraps | Leather",
+            "Bloodhound Gloves | Bronzed",
+            "Driver Gloves | Crimson Weave",
+            "Driver Gloves | Diamondback",
+            "Specialist Gloves | Foundation",
+            "Moto Gloves | Cool Mint",
+            "Bloodhound Gloves | Snakebite",
+            "Sport Gloves | Pandora's Box",
+            "Sport Gloves | Arid",
+            "Sport Gloves | Superconductor",
+            "Sport Gloves | Hedge Maze",
+            "Specialist Gloves | Crimson Kimono",
+            "Moto Gloves | Spearmint",
+            "Hand Wraps | Slaughter",
+            "Hand Wraps | Spruce DDPAT",
         ]
-        sp_added = 0
-        for name, rarity in spectrum_skins:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
-            if exists:
-                if exists.case_id != spectrum.item_id:
-                    exists.case_id = spectrum.item_id
+        hydrag_added = 0
+        for name in hydra_gloves:
+            base_slug = slugify(name)
+            per_case_slug = f"{base_slug}-{slugify(hydra.name)}"
+            exists_same_case = db.query(Item).filter(Item.slug == per_case_slug, Item.item_type == 'glove').first()
+            if exists_same_case:
                 continue
+            base_item = db.query(Item).filter(Item.slug == base_slug, Item.item_type == 'glove').first()
             itm = Item(
                 name=name,
-                item_type='skin',
-                rarity=rarity,
+                item_type='glove',
+                rarity='Glove',
                 wear=None,
                 wearValue=None,
                 pattern=None,
                 collection=None,
-                case_id=spectrum.item_id,
-                current_price=None,
-                slug=sl,
+                case_id=hydra.item_id,
+                current_price=(base_item.current_price if base_item and base_item.current_price is not None else None),
+                slug=per_case_slug,
             )
             db.add(itm)
-            sp_added += 1
-        if sp_added:
+            hydrag_added += 1
+        if hydrag_added:
             db.commit()
-            print(f"Přidáno Spectrum skinů: {sp_added}")
-
+            print(f"Přidáno Operation Hydra rukavic: {hydrag_added}")
         print("Kontroluji/seeduji Spectrum Case nože (stejné jako Spectrum 2)...")
-        # Reuse Spectrum 2 knife list
         spectrum_knives = [
             "Huntsman Knife | Marble Fade",
             "Falchion Knife | Marble Fade",
@@ -2116,27 +2196,22 @@ def seed_data():
     if glove_case:
         print("Kontroluji/seeduji Glove Case skiny...")
         glove_skins = [
-            # Pistole
-            ("USP-S | Cyrex", "Restricted"),
-            ("Dual Berettas | Royal Consorts", "Restricted"),
-            ("Glock-18 | Ironwork", "Mil-Spec"),
-            ("P2000 | Turf", "Mil-Spec"),
-            ("CZ75-Auto | Polymer", "Mil-Spec"),
-            # Rifles / Pušky
+            ("SSG 08 | Dragonfire", "Covert"),
             ("M4A4 | Buzz Kill", "Covert"),
             ("FAMAS | Mecha Industries", "Classified"),
-            ("M4A1-S | Flashback", "Restricted"),
-            ("Galil AR | Black Sand", "Mil-Spec"),
-            # Sniper Rifles
-            ("SSG 08 | Dragonfire", "Covert"),
-            ("G3SG1 | Stinger", "Restricted"),
-            # SMG
             ("P90 | Shallow Grave", "Classified"),
-            ("MP7 | Cirrus", "Mil-Spec"),
-            ("MP9 | Sand Scale", "Mil-Spec"),
-            # Shotguns
             ("Sawed-Off | Wasteland Princess", "Classified"),
+            ("USP-S | Cyrex", "Restricted"),
+            ("M4A1-S | Flashback", "Restricted"),
+            ("Dual Berettas | Royal Consorts", "Restricted"),
+            ("G3SG1 | Stinger", "Restricted"),
             ("Nova | Gila", "Restricted"),
+            ("Glock-18 | Ironwork", "Mil-Spec"),
+            ("MP7 | Cirrus", "Mil-Spec"),
+            ("P2000 | Turf", "Mil-Spec"),
+            ("Galil AR | Black Sand", "Mil-Spec"),
+            ("MP9 | Sand Scale", "Mil-Spec"),
+            ("CZ75-Auto | Polymer", "Mil-Spec"),
             ("MAG-7 | Sonar", "Mil-Spec"),
         ]
         gc_added = 0
@@ -2167,50 +2242,50 @@ def seed_data():
 
         print("Kontroluji/seeduji Glove Case rukavice (stejné jako Hydra)...")
         hydra_gloves = [
-            "Sport Gloves | Vice",
-            "Driver Gloves | Imperial Plaid",
-            "Moto Gloves | Polygon",
-            "Sport Gloves | Omega",
-            "Hand Wraps | Overprint",
-            "Driver Gloves | Racing Green",
-            "Sport Gloves | Bronze Morph",
-            "Hand Wraps | Cobalt Skulls",
-            "Hydra Gloves | Emerald",
-            "Hydra Gloves | Mangrove",
-            "Moto Gloves | Transport",
-            "Hydra Gloves | Case Hardened",
-            "Driver Gloves | Overtake",
-            "Sport Gloves | Amphibious",
-            "Moto Gloves | Turtle",
-            "Specialist Gloves | Mogul",
-            "Hand Wraps | Duct Tape",
-            "Driver Gloves | King Snake",
-            "Hydra Gloves | Rattler",
-            "Specialist Gloves | Buckshot",
-            "Specialist Gloves | Fade",
-            "Specialist Gloves | Crimson Web",
-            "Hand Wraps | Arboreal",
-            "Moto Gloves | POW!",
+            "Bloodhound Gloves | Charred",
+            "Hand Wraps | Badlands",
+            "Moto Gloves | Boom!",
+            "Bloodhound Gloves | Guerrilla",
+            "Moto Gloves | Eclipse",
+            "Driver Gloves | Convoy",
+            "Specialist Gloves | Forest DDPAT",
+            "Driver Gloves | Lunar Weave",
+            "Specialist Gloves | Emerald Web",
+            "Hand Wraps | Leather",
+            "Bloodhound Gloves | Bronzed",
+            "Driver Gloves | Crimson Weave",
+            "Driver Gloves | Diamondback",
+            "Specialist Gloves | Foundation",
+            "Moto Gloves | Cool Mint",
+            "Bloodhound Gloves | Snakebite",
+            "Sport Gloves | Pandora's Box",
+            "Sport Gloves | Arid",
+            "Sport Gloves | Superconductor",
+            "Sport Gloves | Hedge Maze",
+            "Specialist Gloves | Crimson Kimono",
+            "Moto Gloves | Spearmint",
+            "Hand Wraps | Slaughter",
+            "Hand Wraps | Spruce DDPAT",
         ]
         gcg_added = 0
         for name in hydra_gloves:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'glove').first()
-            if exists:
-                if exists.case_id != glove_case.item_id:
-                    exists.case_id = glove_case.item_id
+            base_slug = slugify(name)
+            per_case_slug = f"{base_slug}-{slugify(glove_case.name)}"
+            exists_same_case = db.query(Item).filter(Item.slug == per_case_slug, Item.item_type == 'glove').first()
+            if exists_same_case:
                 continue
+            base_item = db.query(Item).filter(Item.slug == base_slug, Item.item_type == 'glove').first()
             itm = Item(
                 name=name,
                 item_type='glove',
-                rarity='Knife/Glove',
+                rarity='Glove',
                 wear=None,
                 wearValue=None,
                 pattern=None,
                 collection=None,
                 case_id=glove_case.item_id,
-                current_price=None,
-                slug=sl,
+                current_price=(base_item.current_price if base_item and base_item.current_price is not None else None),
+                slug=per_case_slug,
             )
             db.add(itm)
             gcg_added += 1
