@@ -17,8 +17,6 @@ def slugify(name: str) -> str:
 def seed_data():
     db = SessionLocal()
 
-    # (Removed Doppler phase insertion guards per request; cleanup kept later.)
-
     # Market
     if not db.query(Market).first():
         print("Seeduji markety...")
@@ -27,15 +25,6 @@ def seed_data():
             Market(name="CSFloat", base_url="https://csfloat.com/item/")
         ])
         db.commit()
-
-    # User
-    user = db.query(User).filter(User.username == "student").first()
-    if not user:
-        print("Seeduji uživatele...")
-        user = User(username="student", email="student@vsb.cz", password_hash=hash_password("tajneheslo123"))
-        db.add(user)
-        db.commit()
-        db.refresh(user)
 
     # Cases (item_type='case')
     print("Kontroluji/seeduju case položky...")
@@ -234,7 +223,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='glove',
-                rarity='Knife/Glove',
+                rarity='Glove',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -253,20 +242,16 @@ def seed_data():
     if fever:
         print("Kontroluji/seeduji Fever Case skiny...")
         fever_skins = [
-            # Covert
             ("FAMAS | Bad Trip", "Covert"),
             ("AWP | Printstream", "Covert"),
-            # Classified
             ("AK-47 | Searing Rage", "Classified"),
             ("Glock-18 | Shinobu", "Classified"),
             ("UMP-45 | K.O. Factory", "Classified"),
-            # Restricted
             ("Desert Eagle | Serpent Strike", "Restricted"),
             ("Zeus x27 | Tosai", "Restricted"),
             ("Galil AR | Control", "Restricted"),
             ("P90 | Wave Breaker", "Restricted"),
             ("Nova | Rising Sun", "Restricted"),
-            # Mil-Spec
             ("USP-S | PC-GRN", "Mil-spec"),
             ("M4A4 | Choppa", "Mil-spec"),
             ("SSG 08 | Memorial", "Mil-spec"),
@@ -364,34 +349,62 @@ def seed_data():
     if fracture:
         print("Kontroluji/seeduji Fracture Case nože...")
         fracture_knives = [
-            # Skeleton Knife variants
-            "Skeleton Knife | Doppler",
-            "Skeleton Knife | Tiger Tooth",
-            "Skeleton Knife | Marble Fade",
-            "Skeleton Knife | Damascus Steel",
-            "Skeleton Knife | Ultraviolet",
-            "Skeleton Knife | Rust Coat",
-            # Survival Knife variants
-            "Survival Knife | Doppler",
-            "Survival Knife | Tiger Tooth",
-            "Survival Knife | Marble Fade",
-            "Survival Knife | Damascus Steel",
-            "Survival Knife | Ultraviolet",
-            "Survival Knife | Rust Coat",
-            # Paracord Knife variants
-            "Paracord Knife | Doppler",
-            "Paracord Knife | Tiger Tooth",
-            "Paracord Knife | Marble Fade",
-            "Paracord Knife | Damascus Steel",
-            "Paracord Knife | Ultraviolet",
-            "Paracord Knife | Rust Coat",
-            # Nomad Knife variants
-            "Nomad Knife | Doppler",
-            "Nomad Knife | Tiger Tooth",
-            "Nomad Knife | Marble Fade",
-            "Nomad Knife | Damascus Steel",
-            "Nomad Knife | Ultraviolet",
-            "Nomad Knife | Rust Coat",
+            
+            "Skeleton Knife | Slaughter",
+            "Skeleton Knife | Vanilla",
+            "Skeleton Knife | Stained",
+            "Skeleton Knife | Crimson Web",
+            "Skeleton Knife | Case Hardened",
+            "Skeleton Knife | Fade",
+            "Skeleton Knife | Blue Steel",
+            "Skeleton Knife | Night Stripe",
+            "Skeleton Knife | Urban Masked",
+            "Skeleton Knife | Forest DDPAT",
+            "Skeleton Knife | Boreal Forest",
+            "Skeleton Knife | Safari Mesh",
+            "Skeleton Knife | Scorched",
+            
+            "Nomad Knife | Slaughter",
+            "Nomad Knife | Vanilla",
+            "Nomad Knife | Stained",
+            "Nomad Knife | Crimson Web",
+            "Nomad Knife | Case Hardened",
+            "Nomad Knife | Fade",
+            "Nomad Knife | Blue Steel",
+            "Nomad Knife | Night Stripe",
+            "Nomad Knife | Urban Masked",
+            "Nomad Knife | Forest DDPAT",
+            "Nomad Knife | Boreal Forest",
+            "Nomad Knife | Safari Mesh",
+            "Nomad Knife | Scorched",
+
+            "Survival Knife | Slaughter",
+            "Survival Knife | Vanilla",
+            "Survival Knife | Stained",
+            "Survival Knife | Crimson Web",
+            "Survival Knife | Case Hardened",
+            "Survival Knife | Fade",
+            "Survival Knife | Blue Steel",
+            "Survival Knife | Night Stripe",
+            "Survival Knife | Urban Masked",
+            "Survival Knife | Forest DDPAT",
+            "Survival Knife | Boreal Forest",
+            "Survival Knife | Safari Mesh",
+            "Survival Knife | Scorched",
+
+            "Paracord Knife | Slaughter",
+            "Paracord Knife | Vanilla",
+            "Paracord Knife | Stained",
+            "Paracord Knife | Crimson Web",
+            "Paracord Knife | Case Hardened",
+            "Paracord Knife | Fade",
+            "Paracord Knife | Blue Steel",
+            "Paracord Knife | Night Stripe",
+            "Paracord Knife | Urban Masked",
+            "Paracord Knife | Forest DDPAT",
+            "Paracord Knife | Boreal Forest",
+            "Paracord Knife | Safari Mesh",
+            "Paracord Knife | Scorched",
         ]
         fr_added = 0
         for name in fracture_knives:
@@ -418,71 +431,6 @@ def seed_data():
         if fr_added:
             db.commit()
             print(f"Přidáno Fracture nožů: {fr_added}")
-
-    # Utility: mirror a knife pool into multiple cases without overwriting original linkage.
-    def mirror_knives_to_cases(pool_names: list[str], target_cases: list[Item]):
-        created_total = 0
-        for case in target_cases:
-            case_created = 0
-            for name in pool_names:
-                base_slug = slugify(name)
-                per_case_slug = f"{base_slug}-{slugify(case.name)}"
-                exists_same_case = db.query(Item).filter(Item.slug == per_case_slug, Item.item_type == 'knife').first()
-                if exists_same_case:
-                    continue
-                base_item = db.query(Item).filter(Item.slug == base_slug, Item.item_type == 'knife').first()
-                itm = Item(
-                    name=name,
-                    item_type='knife',
-                    rarity='Knife',
-                    wear=None,
-                    wearValue=None,
-                    pattern=None,
-                    collection=None,
-                    case_id=case.item_id,
-                    current_price=(base_item.current_price if base_item and base_item.current_price is not None else None),
-                    slug=per_case_slug,
-                )
-                db.add(itm)
-                case_created += 1
-                created_total += 1
-            if case_created:
-                db.commit()
-                print(f"Mirrored {case_created} knives into case: {case.name}")
-        if created_total:
-            print(f"Total mirrored knives created: {created_total}")
-
-    # Apply mirroring for legacy cases that should share the same knife pool
-    revolver_case = db.query(Item).filter(Item.slug == slugify("Revolver Case"), Item.item_type == 'case').first()
-    shattered_web_pool = [
-        "Skeleton Knife | Doppler",
-        "Skeleton Knife | Tiger Tooth",
-        "Skeleton Knife | Marble Fade",
-        "Skeleton Knife | Damascus Steel",
-        "Skeleton Knife | Ultraviolet",
-        "Skeleton Knife | Rust Coat",
-        "Survival Knife | Doppler",
-        "Survival Knife | Tiger Tooth",
-        "Survival Knife | Marble Fade",
-        "Survival Knife | Damascus Steel",
-        "Survival Knife | Ultraviolet",
-        "Survival Knife | Rust Coat",
-        "Paracord Knife | Doppler",
-        "Paracord Knife | Tiger Tooth",
-        "Paracord Knife | Marble Fade",
-        "Paracord Knife | Damascus Steel",
-        "Paracord Knife | Ultraviolet",
-        "Paracord Knife | Rust Coat",
-        "Nomad Knife | Doppler",
-        "Nomad Knife | Tiger Tooth",
-        "Nomad Knife | Marble Fade",
-        "Nomad Knife | Damascus Steel",
-        "Nomad Knife | Ultraviolet",
-        "Nomad Knife | Rust Coat",
-    ]
-    targets = [c for c in [fracture, revolver_case] if c]
-    if targets:
-        mirror_knives_to_cases(shattered_web_pool, targets)
 
     # Gallery Case skins
     if gallery:
@@ -772,6 +720,60 @@ def seed_data():
             db.commit()
             print(f"Přidáno Recoil skinů: {r_added}")
 
+        # Recoil Case gloves
+        print("Kontroluji/seeduji Recoil Case rukavice...")
+        recoil_gloves = [
+                "Broken Fang Gloves | Jade",
+                "Broken Fang Gloves | Needle Point",
+                "Broken Fang Gloves | Unhinged",
+                "Broken Fang Gloves | Yellow-banded",
+                "Driver Gloves | Black Tie",
+                "Driver Gloves | Queen Jaguar",
+                "Driver Gloves | Rezan the Red",
+                "Driver Gloves | Snow Leopard",
+                "Hand Wraps | CAUTION!",
+                "Hand Wraps | Constrictor",
+                "Hand Wraps | Desert Shamagh",
+                "Hand Wraps | Giraffe",
+                "Moto Gloves | 3rd Commando Company",
+                "Moto Gloves | Blood Pressure",
+                "Moto Gloves | Finish Line",
+                "Moto Gloves | Smoke Out",
+                "Specialist Gloves | Field Agent",
+                "Specialist Gloves | Lt. Commander",
+                "Specialist Gloves | Marble Fade",
+                "Specialist Gloves | Tiger Strike",
+                "Sport Gloves | Big Game",
+                "Sport Gloves | Nocts",
+                "Sport Gloves | Scarlet Shamagh",
+                "Sport Gloves | Slingshot",
+        ]
+        rg_added = 0
+        for name in recoil_gloves:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'glove').first()
+            if exists:
+                if exists.case_id != recoil.item_id:
+                    exists.case_id = recoil.item_id
+                continue
+            itm = Item(
+                name=name,
+                item_type='glove',
+                rarity='Glove',
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=recoil.item_id,
+                current_price=None,
+                slug=sl,
+            )
+            db.add(itm)
+            rg_added += 1
+        if rg_added:
+            db.commit()
+            print(f"Přidáno Recoil rukavic: {rg_added}")
+            
     # Dreams & Nightmares Case skins
     if dreams:
         print("Kontroluji/seeduji Dreams & Nightmares Case skiny...")
@@ -851,6 +853,7 @@ def seed_data():
             ("Shadow Daggers | Gamma Doppler"),
             ("Shadow Daggers | Lore"),
             ("Shadow Daggers | Freehand"),
+            ("Shadow Daggers | Bright Water"),
             ("Shadow Daggers | Black Laminate"),
             ("Shadow Daggers | Autotronic"),
             # Huntsman Knife
@@ -872,7 +875,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='knife',
-                rarity='Covert',
+                rarity='Knife',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -966,6 +969,7 @@ def seed_data():
             ("Shadow Daggers | Gamma Doppler"),
             ("Shadow Daggers | Lore"),
             ("Shadow Daggers | Freehand"),
+            ("Shadow Daggers | Bright Water"),
             ("Shadow Daggers | Black Laminate"),
             ("Shadow Daggers | Autotronic"),
             # Huntsman Knife
@@ -987,7 +991,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='knife',
-                rarity='Covert',
+                rarity='Knife',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -1002,103 +1006,6 @@ def seed_data():
             db.commit()
             print(f"Přidáno Operation Riptide nožů: {rk_added}")
 
-    # Fracture Case skins
-    if fracture:
-        print("Kontroluji/seeduji Fracture Case skiny...")
-        fracture_skins = [
-            # Covert
-            ("AK-47 | Legion of Anubis", "Covert"),
-            ("Desert Eagle | Printstream", "Covert"),
-            # Classified
-            ("M4A4 | Tooth Fairy", "Classified"),
-            ("Glock-18 | Vogue", "Classified"),
-            ("XM1014 | Entombed", "Classified"),
-            # Restricted
-            ("MAG-7 | Monster Call", "Restricted"),
-            ("Galil AR | Connexion", "Restricted"),
-            ("MAC-10 | Allure", "Restricted"),
-            ("Tec-9 | Brother", "Restricted"),
-            ("MP5-SD | Kitbash", "Restricted"),
-            # Mil-Spec
-            ("P250 | Cassette", "Mil-spec"),
-            ("SSG 08 | Mainframe 001", "Mil-spec"),
-            ("SG 553 | Ol' Rusty", "Mil-spec"),
-            ("PP-Bizon | Runic", "Mil-spec"),
-            ("P2000 | Gnarled", "Mil-spec"),
-            ("P90 | Freight", "Mil-spec"),
-            ("Negev | Ultralight", "Mil-spec"),
-        ]
-        fr_added = 0
-        for name, rarity in fracture_skins:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
-            if exists:
-                if exists.case_id != fracture.item_id:
-                    exists.case_id = fracture.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='skin',
-                rarity=rarity,
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=fracture.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            fr_added += 1
-        if fr_added:
-            db.commit()
-            print(f"Přidáno Fracture skinů: {fr_added}")
-
-        print("Kontroluji/seeduji Fracture Case nože...")
-        fracture_knives = [
-            ("Skeleton Knife | Slaughter"),
-            ("Skeleton Knife | Vanilla"),
-            ("Skeleton Knife | Stained"),
-            ("Paracord Knife | Vanilla"),
-            ("Nomad Knife | Vanilla"),
-            ("Skeleton Knife | Crimson Web"),
-            ("Skeleton Knife | Case Hardened"),
-            ("Paracord Knife | Case Hardened"),
-            ("Paracord Knife | Urban Masked"),
-            ("Skeleton Knife | Urban Masked"),
-            ("Nomad Knife | Fade"),
-            ("Paracord Knife | Safari Mesh"),
-            ("Survival Knife | Fade"),
-            ("Nomad Knife | Crimson Web"),
-            ("Survival Knife | Vanilla"),
-            ("Paracord Knife | Crimson Web"),
-            ("Nomad Knife | Forest DDPAT"),
-        ]
-        fk_added = 0
-        for name in fracture_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != fracture.item_id:
-                    exists.case_id = fracture.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=fracture.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            fk_added += 1
-        if fk_added:
-            db.commit()
-            print(f"Přidáno Fracture nožů: {fk_added}")
 
     # Prisma 2 Case skins
     if prisma2:
@@ -1157,28 +1064,34 @@ def seed_data():
             # Talon / Stiletto / Ursus / Navaja variants
             "Talon Knife | Marble Fade",
             "Talon Knife | Ultraviolet",
-            "Stiletto Knife | Tiger Tooth",
-            "Ursus Knife | Doppler",
             "Talon Knife | Damascus Steel",
             "Talon Knife | Tiger Tooth",
+            "Talon Knife | Rust Coat",
+            "Talon Knife | Doppler",
+
+            "Stiletto Knife | Ultraviolet",
+            "Stiletto Knife | Rust Coat",
             "Stiletto Knife | Damascus Steel",
             "Stiletto Knife | Marble Fade",
-            "Stiletto Knife | Ultraviolet",
-            "Talon Knife | Rust Coat",
+            "Stiletto Knife | Tiger Tooth",
+            "Stiletto Knife | Doppler",
+           
+            "Ursus Knife | Doppler",
             "Ursus Knife | Tiger Tooth",
-            "Stiletto Knife | Rust Coat",
             "Ursus Knife | Damascus Steel",
+            "Ursus Knife | Ultraviolet",
+            "Ursus Knife | Rust Coat",
+            "Ursus Knife | Marble Fade",
+
+
             "Navaja Knife | Ultraviolet",
             "Navaja Knife | Doppler",
             "Navaja Knife | Rust Coat",
             "Navaja Knife | Marble Fade",
-            "Stiletto Knife | Doppler",
-            "Ursus Knife | Ultraviolet",
-            "Ursus Knife | Rust Coat",
             "Navaja Knife | Tiger Tooth",
             "Navaja Knife | Damascus Steel",
-            "Ursus Knife | Marble Fade",
-            "Talon Knife | Doppler",
+            
+            
         ]
         p2k_added = 0
         for name in prisma2_knives:
@@ -1263,20 +1176,58 @@ def seed_data():
             "Skeleton Knife | Slaughter",
             "Skeleton Knife | Vanilla",
             "Skeleton Knife | Stained",
-            "Paracord Knife | Vanilla",
-            "Nomad Knife | Vanilla",
             "Skeleton Knife | Crimson Web",
             "Skeleton Knife | Case Hardened",
-            "Paracord Knife | Case Hardened",
-            "Paracord Knife | Urban Masked",
+            "Skeleton Knife | Fade",
+            "Skeleton Knife | Blue Steel",
+            "Skeleton Knife | Night Stripe",
             "Skeleton Knife | Urban Masked",
-            "Nomad Knife | Fade",
-            "Paracord Knife | Safari Mesh",
-            "Survival Knife | Fade",
+            "Skeleton Knife | Forest DDPAT",
+            "Skeleton Knife | Boreal Forest",
+            "Skeleton Knife | Safari Mesh",
+            "Skeleton Knife | Scorched",
+            
+            "Nomad Knife | Slaughter",
+            "Nomad Knife | Vanilla",
+            "Nomad Knife | Stained",
             "Nomad Knife | Crimson Web",
-            "Survival Knife | Vanilla",
-            "Paracord Knife | Crimson Web",
+            "Nomad Knife | Case Hardened",
+            "Nomad Knife | Fade",
+            "Nomad Knife | Blue Steel",
+            "Nomad Knife | Night Stripe",
+            "Nomad Knife | Urban Masked",
             "Nomad Knife | Forest DDPAT",
+            "Nomad Knife | Boreal Forest",
+            "Nomad Knife | Safari Mesh",
+            "Nomad Knife | Scorched",
+
+            "Survival Knife | Slaughter",
+            "Survival Knife | Vanilla",
+            "Survival Knife | Stained",
+            "Survival Knife | Crimson Web",
+            "Survival Knife | Case Hardened",
+            "Survival Knife | Fade",
+            "Survival Knife | Blue Steel",
+            "Survival Knife | Night Stripe",
+            "Survival Knife | Urban Masked",
+            "Survival Knife | Forest DDPAT",
+            "Survival Knife | Boreal Forest",
+            "Survival Knife | Safari Mesh",
+            "Survival Knife | Scorched",
+
+            "Paracord Knife | Slaughter",
+            "Paracord Knife | Vanilla",
+            "Paracord Knife | Stained",
+            "Paracord Knife | Crimson Web",
+            "Paracord Knife | Case Hardened",
+            "Paracord Knife | Fade",
+            "Paracord Knife | Blue Steel",
+            "Paracord Knife | Night Stripe",
+            "Paracord Knife | Urban Masked",
+            "Paracord Knife | Forest DDPAT",
+            "Paracord Knife | Boreal Forest",
+            "Paracord Knife | Safari Mesh",
+            "Paracord Knife | Scorched",
         ]
         swk_added = 0
         for name in sw_knives:
@@ -1452,31 +1403,34 @@ def seed_data():
 
         print("Kontroluji/seeduji Prisma Case nože (stejné jako Prisma 2)...")
         prisma_knives = [
-            # Mirror Prisma 2 Talon/Stiletto/Ursus/Navaja pool
             "Talon Knife | Marble Fade",
             "Talon Knife | Ultraviolet",
-            "Stiletto Knife | Tiger Tooth",
-            "Ursus Knife | Doppler",
             "Talon Knife | Damascus Steel",
             "Talon Knife | Tiger Tooth",
+            "Talon Knife | Rust Coat",
+            "Talon Knife | Doppler",
+
+            "Stiletto Knife | Ultraviolet",
+            "Stiletto Knife | Rust Coat",
             "Stiletto Knife | Damascus Steel",
             "Stiletto Knife | Marble Fade",
-            "Stiletto Knife | Ultraviolet",
-            "Talon Knife | Rust Coat",
+            "Stiletto Knife | Tiger Tooth",
+            "Stiletto Knife | Doppler",
+           
+            "Ursus Knife | Doppler",
             "Ursus Knife | Tiger Tooth",
-            "Stiletto Knife | Rust Coat",
             "Ursus Knife | Damascus Steel",
+            "Ursus Knife | Ultraviolet",
+            "Ursus Knife | Rust Coat",
+            "Ursus Knife | Marble Fade",
+
+
             "Navaja Knife | Ultraviolet",
             "Navaja Knife | Doppler",
             "Navaja Knife | Rust Coat",
             "Navaja Knife | Marble Fade",
-            "Stiletto Knife | Doppler",
-            "Ursus Knife | Ultraviolet",
-            "Ursus Knife | Rust Coat",
             "Navaja Knife | Tiger Tooth",
             "Navaja Knife | Damascus Steel",
-            "Ursus Knife | Marble Fade",
-            "Talon Knife | Doppler",
         ]
         prk_added = 0
         for name in prisma_knives:
@@ -1562,49 +1516,57 @@ def seed_data():
             "Talon Knife | Fade",
             "Talon Knife | Stained",
             "Talon Knife | Blue Steel",
-            "Stiletto Knife | Crimson Web",
-            "Talon Knife | Vanilla",
-            "Navaja Knife | Urban Masked",
-            "Ursus Knife | Vanilla",
-            "Talon Knife | Forest DDPAT",
-            "Navaja Knife | Vanilla",
-            "Navaja Knife | Safari Mesh",
-            "Stiletto Knife | Slaughter",
-            "Talon Knife | Urban Masked",
-            "Stiletto Knife | Blue Steel",
             "Talon Knife | Boreal Forest",
             "Talon Knife | Safari Mesh",
             "Talon Knife | Night Stripe",
-            "Stiletto Knife | Case Hardened",
-            "Stiletto Knife | Stained",
-            "Ursus Knife | Scorched",
-            "Navaja Knife | Forest DDPAT",
-            "Ursus Knife | Case Hardened",
-            "Ursus Knife | Stained",
-            "Stiletto Knife | Forest DDPAT",
-            "Stiletto Knife | Boreal Forest",
-            "Ursus Knife | Boreal Forest",
-            "Stiletto Knife | Safari Mesh",
-            "Navaja Knife | Crimson Web",
-            "Navaja Knife | Scorched",
+            "Talon Knife | Forest DDPAT",
+            "Talon Knife | Vanilla",
             "Talon Knife | Scorched",
-            "Navaja Knife | Stained",
-            "Navaja Knife | Night Stripe",
-            "Ursus Knife | Forest DDPAT",
             "Talon Knife | Slaughter",
-            "Stiletto Knife | Urban Masked",
-            "Ursus Knife | Blue Steel",
-            "Stiletto Knife | Scorched",
-            "Ursus Knife | Urban Masked",
-            "Ursus Knife | Safari Mesh",
-            "Navaja Knife | Case Hardened",
-            "Ursus Knife | Fade",
+            "Talon Knife | Crimson Web",
+            "Talon Knife | Urban Masked",
+
+            "Stiletto Knife | Crimson Web",
+            "Stiletto Knife | Vanilla",
+            "Stiletto Knife | Case Hardened",
             "Stiletto Knife | Fade",
-            "Navaja Knife | Blue Steel",
-            "Navaja Knife | Boreal Forest",
+            "Stiletto Knife | Stained",
+            "Stiletto Knife | Blue Steel",
+            "Stiletto Knife | Boreal Forest",
+            "Stiletto Knife | Safari Mesh",
             "Stiletto Knife | Night Stripe",
+            "Stiletto Knife | Forest DDPAT",
+            "Stiletto Knife | Scorched",
+            "Stiletto Knife | Slaughter",
+            "Stiletto Knife | Urban Masked",
+
+            "Ursus Knife | Slaughter",
+            "Ursus Knife | Vanilla",
+            "Ursus Knife | Case Hardened",
+            "Ursus Knife | Fade",
+            "Ursus Knife | Stained",
+            "Ursus Knife | Blue Steel",
+            "Ursus Knife | Boreal Forest",
+            "Ursus Knife | Safari Mesh",
             "Ursus Knife | Night Stripe",
             "Ursus Knife | Crimson Web",
+            "Ursus Knife | Urban Masked",
+            "Ursus Knife | Forest DDPAT",
+            "Ursus Knife | Scorched",
+
+            "Navaja Knife | Slaughter",
+            "Navaja Knife | Vanilla",
+            "Navaja Knife | Case Hardened",
+            "Navaja Knife | Fade",
+            "Navaja Knife | Stained",
+            "Navaja Knife | Blue Steel",
+            "Navaja Knife | Boreal Forest",
+            "Navaja Knife | Safari Mesh",
+            "Navaja Knife | Night Stripe",
+            "Navaja Knife | Crimson Web",
+            "Navaja Knife | Scorched",
+            "Navaja Knife | Urban Masked",
+            "Navaja Knife | Forest DDPAT",
         ]
         dzk_added = 0
         for name in dz_knives:
@@ -1690,49 +1652,57 @@ def seed_data():
             "Talon Knife | Fade",
             "Talon Knife | Stained",
             "Talon Knife | Blue Steel",
-            "Stiletto Knife | Crimson Web",
-            "Talon Knife | Vanilla",
-            "Navaja Knife | Urban Masked",
-            "Ursus Knife | Vanilla",
-            "Talon Knife | Forest DDPAT",
-            "Navaja Knife | Vanilla",
-            "Navaja Knife | Safari Mesh",
-            "Stiletto Knife | Slaughter",
-            "Talon Knife | Urban Masked",
-            "Stiletto Knife | Blue Steel",
             "Talon Knife | Boreal Forest",
             "Talon Knife | Safari Mesh",
             "Talon Knife | Night Stripe",
-            "Stiletto Knife | Case Hardened",
-            "Stiletto Knife | Stained",
-            "Ursus Knife | Scorched",
-            "Navaja Knife | Forest DDPAT",
-            "Ursus Knife | Case Hardened",
-            "Ursus Knife | Stained",
-            "Stiletto Knife | Forest DDPAT",
-            "Stiletto Knife | Boreal Forest",
-            "Ursus Knife | Boreal Forest",
-            "Stiletto Knife | Safari Mesh",
-            "Navaja Knife | Crimson Web",
-            "Navaja Knife | Scorched",
+            "Talon Knife | Forest DDPAT",
+            "Talon Knife | Vanilla",
             "Talon Knife | Scorched",
-            "Navaja Knife | Stained",
-            "Navaja Knife | Night Stripe",
-            "Ursus Knife | Forest DDPAT",
             "Talon Knife | Slaughter",
-            "Stiletto Knife | Urban Masked",
-            "Ursus Knife | Blue Steel",
-            "Stiletto Knife | Scorched",
-            "Ursus Knife | Urban Masked",
-            "Ursus Knife | Safari Mesh",
-            "Navaja Knife | Case Hardened",
-            "Ursus Knife | Fade",
+            "Talon Knife | Crimson Web",
+            "Talon Knife | Urban Masked",
+
+            "Stiletto Knife | Crimson Web",
+            "Stiletto Knife | Vanilla",
+            "Stiletto Knife | Case Hardened",
             "Stiletto Knife | Fade",
-            "Navaja Knife | Blue Steel",
-            "Navaja Knife | Boreal Forest",
+            "Stiletto Knife | Stained",
+            "Stiletto Knife | Blue Steel",
+            "Stiletto Knife | Boreal Forest",
+            "Stiletto Knife | Safari Mesh",
             "Stiletto Knife | Night Stripe",
+            "Stiletto Knife | Forest DDPAT",
+            "Stiletto Knife | Scorched",
+            "Stiletto Knife | Slaughter",
+            "Stiletto Knife | Urban Masked",
+
+            "Ursus Knife | Slaughter",
+            "Ursus Knife | Vanilla",
+            "Ursus Knife | Case Hardened",
+            "Ursus Knife | Fade",
+            "Ursus Knife | Stained",
+            "Ursus Knife | Blue Steel",
+            "Ursus Knife | Boreal Forest",
+            "Ursus Knife | Safari Mesh",
             "Ursus Knife | Night Stripe",
             "Ursus Knife | Crimson Web",
+            "Ursus Knife | Urban Masked",
+            "Ursus Knife | Forest DDPAT",
+            "Ursus Knife | Scorched",
+
+            "Navaja Knife | Slaughter",
+            "Navaja Knife | Vanilla",
+            "Navaja Knife | Case Hardened",
+            "Navaja Knife | Fade",
+            "Navaja Knife | Stained",
+            "Navaja Knife | Blue Steel",
+            "Navaja Knife | Boreal Forest",
+            "Navaja Knife | Safari Mesh",
+            "Navaja Knife | Night Stripe",
+            "Navaja Knife | Crimson Web",
+            "Navaja Knife | Scorched",
+            "Navaja Knife | Urban Masked",
+            "Navaja Knife | Forest DDPAT",
         ]
         hzk_added = 0
         for name in horizon_knives:
@@ -1815,29 +1785,36 @@ def seed_data():
         print("Kontroluji/seeduji Clutch Case rukavice (stejné jako Revolution)...")
         clutch_gloves = [
             "Sport Gloves | Vice",
-            "Driver Gloves | Imperial Plaid",
-            "Moto Gloves | Polygon",
             "Sport Gloves | Omega",
-            "Hand Wraps | Overprint",
-            "Driver Gloves | Racing Green",
-            "Sport Gloves | Bronze Morph",
-            "Hand Wraps | Cobalt Skulls",
-            "Hydra Gloves | Emerald",
-            "Hydra Gloves | Mangrove",
-            "Moto Gloves | Transport",
-            "Hydra Gloves | Case Hardened",
-            "Driver Gloves | Overtake",
             "Sport Gloves | Amphibious",
-            "Moto Gloves | Turtle",
-            "Specialist Gloves | Mogul",
-            "Hand Wraps | Duct Tape",
-            "Driver Gloves | King Snake",
-            "Hydra Gloves | Rattler",
+            "Sport Gloves | Bronze Morph",
+
             "Specialist Gloves | Buckshot",
             "Specialist Gloves | Fade",
             "Specialist Gloves | Crimson Web",
+            "Specialist Gloves | Mogul",
+
+            "Hydra Gloves | Emerald",
+            "Hydra Gloves | Mangrove",
+            "Hydra Gloves | Rattler",
+            "Hydra Gloves | Case Hardened",
+            
             "Hand Wraps | Arboreal",
+            "Hand Wraps | Duct Tape",
+            "Hand Wraps | Cobalt Skulls",
+            "Hand Wraps | Overprint",
+
             "Moto Gloves | POW!",
+            "Moto Gloves | Polygon",
+            "Moto Gloves | Transport",
+            "Moto Gloves | Turtle",
+            
+
+            "Driver Gloves | Imperial Plaid",
+            "Driver Gloves | King Snake",
+            "Driver Gloves | Overtake",
+            "Driver Gloves | Racing Green",
+            
         ]
         clg_added = 0
         for name in clutch_gloves:
@@ -1850,7 +1827,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='glove',
-                rarity='Knife/Glove',
+                rarity='Glove',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -1919,35 +1896,41 @@ def seed_data():
 
         print("Kontroluji/seeduji Spectrum 2 Case nože...")
         sp2_knives = [
-            "Huntsman Knife | Marble Fade",
-            "Falchion Knife | Marble Fade",
-            "Bowie Knife | Doppler",
             "Butterfly Knife | Tiger Tooth",
-            "Falchion Knife | Doppler",
-            "Shadow Daggers | Marble Fade",
             "Butterfly Knife | Rust Coat",
-            "Bowie Knife | Marble Fade",
-            "Falchion Knife | Damascus Steel",
+            "Butterfly Knife | Ultraviolet",
+            "Butterfly Knife | Damascus Steel",
+            "Butterfly Knife | Doppler",
+            "Butterfly Knife | Marble Fade",
+
+            "Huntsman Knife | Marble Fade",
             "Huntsman Knife | Tiger Tooth",
             "Huntsman Knife | Doppler",
+            "Huntsman Knife | Ultraviolet",
+            "Huntsman Knife | Damascus Steel",
+            "Huntsman Knife | Rust Coat",
+
+            "Bowie Knife | Doppler",
+            "Bowie Knife | Marble Fade",
+            "Bowie Knife | Tiger Tooth",
+            "Bowie Knife | Rust Coat",
+            "Bowie Knife | Ultraviolet",
+            "Bowie Knife | Damascus Steel",
+
+            "Falchion Knife | Marble Fade",
+            "Falchion Knife | Doppler",
+            "Falchion Knife | Damascus Steel",
             "Falchion Knife | Tiger Tooth",
-            "Butterfly Knife | Ultraviolet",
+            "Falchion Knife | Rust Coat",
+            "Falchion Knife | Ultraviolet",
+
+            "Shadow Daggers | Marble Fade",
             "Shadow Daggers | Damascus Steel",
             "Shadow Daggers | Tiger Tooth",
-            "Bowie Knife | Tiger Tooth",
-            "Falchion Knife | Rust Coat",
-            "Huntsman Knife | Ultraviolet",
             "Shadow Daggers | Doppler",
-            "Bowie Knife | Rust Coat",
             "Shadow Daggers | Ultraviolet",
-            "Huntsman Knife | Damascus Steel",
-            "Falchion Knife | Ultraviolet",
-            "Bowie Knife | Ultraviolet",
             "Shadow Daggers | Rust Coat",
-            "Butterfly Knife | Damascus Steel",
-            "Huntsman Knife | Rust Coat",
-            "Bowie Knife | Damascus Steel",
-            "Butterfly Knife | Doppler",
+
         ]
         sp2k_added = 0
         for name in sp2_knives:
@@ -1960,7 +1943,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='knife',
-                rarity='Covert',
+                rarity='Knife',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -2029,30 +2012,36 @@ def seed_data():
 
         print("Kontroluji/seeduji Operation Hydra Case rukavice...")
         hydra_gloves = [
-            "Bloodhound Gloves | Charred",
-            "Hand Wraps | Badlands",
-            "Moto Gloves | Boom!",
-            "Bloodhound Gloves | Guerrilla",
-            "Moto Gloves | Eclipse",
-            "Driver Gloves | Convoy",
-            "Specialist Gloves | Forest DDPAT",
-            "Driver Gloves | Lunar Weave",
-            "Specialist Gloves | Emerald Web",
-            "Hand Wraps | Leather",
-            "Bloodhound Gloves | Bronzed",
-            "Driver Gloves | Crimson Weave",
-            "Driver Gloves | Diamondback",
-            "Specialist Gloves | Foundation",
-            "Moto Gloves | Cool Mint",
-            "Bloodhound Gloves | Snakebite",
-            "Sport Gloves | Pandora's Box",
-            "Sport Gloves | Arid",
-            "Sport Gloves | Superconductor",
-            "Sport Gloves | Hedge Maze",
-            "Specialist Gloves | Crimson Kimono",
-            "Moto Gloves | Spearmint",
-            "Hand Wraps | Slaughter",
-            "Hand Wraps | Spruce DDPAT",
+                "Bloodhound Gloves | Bronzed",
+                "Bloodhound Gloves | Charred",
+                "Bloodhound Gloves | Guerrilla",
+                "Bloodhound Gloves | Snakebite",
+
+                "Driver Gloves | Convoy",
+                "Driver Gloves | Crimson Weave",
+                "Driver Gloves | Diamondback",
+                "Driver Gloves | Lunar Weave",
+
+                "Hand Wraps | Badlands",
+                "Hand Wraps | Leather",
+                "Hand Wraps | Slaughter",
+                "Hand Wraps | Spruce DDPAT",
+
+                "Moto Gloves | Boom!",
+                "Moto Gloves | Cool Mint",
+                "Moto Gloves | Eclipse",
+                "Moto Gloves | Spearmint",
+
+                "Specialist Gloves | Crimson Kimono",
+                "Specialist Gloves | Emerald Web",
+                "Specialist Gloves | Forest DDPAT",
+                "Specialist Gloves | Foundation",
+
+                "Sport Gloves | Arid",
+                "Sport Gloves | Hedge Maze",
+                "Sport Gloves | Pandora's Box",
+                "Sport Gloves | Superconductor",
+
         ]
         hydrag_added = 0
         for name in hydra_gloves:
@@ -2065,7 +2054,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='glove',
-                rarity='Knife/Glove',
+                rarity='Glove',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -2082,89 +2071,91 @@ def seed_data():
 
     # Spectrum Case skins and knives
     if spectrum:
-        print("Kontroluji/seeduji Operation Hydra Case rukavice...")
-        hydra_gloves = [
-            "Bloodhound Gloves | Charred",
-            "Hand Wraps | Badlands",
-            "Moto Gloves | Boom!",
-            "Bloodhound Gloves | Guerrilla",
-            "Moto Gloves | Eclipse",
-            "Driver Gloves | Convoy",
-            "Specialist Gloves | Forest DDPAT",
-            "Driver Gloves | Lunar Weave",
-            "Specialist Gloves | Emerald Web",
-            "Hand Wraps | Leather",
-            "Bloodhound Gloves | Bronzed",
-            "Driver Gloves | Crimson Weave",
-            "Driver Gloves | Diamondback",
-            "Specialist Gloves | Foundation",
-            "Moto Gloves | Cool Mint",
-            "Bloodhound Gloves | Snakebite",
-            "Sport Gloves | Pandora's Box",
-            "Sport Gloves | Arid",
-            "Sport Gloves | Superconductor",
-            "Sport Gloves | Hedge Maze",
-            "Specialist Gloves | Crimson Kimono",
-            "Moto Gloves | Spearmint",
-            "Hand Wraps | Slaughter",
-            "Hand Wraps | Spruce DDPAT",
+        print("Kontroluji/seeduji Spectrum Case skiny...")
+        sp_skins = [
+                ("USP-S | Neo-Noir", "Covert"),
+                ("AK-47 | Bloodsport", "Covert"),
+                ("M4A1-S | Decimator", "Classified"),
+                ("AWP | Fever Dream", "Classified"),
+                ("CZ75-Auto | Xiangliu", "Classified"),
+                ("Galil AR | Crimson Tsunami", "Restricted"),
+                ("XM1014 | Seasons", "Restricted"),
+                ("MAC-10 | Last Dive", "Restricted"),
+                ("UMP-45 | Scaffold", "Restricted"),
+                ("M249 | Emerald Poison Dart", "Restricted"),
+                ("Desert Eagle | Oxide Blaze", "Mil-Spec"),
+                ("Five-SeveN | Capillary", "Mil-Spec"),
+                ("P250 | Ripple", "Mil-Spec"),
+                ("SCAR-20 | Blueprint", "Mil-Spec"),
+                ("PP-Bizon | Jungle Slipstream", "Mil-Spec"),
+                ("Sawed-Off | Zander", "Mil-Spec"),
+                ("MP7 | Akoben", "Mil-Spec"),
+
         ]
-        hydrag_added = 0
-        for name in hydra_gloves:
-            base_slug = slugify(name)
-            per_case_slug = f"{base_slug}-{slugify(hydra.name)}"
-            exists_same_case = db.query(Item).filter(Item.slug == per_case_slug, Item.item_type == 'glove').first()
-            if exists_same_case:
+        sp_added = 0
+        for name, rarity in sp_skins:
+            sl = slugify(name)
+            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
+            if exists:
+                if exists.case_id != spectrum.item_id:
+                    exists.case_id = spectrum.item_id
                 continue
-            base_item = db.query(Item).filter(Item.slug == base_slug, Item.item_type == 'glove').first()
             itm = Item(
                 name=name,
-                item_type='glove',
-                rarity='Glove',
+                item_type='skin',
+                rarity=rarity,
                 wear=None,
                 wearValue=None,
                 pattern=None,
                 collection=None,
-                case_id=hydra.item_id,
-                current_price=(base_item.current_price if base_item and base_item.current_price is not None else None),
-                slug=per_case_slug,
+                case_id=spectrum.item_id,
+                current_price=None,
+                slug=sl,
             )
             db.add(itm)
-            hydrag_added += 1
-        if hydrag_added:
+            sp_added += 1
+        if sp_added:
             db.commit()
-            print(f"Přidáno Operation Hydra rukavic: {hydrag_added}")
+            print(f"Přidáno Spectrum skinů: {sp_added}")
+    
+
         print("Kontroluji/seeduji Spectrum Case nože (stejné jako Spectrum 2)...")
         spectrum_knives = [
-            "Huntsman Knife | Marble Fade",
-            "Falchion Knife | Marble Fade",
-            "Bowie Knife | Doppler",
             "Butterfly Knife | Tiger Tooth",
-            "Falchion Knife | Doppler",
-            "Shadow Daggers | Marble Fade",
             "Butterfly Knife | Rust Coat",
-            "Bowie Knife | Marble Fade",
-            "Falchion Knife | Damascus Steel",
+            "Butterfly Knife | Ultraviolet",
+            "Butterfly Knife | Damascus Steel",
+            "Butterfly Knife | Doppler",
+            "Butterfly Knife | Marble Fade",
+
+            "Huntsman Knife | Marble Fade",
             "Huntsman Knife | Tiger Tooth",
             "Huntsman Knife | Doppler",
+            "Huntsman Knife | Ultraviolet",
+            "Huntsman Knife | Damascus Steel",
+            "Huntsman Knife | Rust Coat",
+
+            "Bowie Knife | Doppler",
+            "Bowie Knife | Marble Fade",
+            "Bowie Knife | Tiger Tooth",
+            "Bowie Knife | Rust Coat",
+            "Bowie Knife | Ultraviolet",
+            "Bowie Knife | Damascus Steel",
+
+            "Falchion Knife | Marble Fade",
+            "Falchion Knife | Doppler",
+            "Falchion Knife | Damascus Steel",
             "Falchion Knife | Tiger Tooth",
-            "Butterfly Knife | Ultraviolet",
+            "Falchion Knife | Rust Coat",
+            "Falchion Knife | Ultraviolet",
+
+            "Shadow Daggers | Marble Fade",
             "Shadow Daggers | Damascus Steel",
             "Shadow Daggers | Tiger Tooth",
-            "Bowie Knife | Tiger Tooth",
-            "Falchion Knife | Rust Coat",
-            "Huntsman Knife | Ultraviolet",
             "Shadow Daggers | Doppler",
-            "Bowie Knife | Rust Coat",
             "Shadow Daggers | Ultraviolet",
-            "Huntsman Knife | Damascus Steel",
-            "Falchion Knife | Ultraviolet",
-            "Bowie Knife | Ultraviolet",
             "Shadow Daggers | Rust Coat",
-            "Butterfly Knife | Damascus Steel",
-            "Huntsman Knife | Rust Coat",
-            "Bowie Knife | Damascus Steel",
-            "Butterfly Knife | Doppler",
+
         ]
         spk_added = 0
         for name in spectrum_knives:
@@ -2177,7 +2168,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='knife',
-                rarity='Covert',
+                rarity='Knife',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -2242,30 +2233,35 @@ def seed_data():
 
         print("Kontroluji/seeduji Glove Case rukavice (stejné jako Hydra)...")
         hydra_gloves = [
-            "Bloodhound Gloves | Charred",
-            "Hand Wraps | Badlands",
-            "Moto Gloves | Boom!",
-            "Bloodhound Gloves | Guerrilla",
-            "Moto Gloves | Eclipse",
-            "Driver Gloves | Convoy",
-            "Specialist Gloves | Forest DDPAT",
-            "Driver Gloves | Lunar Weave",
-            "Specialist Gloves | Emerald Web",
-            "Hand Wraps | Leather",
             "Bloodhound Gloves | Bronzed",
-            "Driver Gloves | Crimson Weave",
-            "Driver Gloves | Diamondback",
-            "Specialist Gloves | Foundation",
-            "Moto Gloves | Cool Mint",
-            "Bloodhound Gloves | Snakebite",
-            "Sport Gloves | Pandora's Box",
-            "Sport Gloves | Arid",
-            "Sport Gloves | Superconductor",
-            "Sport Gloves | Hedge Maze",
-            "Specialist Gloves | Crimson Kimono",
-            "Moto Gloves | Spearmint",
-            "Hand Wraps | Slaughter",
-            "Hand Wraps | Spruce DDPAT",
+                "Bloodhound Gloves | Charred",
+                "Bloodhound Gloves | Guerrilla",
+                "Bloodhound Gloves | Snakebite",
+
+                "Driver Gloves | Convoy",
+                "Driver Gloves | Crimson Weave",
+                "Driver Gloves | Diamondback",
+                "Driver Gloves | Lunar Weave",
+
+                "Hand Wraps | Badlands",
+                "Hand Wraps | Leather",
+                "Hand Wraps | Slaughter",
+                "Hand Wraps | Spruce DDPAT",
+
+                "Moto Gloves | Boom!",
+                "Moto Gloves | Cool Mint",
+                "Moto Gloves | Eclipse",
+                "Moto Gloves | Spearmint",
+
+                "Specialist Gloves | Crimson Kimono",
+                "Specialist Gloves | Emerald Web",
+                "Specialist Gloves | Forest DDPAT",
+                "Specialist Gloves | Foundation",
+
+                "Sport Gloves | Arid",
+                "Sport Gloves | Hedge Maze",
+                "Sport Gloves | Pandora's Box",
+                "Sport Gloves | Superconductor",
         ]
         gcg_added = 0
         for name in hydra_gloves:
@@ -2347,34 +2343,41 @@ def seed_data():
 
         print("Kontroluji/seeduji Gamma 2 Case nože...")
         gamma2_knives = [
-            "M9 Bayonet | Freehand",
-            "M9 Bayonet | Autotronic",
-            "Karambit | Bright Water",
+            "Bayonet | Autotronic",
+            "Bayonet | Black Laminate",
             "Bayonet | Bright Water",
+            "Bayonet | Freehand",
             "Bayonet | Gamma Doppler",
+            "Bayonet | Lore",
+
+            "Flip Knife | Autotronic",
+            "Flip Knife | Black Laminate",
+            "Flip Knife | Bright Water",
+            "Flip Knife | Freehand",
+            "Flip Knife | Gamma Doppler",
+            "Flip Knife | Lore",
+
+            "Gut Knife | Autotronic",
+            "Gut Knife | Black Laminate",
+            "Gut Knife | Bright Water",
+            "Gut Knife | Freehand",
+            "Gut Knife | Gamma Doppler",
+            "Gut Knife | Lore",
+
+            "Karambit | Black Laminate",
+            "Karambit | Bright Water",
             "Karambit | Freehand",
             "Karambit | Lore",
-            "Bayonet | Autotronic",
-            "Gut Knife | Autotronic",
-            "Flip Knife | Autotronic",
-            "Bayonet | Freehand",
-            "Karambit | Black Laminate",
-            "Bayonet | Lore",
-            "M9 Bayonet | Bright Water",
-            "Gut Knife | Lore",
-            "Flip Knife | Black Laminate",
+            "Karambit | Autotronic",
+            "Karambit | Gamma Doppler",
+
+            "M9 Bayonet | Autotronic",
             "M9 Bayonet | Black Laminate",
-            "Gut Knife | Bright Water",
-            "Flip Knife | Lore",
-            "Flip Knife | Bright Water",
-            "Bayonet | Black Laminate",
-            "Flip Knife | Gamma Doppler",
-            "Gut Knife | Gamma Doppler",
-            "Flip Knife | Freehand",
-            "Gut Knife | Freehand",
-            "Gut Knife | Black Laminate",
-            "M9 Bayonet | Lore",
+            "M9 Bayonet | Bright Water",
+            "M9 Bayonet | Freehand",
             "M9 Bayonet | Gamma Doppler",
+            "M9 Bayonet | Lore",
+
 
         ]
         g2k_added = 0
@@ -2457,34 +2460,41 @@ def seed_data():
 
         print("Kontroluji/seeduji Gamma Case nože (stejné jako Gamma 2)...")
         gamma_knives = [
-            "M9 Bayonet | Freehand",
-            "M9 Bayonet | Autotronic",
-            "Karambit | Bright Water",
+            "Bayonet | Autotronic",
+            "Bayonet | Black Laminate",
             "Bayonet | Bright Water",
+            "Bayonet | Freehand",
             "Bayonet | Gamma Doppler",
+            "Bayonet | Lore",
+            
+            "Flip Knife | Autotronic",
+            "Flip Knife | Black Laminate",
+            "Flip Knife | Bright Water",
+            "Flip Knife | Freehand",
+            "Flip Knife | Gamma Doppler",
+            "Flip Knife | Lore",
+
+            "Gut Knife | Autotronic",
+            "Gut Knife | Black Laminate",
+            "Gut Knife | Bright Water",
+            "Gut Knife | Freehand",
+            "Gut Knife | Gamma Doppler",
+            "Gut Knife | Lore",
+
+            "Karambit | Black Laminate",
+            "Karambit | Bright Water",
             "Karambit | Freehand",
             "Karambit | Lore",
-            "Bayonet | Autotronic",
-            "Gut Knife | Autotronic",
-            "Flip Knife | Autotronic",
-            "Bayonet | Freehand",
-            "Karambit | Black Laminate",
-            "Bayonet | Lore",
-            "M9 Bayonet | Bright Water",
-            "Gut Knife | Lore",
-            "Flip Knife | Black Laminate",
+            "Karambit | Autotronic",
+            "Karambit | Gamma Doppler",
+
+            "M9 Bayonet | Autotronic",
             "M9 Bayonet | Black Laminate",
-            "Gut Knife | Bright Water",
-            "Flip Knife | Lore",
-            "Flip Knife | Bright Water",
-            "Bayonet | Black Laminate",
-            "Flip Knife | Gamma Doppler",
-            "Gut Knife | Gamma Doppler",
-            "Flip Knife | Freehand",
-            "Gut Knife | Freehand",
-            "Gut Knife | Black Laminate",
-            "M9 Bayonet | Lore",
+            "M9 Bayonet | Bright Water",
+            "M9 Bayonet | Freehand",
             "M9 Bayonet | Gamma Doppler",
+            "M9 Bayonet | Lore",
+
 
         ]
         gk_added = 0
@@ -2567,35 +2577,37 @@ def seed_data():
 
         print("Kontroluji/seeduji Chroma 3 Case nože...")
         chroma3_knives = [
-            "Bayonet | Doppler",
-            "Gut Knife | Doppler",
-            "Karambit | Doppler",
-            "Flip Knife | Doppler",
-            "Karambit | Tiger Tooth",
-            "M9 Bayonet | Marble Fade",
-            "Bayonet | Marble Fade",
-            "M9 Bayonet | Doppler",
-            "Flip Knife | Tiger Tooth",
-            "M9 Bayonet | Damascus Steel",
-            "Karambit | Ultraviolet",
-            "Flip Knife | Marble Fade",
-            "Bayonet | Tiger Tooth",
-            "Gut Knife | Marble Fade",
-            "M9 Bayonet | Tiger Tooth",
-            "Bayonet | Ultraviolet",
-            "Bayonet | Damascus Steel",
-            "M9 Bayonet | Ultraviolet",
-            "M9 Bayonet | Rust Coat",
-            "Flip Knife | Ultraviolet",
-            "Gut Knife | Tiger Tooth",
-            "Gut Knife | Damascus Steel",
-            "Bayonet | Rust Coat",
-            "Gut Knife | Rust Coat",
-            "Karambit | Damascus Steel",
-            "Flip Knife | Rust Coat",
-            "Flip Knife | Damascus Steel",
-            "Karambit | Rust Coat",
-            "Gut Knife | Ultraviolet",
+                "Bayonet | Doppler",
+                "Bayonet | Damascus Steel",
+                "Bayonet | Marble Fade",
+                "Bayonet | Rust Coat",
+                "Bayonet | Tiger Tooth",
+                "Bayonet | Ultraviolet",
+                "Flip Knife | Doppler",
+                "Flip Knife | Damascus Steel",
+                "Flip Knife | Marble Fade",
+                "Flip Knife | Rust Coat",
+                "Flip Knife | Tiger Tooth",
+                "Flip Knife | Ultraviolet",
+                "Gut Knife | Doppler",
+                "Gut Knife | Damascus Steel",
+                "Gut Knife | Marble Fade",
+                "Gut Knife | Rust Coat",
+                "Gut Knife | Tiger Tooth",
+                "Gut Knife | Ultraviolet",
+                "Karambit | Damascus Steel",
+                "Karambit | Doppler",
+                "Karambit | Rust Coat",
+                "Karambit | Tiger Tooth",
+                "Karambit | Ultraviolet",
+                "Karambit | Marble Fade",
+                "M9 Bayonet | Damascus Steel",
+                "M9 Bayonet | Doppler",
+                "M9 Bayonet | Marble Fade",
+                "M9 Bayonet | Rust Coat",
+                "M9 Bayonet | Tiger Tooth",
+                "M9 Bayonet | Ultraviolet",
+
         ]
         c3k_added = 0
         for name in chroma3_knives:
@@ -2771,26 +2783,76 @@ def seed_data():
 
         print("Kontroluji/seeduji Revolver Case nože...")
         revolver_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+            "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
+
         ]
         rvk_added = 0
         for name in revolver_knives:
@@ -2869,26 +2931,75 @@ def seed_data():
 
         print("Kontroluji/seeduji Vanguard Case nože (stejné jako Revolver)...")
         vanguard_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+                        "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         vgk_added = 0
         for name in vanguard_knives:
@@ -2970,26 +3081,75 @@ def seed_data():
 
         print("Kontroluji/seeduji eSports 2014 Summer Case nože (stejné jako Revolver)...")
         esports2014_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+                        "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         esk_added = 0
         for name in esports2014_knives:
@@ -3242,26 +3402,75 @@ def seed_data():
 
         print("Kontroluji/seeduji Phoenix Case nože (stejné jako Revolver)...")
         phoenix_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+                        "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         phk_added = 0
         for name in phoenix_knives:
@@ -3334,26 +3543,75 @@ def seed_data():
 
         print("Kontroluji/seeduji CS:GO Weapon Case 3 nože (stejné jako Revolver)...")
         csgo3_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+            "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         c3k_added = 0
         for name in csgo3_knives:
@@ -3426,26 +3684,75 @@ def seed_data():
 
         print("Kontroluji/seeduji eSports 2013 Winter Case nože (stejné jako Revolver)...")
         esports2013w_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+                        "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         e13k_added = 0
         for name in esports2013w_knives:
@@ -3523,26 +3830,75 @@ def seed_data():
 
         print("Kontroluji/seeduji Winter Offensive Case nože (stejné jako Revolver)...")
         winter_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+                        "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         wok_added = 0
         for name in winter_knives:
@@ -3619,26 +3975,75 @@ def seed_data():
 
         print("Kontroluji/seeduji CS:GO Weapon Case 2 nože (stejné jako Revolver)...")
         csgo2_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+                                    "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         c2k_added = 0
         for name in csgo2_knives:
@@ -3718,26 +4123,75 @@ def seed_data():
 
         print("Kontroluji/seeduji Operation Bravo Case nože (stejné jako Revolver)...")
         bravo_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+                                    "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         brk_added = 0
         for name in bravo_knives:
@@ -3812,26 +4266,75 @@ def seed_data():
 
         print("Kontroluji/seeduji eSports 2013 Case nože (stejné jako Revolver)...")
         es13_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+                                    "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         es13k_added = 0
         for name in es13_knives:
@@ -3906,26 +4409,75 @@ def seed_data():
 
         print("Kontroluji/seeduji CS:GO Weapon Case nože (stejné jako Revolver)...")
         csgo1_knives = [
-            "Karambit | Slaughter",
-            "Gut Knife | Safari Mesh",
-            "M9 Bayonet | Scorched",
-            "Bayonet | Case Hardened",
-            "Flip Knife | Slaughter",
-            "Flip Knife | Case Hardened",
+            "Karambit | Vanilla",
             "Karambit | Scorched",
-            "M9 Bayonet | Boreal Forest",
-            "Bayonet | Vanilla",
-            "Karambit | Forest DDPAT",
-            "Karambit | Stained",
-            "M9 Bayonet | Blue Steel",
-            "Bayonet | Slaughter",
-            "M9 Bayonet | Stained",
-            "M9 Bayonet | Crimson Web",
-            "Bayonet | Blue Steel",
-            "Karambit | Blue Steel",
+            "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
+            "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
+            "Karambit | Blue Steel",
+            "Karambit | Night",       
+            "Karambit | Stained",
+            "Karambit | Case Hardened",
+            "Karambit | Crimson Web",
+            "Karambit | Slaughter",
+            "Karambit | Fade",
+
+            "M9 Bayonet | Vanilla",
+            "M9 Bayonet | Scorched",
+            "M9 Bayonet | Safari Mesh",
+            "M9 Bayonet | Boreal Forest",
+            "M9 Bayonet | Forest DDPAT",
+            "M9 Bayonet | Urban Masked",
+            "M9 Bayonet | Blue Steel",
+            "M9 Bayonet | Night",       
+            "M9 Bayonet | Stained",
+            "M9 Bayonet | Case Hardened",
+            "M9 Bayonet | Crimson Web",
+            "M9 Bayonet | Slaughter",
+            "M9 Bayonet | Fade",
+
+            "Bayonet | Vanilla",
+            "Bayonet | Scorched",
+            "Bayonet | Safari Mesh",
+            "Bayonet | Boreal Forest",
+            "Bayonet | Forest DDPAT",
+            "Bayonet | Urban Masked",
+            "Bayonet | Blue Steel",
+            "Bayonet | Night",       
+            "Bayonet | Stained",
+            "Bayonet | Case Hardened",
+            "Bayonet | Crimson Web",
+            "Bayonet | Slaughter",
             "Bayonet | Fade",
+
+            "Flip Knife | Vanilla",
+            "Flip Knife | Scorched",
+            "Flip Knife | Safari Mesh",
+            "Flip Knife | Boreal Forest",
+            "Flip Knife | Forest DDPAT",
+            "Flip Knife | Urban Masked",
+            "Flip Knife | Blue Steel",
+            "Flip Knife | Night",       
+            "Flip Knife | Stained",
+            "Flip Knife | Case Hardened",
+            "Flip Knife | Crimson Web",
+            "Flip Knife | Slaughter",
+            "Flip Knife | Fade",
+
+            "Gut Knife | Vanilla",
+            "Gut Knife | Scorched",
+            "Gut Knife | Safari Mesh",
+            "Gut Knife | Boreal Forest",
+            "Gut Knife | Forest DDPAT",
+            "Gut Knife | Urban Masked",
+            "Gut Knife | Blue Steel",
+            "Gut Knife | Night",       
+            "Gut Knife | Stained",
+            "Gut Knife | Case Hardened",
+            "Gut Knife | Crimson Web",
+            "Gut Knife | Slaughter",
+            "Gut Knife | Fade",
         ]
         c1k_added = 0
         for name in csgo1_knives:
@@ -3953,20 +4505,6 @@ def seed_data():
         if c1k_added:
             db.commit()
             print(f"Přidáno CS:GO Weapon Case nožů: {c1k_added}")
-
-    # Cleanup: remove Doppler/Gamma Doppler phase-specific variants, keep only generic Doppler
-    print("Čistím Doppler varianty (Phase/Sapphire/Ruby/Black Pearl/Emerald)...")
-    doppler_variants = ["Phase", "Sapphire", "Ruby", "Black Pearl", "Emerald"]
-    removed_count = 0
-    knives = db.query(Item).filter(Item.item_type == 'knife').all()
-    for k in knives:
-        nm = k.name or ""
-        if ("Doppler" in nm) and any(v in nm for v in doppler_variants):
-            db.delete(k)
-            removed_count += 1
-    if removed_count:
-        db.commit()
-    print(f"Odstraněno Doppler variant: {removed_count}")
 
     # Shadow Case skins and knives
     if shadow_case:
@@ -4207,34 +4745,35 @@ def seed_data():
         print("Kontroluji/seeduji Chroma 2 Case nože (stejné jako Chroma 3)...")
         chroma2_knives = [
             "Bayonet | Doppler",
-            "Gut Knife | Doppler",
-            "Karambit | Doppler",
-            "Flip Knife | Doppler",
-            "Karambit | Tiger Tooth",
-            "M9 Bayonet | Marble Fade",
-            "Bayonet | Marble Fade",
-            "M9 Bayonet | Doppler",
-            "Flip Knife | Tiger Tooth",
-            "M9 Bayonet | Damascus Steel",
-            "Karambit | Ultraviolet",
-            "Flip Knife | Marble Fade",
-            "Bayonet | Tiger Tooth",
-            "Gut Knife | Marble Fade",
-            "M9 Bayonet | Tiger Tooth",
-            "Bayonet | Ultraviolet",
-            "Bayonet | Damascus Steel",
-            "M9 Bayonet | Ultraviolet",
-            "M9 Bayonet | Rust Coat",
-            "Flip Knife | Ultraviolet",
-            "Gut Knife | Tiger Tooth",
-            "Gut Knife | Damascus Steel",
-            "Bayonet | Rust Coat",
-            "Gut Knife | Rust Coat",
-            "Karambit | Damascus Steel",
-            "Flip Knife | Rust Coat",
-            "Flip Knife | Damascus Steel",
-            "Karambit | Rust Coat",
-            "Gut Knife | Ultraviolet",
+                "Bayonet | Damascus Steel",
+                "Bayonet | Marble Fade",
+                "Bayonet | Rust Coat",
+                "Bayonet | Tiger Tooth",
+                "Bayonet | Ultraviolet",
+                "Flip Knife | Doppler",
+                "Flip Knife | Damascus Steel",
+                "Flip Knife | Marble Fade",
+                "Flip Knife | Rust Coat",
+                "Flip Knife | Tiger Tooth",
+                "Flip Knife | Ultraviolet",
+                "Gut Knife | Doppler",
+                "Gut Knife | Damascus Steel",
+                "Gut Knife | Marble Fade",
+                "Gut Knife | Rust Coat",
+                "Gut Knife | Tiger Tooth",
+                "Gut Knife | Ultraviolet",
+                "Karambit | Damascus Steel",
+                "Karambit | Doppler",
+                "Karambit | Rust Coat",
+                "Karambit | Tiger Tooth",
+                "Karambit | Ultraviolet",
+                "Karambit | Marble Fade",
+                "M9 Bayonet | Damascus Steel",
+                "M9 Bayonet | Doppler",
+                "M9 Bayonet | Marble Fade",
+                "M9 Bayonet | Rust Coat",
+                "M9 Bayonet | Tiger Tooth",
+                "M9 Bayonet | Ultraviolet",
         ]
         c2k_added = 0
         for name in chroma2_knives:
@@ -4314,34 +4853,35 @@ def seed_data():
         print("Kontroluji/seeduji Chroma Case nože (stejné jako Chroma 3/2)...")
         chroma_knives = [
             "Bayonet | Doppler",
-            "Gut Knife | Doppler",
-            "Karambit | Doppler",
-            "Flip Knife | Doppler",
-            "Karambit | Tiger Tooth",
-            "M9 Bayonet | Marble Fade",
-            "Bayonet | Marble Fade",
-            "M9 Bayonet | Doppler",
-            "Flip Knife | Tiger Tooth",
-            "M9 Bayonet | Damascus Steel",
-            "Karambit | Ultraviolet",
-            "Flip Knife | Marble Fade",
-            "Bayonet | Tiger Tooth",
-            "Gut Knife | Marble Fade",
-            "M9 Bayonet | Tiger Tooth",
-            "Bayonet | Ultraviolet",
-            "Bayonet | Damascus Steel",
-            "M9 Bayonet | Ultraviolet",
-            "M9 Bayonet | Rust Coat",
-            "Flip Knife | Ultraviolet",
-            "Gut Knife | Tiger Tooth",
-            "Gut Knife | Damascus Steel",
-            "Bayonet | Rust Coat",
-            "Gut Knife | Rust Coat",
-            "Karambit | Damascus Steel",
-            "Flip Knife | Rust Coat",
-            "Flip Knife | Damascus Steel",
-            "Karambit | Rust Coat",
-            "Gut Knife | Ultraviolet",
+                "Bayonet | Damascus Steel",
+                "Bayonet | Marble Fade",
+                "Bayonet | Rust Coat",
+                "Bayonet | Tiger Tooth",
+                "Bayonet | Ultraviolet",
+                "Flip Knife | Doppler",
+                "Flip Knife | Damascus Steel",
+                "Flip Knife | Marble Fade",
+                "Flip Knife | Rust Coat",
+                "Flip Knife | Tiger Tooth",
+                "Flip Knife | Ultraviolet",
+                "Gut Knife | Doppler",
+                "Gut Knife | Damascus Steel",
+                "Gut Knife | Marble Fade",
+                "Gut Knife | Rust Coat",
+                "Gut Knife | Tiger Tooth",
+                "Gut Knife | Ultraviolet",
+                "Karambit | Damascus Steel",
+                "Karambit | Doppler",
+                "Karambit | Rust Coat",
+                "Karambit | Tiger Tooth",
+                "Karambit | Ultraviolet",
+                "Karambit | Marble Fade",
+                "M9 Bayonet | Damascus Steel",
+                "M9 Bayonet | Doppler",
+                "M9 Bayonet | Marble Fade",
+                "M9 Bayonet | Rust Coat",
+                "M9 Bayonet | Tiger Tooth",
+                "M9 Bayonet | Ultraviolet",
         ]
         ck_added = 0
         for name in chroma_knives:
@@ -4424,30 +4964,31 @@ def seed_data():
         print("Kontroluji/seeduji Broken Fang Case rukavice (stejné jako Snakebite/Recoil)...")
         # Reuse the Recoil glove list
         recoil_gloves = [
-            "Sport Gloves | Slingshot",
-            "Sport Gloves | Scarlet Shamagh",
-            "Driver Gloves | Snow Leopard",
-            "Sport Gloves | Nocts",
-            "Moto Gloves | Smoke Out",
-            "Specialist Gloves | Marble Fade",
-            "Specialist Gloves | Field Agent",
-            "Driver Gloves | Black Tie",
-            "Moto Gloves | Blood Pressure",
-            "Broken Fang Gloves | Jade",
-            "Sport Gloves | Big Game",
-            "Broken Fang Gloves | Unhinged",
-            "Specialist Gloves | Tiger Strike",
-            "Moto Gloves | 3rd Commando Company",
-            "Moto Gloves | Finish Line",
-            "Driver Gloves | Queen Jaguar",
-            "Driver Gloves | Rezan the Red",
-            "Specialist Gloves | Lt. Commander",
-            "Broken Fang Gloves | Needle Point",
-            "Broken Fang Gloves | Yellow-banded",
-            "Hand Wraps | CAUTION!",
-            "Hand Wraps | Giraffe",
-            "Hand Wraps | Desert Shamagh",
-            "Hand Wraps | Constrictor",
+                "Broken Fang Gloves | Jade",
+                "Broken Fang Gloves | Needle Point",
+                "Broken Fang Gloves | Unhinged",
+                "Broken Fang Gloves | Yellow-banded",
+                "Driver Gloves | Black Tie",
+                "Driver Gloves | Queen Jaguar",
+                "Driver Gloves | Rezan the Red",
+                "Driver Gloves | Snow Leopard",
+                "Hand Wraps | CAUTION!",
+                "Hand Wraps | Constrictor",
+                "Hand Wraps | Desert Shamagh",
+                "Hand Wraps | Giraffe",
+                "Moto Gloves | 3rd Commando Company",
+                "Moto Gloves | Blood Pressure",
+                "Moto Gloves | Finish Line",
+                "Moto Gloves | Smoke Out",
+                "Specialist Gloves | Field Agent",
+                "Specialist Gloves | Lt. Commander",
+                "Specialist Gloves | Marble Fade",
+                "Specialist Gloves | Tiger Strike",
+                "Sport Gloves | Big Game",
+                "Sport Gloves | Nocts",
+                "Sport Gloves | Scarlet Shamagh",
+                "Sport Gloves | Slingshot",
+
         ]
         bfg_added = 0
         for name in recoil_gloves:
@@ -4460,7 +5001,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='glove',
-                rarity='Knife/Glove',
+                rarity='Glove',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -4527,78 +5068,36 @@ def seed_data():
             db.commit()
             print(f"Přidáno Snakebite skinů: {sb_added}")
 
-        print("Kontroluji/seeduji Snakebite Case nože (stejné jako Recoil)...")
-        # Reuse the Kukri knife list used in Recoil/Gallery/Kilowatt
-        snakebite_knives = [
-            "Kukri Knife | Slaughter",
-            "Kukri Knife | Case Hardened",
-            "Kukri Knife | Blue Steel",
-            "Kukri Knife | Stained",
-            "Kukri Knife | Scorched",
-            "Kukri Knife | Fade",
-            "Kukri Knife | Safari Mesh",
-            "Kukri Knife | Boreal Forest",
-            "Kukri Knife | Urban Masked",
-            "Kukri Knife | Night Stripe",
-            "Kukri Knife | Crimson Web",
-            "Kukri Knife | Vanilla",
-            "Kukri Knife | Forest DDPAT",
-        ]
-        sbk_added = 0
-        for name in snakebite_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != snakebite.item_id:
-                    exists.case_id = snakebite.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=snakebite.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            sbk_added += 1
-        if sbk_added:
-            db.commit()
-            print(f"Přidáno Snakebite nožů: {sbk_added}")
-
-        # Recoil Case gloves
-        print("Kontroluji/seeduji Recoil Case rukavice...")
+        print("Kontroluji/seeduji Snakebite rukavice (stejné jako Snakebite/Recoil)...")
+        # Reuse the Recoil glove list
         recoil_gloves = [
-            "Sport Gloves | Slingshot",
-            "Sport Gloves | Scarlet Shamagh",
-            "Driver Gloves | Snow Leopard",
-            "Sport Gloves | Nocts",
-            "Moto Gloves | Smoke Out",
-            "Specialist Gloves | Marble Fade",
-            "Specialist Gloves | Field Agent",
-            "Driver Gloves | Black Tie",
-            "Moto Gloves | Blood Pressure",
-            "Broken Fang Gloves | Jade",
-            "Sport Gloves | Big Game",
-            "Broken Fang Gloves | Unhinged",
-            "Specialist Gloves | Tiger Strike",
-            "Moto Gloves | 3rd Commando Company",
-            "Moto Gloves | Finish Line",
-            "Driver Gloves | Queen Jaguar",
-            "Driver Gloves | Rezan the Red",
-            "Specialist Gloves | Lt. Commander",
-            "Broken Fang Gloves | Needle Point",
-            "Broken Fang Gloves | Yellow-banded",
-            "Hand Wraps | CAUTION!",
-            "Hand Wraps | Giraffe",
-            "Hand Wraps | Desert Shamagh",
-            "Hand Wraps | Constrictor",
+                "Broken Fang Gloves | Jade",
+                "Broken Fang Gloves | Needle Point",
+                "Broken Fang Gloves | Unhinged",
+                "Broken Fang Gloves | Yellow-banded",
+                "Driver Gloves | Black Tie",
+                "Driver Gloves | Queen Jaguar",
+                "Driver Gloves | Rezan the Red",
+                "Driver Gloves | Snow Leopard",
+                "Hand Wraps | CAUTION!",
+                "Hand Wraps | Constrictor",
+                "Hand Wraps | Desert Shamagh",
+                "Hand Wraps | Giraffe",
+                "Moto Gloves | 3rd Commando Company",
+                "Moto Gloves | Blood Pressure",
+                "Moto Gloves | Finish Line",
+                "Moto Gloves | Smoke Out",
+                "Specialist Gloves | Field Agent",
+                "Specialist Gloves | Lt. Commander",
+                "Specialist Gloves | Marble Fade",
+                "Specialist Gloves | Tiger Strike",
+                "Sport Gloves | Big Game",
+                "Sport Gloves | Nocts",
+                "Sport Gloves | Scarlet Shamagh",
+                "Sport Gloves | Slingshot",
+
         ]
-        rg_added = 0
+        rcl_added = 0
         for name in recoil_gloves:
             sl = slugify(name)
             exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'glove').first()
@@ -4609,7 +5108,7 @@ def seed_data():
             itm = Item(
                 name=name,
                 item_type='glove',
-                rarity='Knife/Glove',
+                rarity='Glove',
                 wear=None,
                 wearValue=None,
                 pattern=None,
@@ -4619,10 +5118,12 @@ def seed_data():
                 slug=sl,
             )
             db.add(itm)
-            rg_added += 1
-        if rg_added:
+            rcl_added += 1
+        if rcl_added:
             db.commit()
-            print(f"Přidáno Recoil rukavic: {rg_added}")
+            print(f"Přidáno Recoil rukavic: {rcl_added}")
+
+        
 
     # No sample user inventory seeding
 
