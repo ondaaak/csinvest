@@ -15,7 +15,85 @@ def slugify(name: str) -> str:
     return s
 
 def seed_data():
+    # Initialize DB session first
     db = SessionLocal()
+
+    # Helper: resolve a Case item by its display name
+    def get_case(db_sess, name):
+        return db_sess.query(Item).filter(Item.item_type == 'case', Item.name == name).first()
+
+    # Resolve commonly used case variables early to avoid NameErrors
+    gallery_case = get_case(db, 'Gallery Case')
+    gallery = gallery_case
+    sealed_genesis_case = get_case(db, 'Sealed Genesis Case')
+    sealed_genesis = sealed_genesis_case
+    kilowatt_case = get_case(db, 'Kilowatt Case')
+    kilowatt = kilowatt_case
+    recoil_case = get_case(db, 'Recoil Case')
+    recoil = recoil_case
+    dreams_case = get_case(db, 'Dreams & Nightmares Case')
+    dreams = dreams_case
+    chroma3_case = get_case(db, 'Chroma 3 Case')
+    chroma3 = chroma3_case
+    riptide_case = get_case(db, 'Operation Riptide Case')
+    riptide = riptide_case
+    prisma2_case = get_case(db, 'Prisma 2 Case')
+    prisma2 = prisma2_case
+    shattered_web_case = get_case(db, 'Operation Shattered Web Case')
+    shattered_web = shattered_web_case
+    cs20_case = get_case(db, 'CS20 Case')
+    cs20 = cs20_case
+    prisma_case = get_case(db, 'Prisma Case')
+    prisma = prisma_case
+    danger_zone_case = get_case(db, 'Danger Zone Case')
+    danger_zone = danger_zone_case
+    horizon_case = get_case(db, 'Horizon Case')
+    horizon = horizon_case
+    clutch_case = get_case(db, 'Clutch Case')
+    clutch = clutch_case
+    spectrum2_case = get_case(db, 'Spectrum 2 Case')
+    spectrum2 = spectrum2_case
+    spectrum_case = get_case(db, 'Spectrum Case')
+    spectrum = spectrum_case
+    glove_case = get_case(db, 'Glove Case')
+    gamma2_case = get_case(db, 'Gamma 2 Case')
+    gamma_case = get_case(db, 'Gamma Case')
+    wildfire_case = get_case(db, 'Operation Wildfire Case')
+    broken_fang_case = get_case(db, 'Operation Broken Fang Case')
+    broken_fang = broken_fang_case
+    snakebite_case = get_case(db, 'Snakebite Case')
+    snakebite = snakebite_case
+    # Ensure case variables exist and aliases for late references
+    revolution_case = get_case(db, 'Revolution Case')
+    revolution = revolution_case
+    fracture_case = get_case(db, 'Fracture Case')
+    fracture = fracture_case
+    hydra_case = get_case(db, 'Operation Hydra Case')
+    hydra = hydra_case
+    # Helper: clone item per-case with unique slug suffix to avoid shared-slug overwrites
+    def clone_item_for_case(db, name, item_type, rarity, case_item):
+        base_slug = slugify(name)
+        per_case_slug = f"{base_slug}-{case_item.slug}"
+        exists = db.query(Item).filter(Item.slug == per_case_slug, Item.item_type == item_type).first()
+        if exists:
+            return False
+        base = db.query(Item).filter(Item.slug == base_slug, Item.item_type == item_type).first()
+        price = base.current_price if (base and base.current_price is not None) else None
+        itm = Item(
+            name=name,
+            item_type=item_type,
+            rarity=rarity,
+            wear=None,
+            wearValue=None,
+            pattern=None,
+            collection=None,
+            case_id=case_item.item_id,
+            current_price=price,
+            slug=per_case_slug,
+        )
+        db.add(itm)
+        return True
+    # db was initialized above
 
     # Market
     if not db.query(Market).first():
@@ -58,7 +136,7 @@ def seed_data():
         "Revolver Case",
         "Shadow Case",
         "Falchion Case",
-        "Chroma 2 Case",
+        # Chroma 3 Case skins and knives
         "Chroma Case",
         "Operation Vanguard Weapon Case",
         "eSports 2014 Summer Case",
@@ -91,34 +169,57 @@ def seed_data():
         created_count += 1
     if created_count:
         db.commit()
-        print(f"Přidáno nových case položek: {created_count}")
+        print(f"Přidáno {created_count} nových beden.")
+    
+    # Re-fetch all cases to ensure variables are not None (stale from top of function)
+    gallery_case = get_case(db, 'Gallery Case')
+    gallery = gallery_case
+    sealed_genesis_case = get_case(db, 'Sealed Genesis Case')
+    sealed_genesis = sealed_genesis_case
+    kilowatt_case = get_case(db, 'Kilowatt Case')
+    kilowatt = kilowatt_case
+    recoil_case = get_case(db, 'Recoil Case')
+    recoil = recoil_case
+    dreams_case = get_case(db, 'Dreams & Nightmares Case')
+    dreams = dreams_case
+    chroma3_case = get_case(db, 'Chroma 3 Case')
+    chroma3 = chroma3_case
+    riptide_case = get_case(db, 'Operation Riptide Case')
+    riptide = riptide_case
+    prisma2_case = get_case(db, 'Prisma 2 Case')
+    prisma2 = prisma2_case
+    shattered_web_case = get_case(db, 'Operation Shattered Web Case')
+    shattered_web = shattered_web_case
+    cs20_case = get_case(db, 'CS20 Case')
+    cs20 = cs20_case
+    prisma_case = get_case(db, 'Prisma Case')
+    prisma = prisma_case
+    danger_zone_case = get_case(db, 'Danger Zone Case')
+    danger_zone = danger_zone_case
+    horizon_case = get_case(db, 'Horizon Case')
+    horizon = horizon_case
+    clutch_case = get_case(db, 'Clutch Case')
+    clutch = clutch_case
+    spectrum2_case = get_case(db, 'Spectrum 2 Case')
+    spectrum2 = spectrum2_case
+    spectrum_case = get_case(db, 'Spectrum Case')
+    spectrum = spectrum_case
+    glove_case = get_case(db, 'Glove Case')
+    gamma2_case = get_case(db, 'Gamma 2 Case')
+    gamma_case = get_case(db, 'Gamma Case')
+    wildfire_case = get_case(db, 'Operation Wildfire Case')
+    broken_fang_case = get_case(db, 'Operation Broken Fang Case')
+    broken_fang = broken_fang_case
+    snakebite_case = get_case(db, 'Snakebite Case')
+    snakebite = snakebite_case
+    revolution_case = get_case(db, 'Revolution Case')
+    revolution = revolution_case
+    fracture_case = get_case(db, 'Fracture Case')
+    fracture = fracture_case
+    hydra_case = get_case(db, 'Operation Hydra Case')
+    hydra = hydra_case
+    fever_case = get_case(db, 'Fever Case')
 
-    revolution = db.query(Item).filter(Item.slug == slugify("Revolution Case")).first()
-    fever = db.query(Item).filter(Item.slug == slugify("Fever Case")).first()
-    gallery = db.query(Item).filter(Item.slug == slugify("Gallery Case")).first()
-    sealed_genesis = db.query(Item).filter(Item.slug == slugify("Sealed Genesis Terminal")).first()
-    kilowatt = db.query(Item).filter(Item.slug == slugify("Kilowatt Case")).first()
-    recoil = db.query(Item).filter(Item.slug == slugify("Recoil Case")).first()
-    dreams = db.query(Item).filter(Item.slug == slugify("Dreams & Nightmares Case")).first()
-    riptide = db.query(Item).filter(Item.slug == slugify("Operation Riptide Case")).first()
-    broken_fang = db.query(Item).filter(Item.slug == slugify("Operation Broken Fang Case")).first()
-    fracture = db.query(Item).filter(Item.slug == slugify("Fracture Case")).first()
-    prisma2 = db.query(Item).filter(Item.slug == slugify("Prisma 2 Case")).first()
-    shattered_web = db.query(Item).filter(Item.slug == slugify("Shattered Web Case")).first()
-    cs20 = db.query(Item).filter(Item.slug == slugify("CS20 Case")).first()
-    prisma = db.query(Item).filter(Item.slug == slugify("Prisma Case")).first()
-    danger_zone = db.query(Item).filter(Item.slug == slugify("Danger Zone Case")).first()
-    horizon = db.query(Item).filter(Item.slug == slugify("Horizon Case")).first()
-    clutch = db.query(Item).filter(Item.slug == slugify("Clutch Case")).first()
-    spectrum2 = db.query(Item).filter(Item.slug == slugify("Spectrum 2 Case")).first()
-    snakebite = db.query(Item).filter(Item.slug == slugify("Snakebite Case")).first()
-    hydra = db.query(Item).filter(Item.slug == slugify("Operation Hydra Case")).first()
-    spectrum = db.query(Item).filter(Item.slug == slugify("Spectrum Case")).first()
-    glove_case = db.query(Item).filter(Item.slug == slugify("Glove Case")).first()
-    gamma2_case = db.query(Item).filter(Item.slug == slugify("Gamma 2 Case")).first()
-    gamma_case = db.query(Item).filter(Item.slug == slugify("Gamma Case")).first()
-    chroma3_case = db.query(Item).filter(Item.slug == slugify("Chroma 3 Case")).first()
-    wildfire_case = db.query(Item).filter(Item.slug == slugify("Operation Wildfire Case")).first()
     revolver_case = db.query(Item).filter(Item.slug == slugify("Revolver Case")).first()
     shadow_case = db.query(Item).filter(Item.slug == slugify("Shadow Case")).first()
     falchion_case = db.query(Item).filter(Item.slug == slugify("Falchion Case")).first()
@@ -137,8 +238,51 @@ def seed_data():
     esports2013_case = db.query(Item).filter(Item.slug == slugify("eSports 2013 Case")).first()
     csgo1_case = db.query(Item).filter(Item.slug == slugify("CS:GO Weapon Case")).first()
 
+    # --- Helpers: per-case cloning and pool mirroring for knives/gloves ---
+    def clone_items_for_case(db_sess, names, item_type, case_item, rarity=None):
+        if not case_item or not names:
+            return 0
+        added = 0
+        for nm in names:
+            base_slug = slugify(nm)
+            per_case_slug = f"{base_slug}-{case_item.slug}"
+            exists = db_sess.query(Item).filter(
+                Item.slug == per_case_slug,
+                Item.item_type == item_type,
+            ).first()
+            if exists:
+                continue
+            itm = Item(
+                name=nm,
+                item_type=item_type,
+                rarity=(rarity or ("Knife" if item_type == "knife" else "Glove" if item_type == "glove" else None)),
+                wear=None,
+                wearValue=None,
+                pattern=None,
+                collection=None,
+                case_id=case_item.item_id,
+                current_price=None,
+                slug=per_case_slug,
+            )
+            db_sess.add(itm)
+            added += 1
+        if added:
+            db_sess.commit()
+        return added
+
+    def mirror_pool(names, item_type, target_cases, rarity=None, label=None):
+        total = 0
+        for c in target_cases:
+            if c:
+                total += clone_items_for_case(db, names, item_type, c, rarity)
+        if total:
+            tag = f" ({label})" if label else ""
+            print(f"Mirrored {item_type} pool{tag}, new records: {total}")
+
+    # Resolve Revolution Case reference
+    revolution_case = db.query(Item).filter(Item.item_type == 'case', Item.name == 'Revolution Case').first()
     # Revolution Case skins
-    if revolution:
+    if revolution_case:
         print("Kontroluji/seeduji Revolution Case skiny...")
         rev_skins = [
             ("AK-47 | Head Shot", "Covert"),
@@ -173,7 +317,7 @@ def seed_data():
                 wearValue=None,
                 pattern=None,
                 collection=None,
-                case_id=revolution.item_id,
+                case_id=revolution_case.item_id,
                 current_price=None,
                 slug=sl,
             )
@@ -213,33 +357,16 @@ def seed_data():
         ]
         g_added = 0
         for name in rev_gloves:
-            sl = slugify(name)
-            # gloves may have been previously seeded; treat duplicates safely
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'glove').first()
-            if exists:
-                if exists.case_id != revolution.item_id:
-                    exists.case_id = revolution.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='glove',
-                rarity='Glove',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=revolution.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            g_added += 1
+            if clone_item_for_case(db, name, 'glove', 'Glove', revolution_case):
+                g_added += 1
         if g_added:
             db.commit()
             print(f"Přidáno Revolution rukavic: {g_added}")
 
+    # Resolve Fever Case reference
+    fever_case = db.query(Item).filter(Item.item_type == 'case', Item.name == 'Fever Case').first()
     # Fever Case skins
-    if fever:
+    if fever_case:
         print("Kontroluji/seeduji Fever Case skiny...")
         fever_skins = [
             ("FAMAS | Bad Trip", "Covert"),
@@ -265,8 +392,8 @@ def seed_data():
             sl = slugify(name)
             exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
             if exists:
-                if exists.case_id != fever.item_id:
-                    exists.case_id = fever.item_id
+                if exists.case_id != fever_case.item_id:
+                    exists.case_id = fever_case.item_id
                 continue
             itm = Item(
                 name=name,
@@ -276,7 +403,7 @@ def seed_data():
                 wearValue=None,
                 pattern=None,
                 collection=None,
-                case_id=fever.item_id,
+                case_id=fever_case.item_id,
                 current_price=None,
                 slug=sl,
             )
@@ -287,7 +414,7 @@ def seed_data():
             print(f"Přidáno Fever skinů: {f_added}")
 
         # Fever Case knives
-        print("Kontroluji/seeduji Fever Case nože...")
+        print("Kontroluji/seeduji Fever Case nože (klon per-case)...")
         fever_knives = [
             # Skeleton Knife variants
             "Skeleton Knife | Tiger Tooth",
@@ -320,33 +447,15 @@ def seed_data():
         ]
         fk_added = 0
         for name in fever_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != fever.item_id:
-                    exists.case_id = fever.item_id
-                continue
-            # No Doppler phase guards; handled by cleanup at end
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=fever.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            fk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', fever_case):
+                fk_added += 1
         if fk_added:
             db.commit()
             print(f"Přidáno Fever nožů: {fk_added}")
 
     # Fracture Case knives (Shattered Web knife pool)
-    if fracture:
+    fracture_case = get_case(db, 'Fracture Case')
+    if fracture_case:
         print("Kontroluji/seeduji Fracture Case nože...")
         fracture_knives = [
             
@@ -411,8 +520,8 @@ def seed_data():
             sl = slugify(name)
             exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
             if exists:
-                if exists.case_id != fracture.item_id:
-                    exists.case_id = fracture.item_id
+                if exists.case_id != fracture_case.item_id:
+                    exists.case_id = fracture_case.item_id
                 continue
             itm = Item(
                 name=name,
@@ -422,7 +531,7 @@ def seed_data():
                 wearValue=None,
                 pattern=None,
                 collection=None,
-                case_id=fracture.item_id,
+                case_id=fracture_case.item_id,
                 current_price=None,
                 slug=sl,
             )
@@ -1818,26 +1927,8 @@ def seed_data():
         ]
         clg_added = 0
         for name in clutch_gloves:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'glove').first()
-            if exists:
-                if exists.case_id != clutch.item_id:
-                    exists.case_id = clutch.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='glove',
-                rarity='Glove',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=clutch.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            clg_added += 1
+            if clone_item_for_case(db, name, 'glove', 'Glove', clutch):
+                clg_added += 1
         if clg_added:
             db.commit()
             print(f"Přidáno Clutch rukavic: {clg_added}")
@@ -1934,26 +2025,8 @@ def seed_data():
         ]
         sp2k_added = 0
         for name in sp2_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != spectrum2.item_id:
-                    exists.case_id = spectrum2.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=spectrum2.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            sp2k_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', spectrum2):
+                sp2k_added += 1
         if sp2k_added:
             db.commit()
             print(f"Přidáno Spectrum 2 nožů: {sp2k_added}")
@@ -2045,26 +2118,8 @@ def seed_data():
         ]
         hydrag_added = 0
         for name in hydra_gloves:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'glove').first()
-            if exists:
-                if exists.case_id != hydra.item_id:
-                    exists.case_id = hydra.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='glove',
-                rarity='Glove',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=hydra.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            hydrag_added += 1
+            if clone_item_for_case(db, name, 'glove', 'Glove', hydra):
+                hydrag_added += 1
         if hydrag_added:
             db.commit()
             print(f"Přidáno Operation Hydra rukavic: {hydrag_added}")
@@ -2159,26 +2214,8 @@ def seed_data():
         ]
         spk_added = 0
         for name in spectrum_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != spectrum.item_id:
-                    exists.case_id = spectrum.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=spectrum.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            spk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', spectrum):
+                spk_added += 1
         if spk_added:
             db.commit()
             print(f"Přidáno Spectrum nožů: {spk_added}")
@@ -2382,26 +2419,8 @@ def seed_data():
         ]
         g2k_added = 0
         for name in gamma2_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != gamma2_case.item_id:
-                    exists.case_id = gamma2_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=gamma2_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            g2k_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', gamma2_case):
+                g2k_added += 1
         if g2k_added:
             db.commit()
             print(f"Přidáno Gamma 2 nožů: {g2k_added}")
@@ -2499,26 +2518,8 @@ def seed_data():
         ]
         gk_added = 0
         for name in gamma_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != gamma_case.item_id:
-                    exists.case_id = gamma_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=gamma_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            gk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', gamma_case):
+                gk_added += 1
         if gk_added:
             db.commit()
             print(f"Přidáno Gamma nožů: {gk_added}")
@@ -2611,27 +2612,8 @@ def seed_data():
         ]
         c3k_added = 0
         for name in chroma3_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != chroma3_case.item_id:
-                    exists.case_id = chroma3_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=chroma3_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-        
-            db.add(itm)
-            c3k_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', chroma3_case):
+                c3k_added += 1
         if c3k_added:
             db.commit()
             print(f"Přidáno Chroma 3 nožů: {c3k_added}")
@@ -2781,7 +2763,7 @@ def seed_data():
             db.commit()
             print(f"Přidáno Revolver skinů: {rv_added}")
 
-        print("Kontroluji/seeduji Revolver Case nože...")
+        print("Kontroluji/seeduji Revolver Case nože (klon per-case)...")
         revolver_knives = [
             "Karambit | Vanilla",
             "Karambit | Scorched",
@@ -2856,26 +2838,8 @@ def seed_data():
         ]
         rvk_added = 0
         for name in revolver_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != revolver_case.item_id:
-                    exists.case_id = revolver_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=revolver_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            rvk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', revolver_case):
+                rvk_added += 1
         if rvk_added:
             db.commit()
             print(f"Přidáno Revolver nožů: {rvk_added}")
@@ -2931,14 +2895,14 @@ def seed_data():
 
         print("Kontroluji/seeduji Vanguard Case nože (stejné jako Revolver)...")
         vanguard_knives = [
-                        "Karambit | Vanilla",
+            "Karambit | Vanilla",
             "Karambit | Scorched",
             "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
             "Karambit | Forest DDPAT",
             "Karambit | Urban Masked",
             "Karambit | Blue Steel",
-            "Karambit | Night",       
+            "Karambit | Night",
             "Karambit | Stained",
             "Karambit | Case Hardened",
             "Karambit | Crimson Web",
@@ -2952,7 +2916,7 @@ def seed_data():
             "M9 Bayonet | Forest DDPAT",
             "M9 Bayonet | Urban Masked",
             "M9 Bayonet | Blue Steel",
-            "M9 Bayonet | Night",       
+            "M9 Bayonet | Night",
             "M9 Bayonet | Stained",
             "M9 Bayonet | Case Hardened",
             "M9 Bayonet | Crimson Web",
@@ -2966,7 +2930,7 @@ def seed_data():
             "Bayonet | Forest DDPAT",
             "Bayonet | Urban Masked",
             "Bayonet | Blue Steel",
-            "Bayonet | Night",       
+            "Bayonet | Night",
             "Bayonet | Stained",
             "Bayonet | Case Hardened",
             "Bayonet | Crimson Web",
@@ -2980,7 +2944,7 @@ def seed_data():
             "Flip Knife | Forest DDPAT",
             "Flip Knife | Urban Masked",
             "Flip Knife | Blue Steel",
-            "Flip Knife | Night",       
+            "Flip Knife | Night",
             "Flip Knife | Stained",
             "Flip Knife | Case Hardened",
             "Flip Knife | Crimson Web",
@@ -2994,7 +2958,7 @@ def seed_data():
             "Gut Knife | Forest DDPAT",
             "Gut Knife | Urban Masked",
             "Gut Knife | Blue Steel",
-            "Gut Knife | Night",       
+            "Gut Knife | Night",
             "Gut Knife | Stained",
             "Gut Knife | Case Hardened",
             "Gut Knife | Crimson Web",
@@ -4266,7 +4230,7 @@ def seed_data():
 
         print("Kontroluji/seeduji eSports 2013 Case nože (stejné jako Revolver)...")
         es13_knives = [
-                                    "Karambit | Vanilla",
+            "Karambit | Vanilla",
             "Karambit | Scorched",
             "Karambit | Safari Mesh",
             "Karambit | Boreal Forest",
@@ -4407,7 +4371,7 @@ def seed_data():
             db.commit()
             print(f"Přidáno CS:GO Weapon Case skinů: {c1_added}")
 
-        print("Kontroluji/seeduji CS:GO Weapon Case nože (stejné jako Revolver)...")
+        print("Kontroluji/seeduji CS:GO Weapon Case nože (klon per-case, stejné jako Revolver)...")
         csgo1_knives = [
             "Karambit | Vanilla",
             "Karambit | Scorched",
@@ -4481,27 +4445,8 @@ def seed_data():
         ]
         c1k_added = 0
         for name in csgo1_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != csgo1_case.item_id:
-                    exists.case_id = csgo1_case.item_id
-                continue
-            # No Doppler phase guards; handled by cleanup at end
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=csgo1_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            c1k_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', csgo1_case):
+                c1k_added += 1
         if c1k_added:
             db.commit()
             print(f"Přidáno CS:GO Weapon Case nožů: {c1k_added}")
@@ -5124,6 +5069,113 @@ def seed_data():
             print(f"Přidáno Recoil rukavic: {rcl_added}")
 
         
+
+    # --- Shared pool mirroring (per-case clones to avoid overwrites) ---
+    try:
+        # Gallery ↔ Kilowatt (Kukri knives)
+        names = locals().get('gallery_knives')
+        if names and kilowatt:
+            mirror_pool(names, 'knife', [kilowatt], label='Gallery→Kilowatt')
+        names = locals().get('kilo_knives')
+        if names and gallery:
+            mirror_pool(names, 'knife', [gallery], label='Kilowatt→Gallery')
+
+        # Revolution ↔ Clutch (gloves)
+        names = locals().get('rev_gloves')
+        if names and clutch:
+            mirror_pool(names, 'glove', [clutch], label='Revolution→Clutch')
+        names = locals().get('clutch_gloves')
+        if names and revolution:
+            mirror_pool(names, 'glove', [revolution], label='Clutch→Revolution')
+
+        # Recoil → Snakebite, Broken Fang (gloves)
+        names = locals().get('recoil_gloves')
+        if names:
+            targets = [snakebite, broken_fang]
+            targets = [t for t in targets if t]
+            if targets:
+                mirror_pool(names, 'glove', targets, label='Recoil→Snakebite/BrokenFang')
+
+        # Dreams & Nightmares ↔ Riptide (knives)
+        names = locals().get('dnn_knives')
+        if names and riptide:
+            mirror_pool(names, 'knife', [riptide], label='D&N→Riptide')
+        names = locals().get('riptide_knives')
+        if names and dreams:
+            mirror_pool(names, 'knife', [dreams], label='Riptide→D&N')
+
+        # Prisma 2 ↔ Prisma (knives)
+        names = locals().get('prisma2_knives')
+        if names and prisma:
+            mirror_pool(names, 'knife', [prisma], label='Prisma2→Prisma')
+        names = locals().get('prisma_knives')
+        if names and prisma2:
+            mirror_pool(names, 'knife', [prisma2], label='Prisma→Prisma2')
+
+        # Danger Zone ↔ Horizon (knives)
+        names = locals().get('dz_knives')
+        if names and horizon:
+            mirror_pool(names, 'knife', [horizon], label='DangerZone→Horizon')
+        names = locals().get('horizon_knives')
+        if names and danger_zone:
+            mirror_pool(names, 'knife', [danger_zone], label='Horizon→DangerZone')
+
+        # Spectrum 2 → Spectrum (knives)
+        names = locals().get('sp2_knives')
+        if names and spectrum:
+            mirror_pool(names, 'knife', [spectrum], label='Spectrum2→Spectrum')
+        # Spectrum → Spectrum 2 (if list is available)
+        names = locals().get('spectrum_knives')
+        if names and spectrum2:
+            mirror_pool(names, 'knife', [spectrum2], label='Spectrum→Spectrum2')
+
+        # Gamma 2 ↔ Gamma (knives) if lists available
+        names = locals().get('gamma2_knives')
+        if names and gamma_case:
+            mirror_pool(names, 'knife', [gamma_case], label='Gamma2→Gamma')
+        names = locals().get('gamma_knives')
+        if names and gamma2_case:
+            mirror_pool(names, 'knife', [gamma2_case], label='Gamma→Gamma2')
+
+        # Chroma 3 → Chroma 2, Chroma (knives)
+        names = locals().get('chroma3_knives')
+        if names:
+            targets = [chroma2_case, chroma_case]
+            targets = [t for t in targets if t]
+            if targets:
+                mirror_pool(names, 'knife', targets, label='Chroma3→Chroma2/Chroma')
+        # Chroma 2 → Chroma (knives)
+        names = locals().get('chroma2_knives')
+        if names and chroma_case:
+            mirror_pool(names, 'knife', [chroma_case], label='Chroma2→Chroma')
+
+        # Hydra → Glove Case (gloves)
+        names = locals().get('hydra_gloves')
+        if names and glove_case:
+            mirror_pool(names, 'glove', [glove_case], label='Hydra→GloveCase')
+
+        # Revolver pool → legacy cases (knives)
+        names = locals().get('revolver_knives')
+        if names:
+            legacy_targets = [
+                vanguard_case, esports2014_case, esports2013_w_case,
+                winter_offensive_case, csgo2_case, csgo3_case,
+                bravo_case, esports2013_case, phoenix_case, csgo1_case,
+            ]
+            legacy_targets = [t for t in legacy_targets if t]
+            if legacy_targets:
+                mirror_pool(names, 'knife', legacy_targets, label='Revolver→LegacySet')
+
+        # Shattered Web ↔ Fracture (knives)
+        names = locals().get('sw_knives')
+        if names and fracture:
+            mirror_pool(names, 'knife', [fracture], label='ShatteredWeb→Fracture')
+        names = locals().get('fracture_knives')
+        if names and shattered_web:
+            mirror_pool(names, 'knife', [shattered_web], label='Fracture→ShatteredWeb')
+    except Exception as e:
+        # Avoid seeding crash on optional pools
+        print(f"Pool mirroring warning: {e}")
 
     # No sample user inventory seeding
 

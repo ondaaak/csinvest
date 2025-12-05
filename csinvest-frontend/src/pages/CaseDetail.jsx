@@ -272,6 +272,19 @@ function CaseDetailPage() {
     return `${perItem.toFixed(2)}%`;
   };
 
+  const getSkinImage = (itemSlug, itemName) => {
+    if (skinImgMap[itemSlug]) return skinImgMap[itemSlug];
+    if (itemName) {
+      const base = itemName.toLowerCase()
+        .replace(/[|]+/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      if (skinImgMap[base]) return skinImgMap[base];
+    }
+    return null;
+  };
+
   return (
     <div className="dashboard-container">
       {/* Header: center the whole row within a max-width container */}
@@ -380,8 +393,8 @@ function CaseDetailPage() {
                   <span style={{ fontSize:'0.8rem', opacity:0.8, color:'var(--text-color)' }}>{perItemOddsText(s.rarity)}</span>
                 </div>
               </div>
-              {skinImgMap[s.slug] ? (
-                <img className="category-img" src={skinImgMap[s.slug]} alt={s.name} style={{ width: 120, height: 120 }} />
+              {getSkinImage(s.slug, s.name) ? (
+                <img className="category-img" src={getSkinImage(s.slug, s.name)} alt={s.name} style={{ width: 120, height: 120 }} />
               ) : (
                 <div className="category-icon" aria-hidden="true" style={{ width: 120, height: 120 }}></div>
               )}
@@ -412,8 +425,8 @@ function CaseDetailPage() {
                     <span style={{ fontSize:'0.8rem', opacity:0.8, color:'var(--text-color)' }}>{knifePerItemOdds}</span>
                   </div>
                 </div>
-                {skinImgMap[kn.slug] ? (
-                  <img className="category-img" src={skinImgMap[kn.slug]} alt={kn.name} style={{ width: 120, height: 120 }} />
+                {getSkinImage(kn.slug, kn.name) ? (
+                  <img className="category-img" src={getSkinImage(kn.slug, kn.name)} alt={kn.name} style={{ width: 120, height: 120 }} />
                 ) : (
                   <div className="category-icon" aria-hidden="true" style={{ width: 120, height: 120 }}></div>
                 )}
@@ -445,8 +458,8 @@ function CaseDetailPage() {
                     <span style={{ fontSize:'0.8rem', opacity:0.8, color:'var(--text-color)' }}>{glovePerItemOdds}</span>
                   </div>
                 </div>
-                {skinImgMap[gl.slug] ? (
-                  <img className="category-img" src={skinImgMap[gl.slug]} alt={gl.name} style={{ width: 120, height: 120 }} />
+                {getSkinImage(gl.slug, gl.name) ? (
+                  <img className="category-img" src={getSkinImage(gl.slug, gl.name)} alt={gl.name} style={{ width: 120, height: 120 }} />
                 ) : (
                   <div className="category-icon" aria-hidden="true" style={{ width: 120, height: 120 }}></div>
                 )}

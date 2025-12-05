@@ -45,7 +45,20 @@ function SkinDetailPage() {
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
   if (!item) return null;
 
-  const img = skinImgMap[item.slug];
+  const getSkinImage = (itemSlug, itemName) => {
+    if (skinImgMap[itemSlug]) return skinImgMap[itemSlug];
+    if (itemName) {
+      const base = itemName.toLowerCase()
+        .replace(/[|]+/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      if (skinImgMap[base]) return skinImgMap[base];
+    }
+    return null;
+  };
+
+  const img = getSkinImage(item.slug, item.name);
 
   const rarityClass = (rarity) => {
     switch ((rarity || '').toLowerCase()) {
