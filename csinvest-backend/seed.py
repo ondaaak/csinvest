@@ -25,7 +25,7 @@ def seed_data():
     # Resolve commonly used case variables early to avoid NameErrors
     gallery_case = get_case(db, 'Gallery Case')
     gallery = gallery_case
-    sealed_genesis_case = get_case(db, 'Sealed Genesis Case')
+    sealed_genesis_case = get_case(db, 'Sealed Genesis Terminal')
     sealed_genesis = sealed_genesis_case
     kilowatt_case = get_case(db, 'Kilowatt Case')
     kilowatt = kilowatt_case
@@ -39,7 +39,7 @@ def seed_data():
     riptide = riptide_case
     prisma2_case = get_case(db, 'Prisma 2 Case')
     prisma2 = prisma2_case
-    shattered_web_case = get_case(db, 'Operation Shattered Web Case')
+    shattered_web_case = get_case(db, 'Shattered Web Case')
     shattered_web = shattered_web_case
     cs20_case = get_case(db, 'CS20 Case')
     cs20 = cs20_case
@@ -174,7 +174,7 @@ def seed_data():
     # Re-fetch all cases to ensure variables are not None (stale from top of function)
     gallery_case = get_case(db, 'Gallery Case')
     gallery = gallery_case
-    sealed_genesis_case = get_case(db, 'Sealed Genesis Case')
+    sealed_genesis_case = get_case(db, 'Sealed Genesis Terminal')
     sealed_genesis = sealed_genesis_case
     kilowatt_case = get_case(db, 'Kilowatt Case')
     kilowatt = kilowatt_case
@@ -188,7 +188,7 @@ def seed_data():
     riptide = riptide_case
     prisma2_case = get_case(db, 'Prisma 2 Case')
     prisma2 = prisma2_case
-    shattered_web_case = get_case(db, 'Operation Shattered Web Case')
+    shattered_web_case = get_case(db, 'Shattered Web Case')
     shattered_web = shattered_web_case
     cs20_case = get_case(db, 'CS20 Case')
     cs20 = cs20_case
@@ -246,6 +246,20 @@ def seed_data():
         for nm in names:
             base_slug = slugify(nm)
             per_case_slug = f"{base_slug}-{case_item.slug}"
+            
+            # Cleanup legacy item if it exists and is linked to this case
+            legacy_item = db_sess.query(Item).filter(
+                Item.slug == base_slug,
+                Item.case_id == case_item.item_id
+            ).first()
+            if legacy_item:
+                # print(f"Removing legacy item {base_slug} from case {case_item.name}")
+                db_sess.delete(legacy_item)
+                # We commit immediately to ensure the slug is free if we were to reuse it (though we aren't)
+                # and to ensure the cleanup happens even if the script crashes later.
+                # But committing inside a loop might be slow. However, this is a one-time migration.
+                db_sess.commit()
+
             exists = db_sess.query(Item).filter(
                 Item.slug == per_case_slug,
                 Item.item_type == item_type,
@@ -453,9 +467,38 @@ def seed_data():
             db.commit()
             print(f"Přidáno Fever nožů: {fk_added}")
 
+    # Fracture Case skins
+    if fracture:
+        print("Kontroluji/seeduji Fracture Case skiny...")
+        fr_skins = [
+            ("Desert Eagle | Printstream", "Covert"),
+            ("AK-47 | Legion of Anubis", "Covert"),
+            ("M4A4 | Tooth Fairy", "Classified"),
+            ("Glock-18 | Vogue", "Classified"),
+            ("XM1014 | Entombed", "Classified"),
+            ("MAG-7 | Monster Call", "Restricted"),
+            ("MAC-10 | Allure", "Restricted"),
+            ("Tec-9 | Brother", "Restricted"),
+            ("Galil AR | Connexion", "Restricted"),
+            ("MP5-SD | Kitbash", "Restricted"),
+            ("SSG 08 | Mainframe 001", "Mil-spec"),
+            ("PP-Bizon | Runic", "Mil-spec"),
+            ("P2000 | Gnarled", "Mil-spec"),
+            ("P90 | Freight", "Mil-spec"),
+            ("P250 | Cassette", "Mil-spec"),
+            ("Negev | Ultralight", "Mil-spec"),
+            ("SG 553 | Ol' Rusty", "Mil-spec"),
+        ]
+        fr_s_added = 0
+        for name, rarity in fr_skins:
+            if clone_items_for_case(db, [name], 'skin', fracture, rarity):
+                fr_s_added += 1
+        if fr_s_added:
+            db.commit()
+            print(f"Přidáno Fracture skinů: {fr_s_added}")
+
     # Fracture Case knives (Shattered Web knife pool)
-    fracture_case = get_case(db, 'Fracture Case')
-    if fracture_case:
+    if fracture:
         print("Kontroluji/seeduji Fracture Case nože...")
         fracture_knives = [
             
@@ -515,31 +558,10 @@ def seed_data():
             "Paracord Knife | Safari Mesh",
             "Paracord Knife | Scorched",
         ]
-        fr_added = 0
-        for name in fracture_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != fracture_case.item_id:
-                    exists.case_id = fracture_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=fracture_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            fr_added += 1
-        if fr_added:
+        fk_added = clone_items_for_case(db, fracture_knives, 'knife', fracture, 'Knife')
+        if fk_added:
             db.commit()
-            print(f"Přidáno Fracture nožů: {fr_added}")
+            print(f"Přidáno Fracture nožů: {fk_added}")
 
     # Gallery Case skins
     if gallery:
@@ -610,29 +632,7 @@ def seed_data():
             "Kukri Knife | Vanilla",
             "Kukri Knife | Forest DDPAT",
         ]
-        gk_added = 0
-        for name in gallery_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != gallery.item_id:
-                    exists.case_id = gallery.item_id
-                continue
-            # No Doppler phase guards; handled by cleanup at end
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=gallery.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            gk_added += 1
+        gk_added = clone_items_for_case(db, gallery_knives, 'knife', gallery, 'Knife')
         if gk_added:
             db.commit()
             print(f"Přidáno Gallery nožů: {gk_added}")
@@ -709,26 +709,8 @@ def seed_data():
         ]
         k_added = 0
         for name, rarity in kilo_skins:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
-            if exists:
-                if exists.case_id != kilowatt.item_id:
-                    exists.case_id = kilowatt.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='skin',
-                rarity=rarity,
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=kilowatt.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            k_added += 1
+            if clone_items_for_case(db, [name], 'skin', kilowatt, rarity):
+                k_added += 1
         if k_added:
             db.commit()
             print(f"Přidáno Kilowatt skinů: {k_added}")
@@ -750,29 +732,7 @@ def seed_data():
             "Kukri Knife | Vanilla",
             "Kukri Knife | Forest DDPAT",
         ]
-        kk_added = 0
-        for name in kilo_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != kilowatt.item_id:
-                    exists.case_id = kilowatt.item_id
-                continue
-            # No Doppler phase guards; handled by cleanup at end
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=kilowatt.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            kk_added += 1
+        kk_added = clone_items_for_case(db, kilo_knives, 'knife', kilowatt, 'Knife')
         if kk_added:
             db.commit()
             print(f"Přidáno Kilowatt nožů: {kk_added}")
@@ -973,28 +933,7 @@ def seed_data():
             ("Huntsman Knife | Bright Water"),
             ("Huntsman Knife | Black Laminate"),
         ]
-        dk_added = 0
-        for name in dnn_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != dreams.item_id:
-                    exists.case_id = dreams.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=dreams.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            dk_added += 1
+        dk_added = clone_items_for_case(db, dnn_knives, 'knife', dreams, 'Knife')
         if dk_added:
             db.commit()
             print(f"Přidáno Dreams & Nightmares nožů: {dk_added}")
@@ -1091,26 +1030,8 @@ def seed_data():
         ]
         rk_added = 0
         for name in riptide_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != riptide.item_id:
-                    exists.case_id = riptide.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=riptide.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            rk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', riptide):
+                rk_added += 1
         if rk_added:
             db.commit()
             print(f"Přidáno Operation Riptide nožů: {rk_added}")
@@ -1204,26 +1125,8 @@ def seed_data():
         ]
         p2k_added = 0
         for name in prisma2_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != prisma2.item_id:
-                    exists.case_id = prisma2.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=prisma2.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            p2k_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', prisma2):
+                p2k_added += 1
         if p2k_added:
             db.commit()
             print(f"Přidáno Prisma 2 nožů: {p2k_added}")
@@ -1256,26 +1159,8 @@ def seed_data():
         ]
         sw_added = 0
         for name, rarity in sw_skins:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
-            if exists:
-                if exists.case_id != shattered_web.item_id:
-                    exists.case_id = shattered_web.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='skin',
-                rarity=rarity,
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=shattered_web.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            sw_added += 1
+            if clone_items_for_case(db, [name], 'skin', shattered_web, rarity):
+                sw_added += 1
         if sw_added:
             db.commit()
             print(f"Přidáno Shattered Web skinů: {sw_added}")
@@ -1338,28 +1223,7 @@ def seed_data():
             "Paracord Knife | Safari Mesh",
             "Paracord Knife | Scorched",
         ]
-        swk_added = 0
-        for name in sw_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != shattered_web.item_id:
-                    exists.case_id = shattered_web.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=shattered_web.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            swk_added += 1
+        swk_added = clone_items_for_case(db, sw_knives, 'knife', shattered_web, 'Knife')
         if swk_added:
             db.commit()
             print(f"Přidáno Shattered Web nožů: {swk_added}")
@@ -1543,26 +1407,8 @@ def seed_data():
         ]
         prk_added = 0
         for name in prisma_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != prisma.item_id:
-                    exists.case_id = prisma.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=prisma.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            prk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', prisma):
+                prk_added += 1
         if prk_added:
             db.commit()
             print(f"Přidáno Prisma nožů: {prk_added}")
@@ -1677,28 +1523,7 @@ def seed_data():
             "Navaja Knife | Urban Masked",
             "Navaja Knife | Forest DDPAT",
         ]
-        dzk_added = 0
-        for name in dz_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != danger_zone.item_id:
-                    exists.case_id = danger_zone.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=danger_zone.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            dzk_added += 1
+        dzk_added = clone_items_for_case(db, dz_knives, 'knife', danger_zone, 'Knife')
         if dzk_added:
             db.commit()
             print(f"Přidáno Danger Zone nožů: {dzk_added}")
@@ -1815,26 +1640,8 @@ def seed_data():
         ]
         hzk_added = 0
         for name in horizon_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != horizon.item_id:
-                    exists.case_id = horizon.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=horizon.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            hzk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', horizon):
+                hzk_added += 1
         if hzk_added:
             db.commit()
             print(f"Přidáno Horizon nožů: {hzk_added}")
@@ -2552,26 +2359,8 @@ def seed_data():
         ]
         c3_added = 0
         for name, rarity in chroma3_skins:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
-            if exists:
-                if exists.case_id != chroma3_case.item_id:
-                    exists.case_id = chroma3_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='skin',
-                rarity=rarity,
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=chroma3_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            c3_added += 1
+            if clone_items_for_case(db, [name], 'skin', chroma3_case, rarity):
+                c3_added += 1
         if c3_added:
             db.commit()
             print(f"Přidáno Chroma 3 skinů: {c3_added}")
@@ -2967,26 +2756,8 @@ def seed_data():
         ]
         vgk_added = 0
         for name in vanguard_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != vanguard_case.item_id:
-                    exists.case_id = vanguard_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=vanguard_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            vgk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', vanguard_case):
+                vgk_added += 1
         if vgk_added:
             db.commit()
             print(f"Přidáno Vanguard nožů: {vgk_added}")
@@ -3117,26 +2888,8 @@ def seed_data():
         ]
         esk_added = 0
         for name in esports2014_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != esports2014_case.item_id:
-                    exists.case_id = esports2014_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=esports2014_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            esk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', esports2014_case):
+                esk_added += 1
         if esk_added:
             db.commit()
             print(f"Přidáno eSports 2014 Summer nožů: {esk_added}")
@@ -3296,26 +3049,8 @@ def seed_data():
         ]
         huk_added = 0
         for name in huntsman_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != huntsman_case.item_id:
-                    exists.case_id = huntsman_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=huntsman_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            huk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', huntsman_case):
+                huk_added += 1
         if huk_added:
             db.commit()
             print(f"Přidáno Huntsman nožů: {huk_added}")
@@ -3324,10 +3059,10 @@ def seed_data():
     if phoenix_case:
         print("Kontroluji/seeduji Operation Phoenix Weapon Case skiny...")
         phoenix_skins = [
-            ("AUG | Chameleon", "Classified"),
+            ("AUG | Chameleon", "Covert"),
             ("AWP | Asiimov", "Covert"),
             ("AK-47 | Redline", "Classified"),
-            ("P90 | Trigon", "Covert"),
+            ("P90 | Trigon", "Classified"),
             ("Nova | Antique", "Classified"),
             ("USP-S | Guardian", "Restricted"),
             ("SG 553 | Pulse", "Restricted"),
@@ -3438,26 +3173,8 @@ def seed_data():
         ]
         phk_added = 0
         for name in phoenix_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != phoenix_case.item_id:
-                    exists.case_id = phoenix_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=phoenix_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            phk_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', phoenix_case):
+                phk_added += 1
         if phk_added:
             db.commit()
             print(f"Přidáno Phoenix nožů: {phk_added}")
@@ -3466,7 +3183,7 @@ def seed_data():
     if csgo3_case:
         print("Kontroluji/seeduji CS:GO Weapon Case 3 skiny...")
         csgo3_skins = [
-            ("CZ75-Auto | Victoria", "Classified"),
+            ("CZ75-Auto | Victoria", "Covert"),
             ("P250 | Undertow", "Classified"),
             ("CZ75-Auto | The Fuschia Is Now", "Restricted"),
             ("Five-SeveN | Copper Galaxy", "Restricted"),
@@ -3579,26 +3296,8 @@ def seed_data():
         ]
         c3k_added = 0
         for name in csgo3_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != csgo3_case.item_id:
-                    exists.case_id = csgo3_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=csgo3_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            c3k_added += 1
+            if clone_item_for_case(db, name, 'knife', 'Knife', csgo3_case):
+                c3k_added += 1
         if c3k_added:
             db.commit()
             print(f"Přidáno CS:GO Weapon Case 3 nožů: {c3k_added}")
@@ -4157,29 +3856,7 @@ def seed_data():
             "Gut Knife | Slaughter",
             "Gut Knife | Fade",
         ]
-        brk_added = 0
-        for name in bravo_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != bravo_case.item_id:
-                    exists.case_id = bravo_case.item_id
-                continue
-            # No Doppler phase guards; handled by cleanup at end
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=bravo_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            brk_added += 1
+        brk_added = clone_items_for_case(db, bravo_knives, 'knife', bravo_case, 'Knife')
         if brk_added:
             db.commit()
             print(f"Přidáno Operation Bravo nožů: {brk_added}")
@@ -4204,26 +3881,8 @@ def seed_data():
         ]
         es13_added = 0
         for name, rarity in es13_skins:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
-            if exists:
-                if exists.case_id != esports2013_case.item_id:
-                    exists.case_id = esports2013_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='skin',
-                rarity=rarity,
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=esports2013_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            es13_added += 1
+            if clone_items_for_case(db, [name], 'skin', esports2013_case, rarity):
+                es13_added += 1
         if es13_added:
             db.commit()
             print(f"Přidáno eSports 2013 skinů: {es13_added}")
@@ -4300,29 +3959,7 @@ def seed_data():
             "Gut Knife | Slaughter",
             "Gut Knife | Fade",
         ]
-        es13k_added = 0
-        for name in es13_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != esports2013_case.item_id:
-                    exists.case_id = esports2013_case.item_id
-                continue
-            # No Doppler phase guards; handled by cleanup at end
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=esports2013_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            es13k_added += 1
+        es13k_added = clone_items_for_case(db, es13_knives, 'knife', esports2013_case, 'Knife')
         if es13k_added:
             db.commit()
             print(f"Přidáno eSports 2013 nožů: {es13k_added}")
@@ -4663,26 +4300,8 @@ def seed_data():
         ]
         c2_added = 0
         for name, rarity in chroma2_skins:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
-            if exists:
-                if exists.case_id != chroma2_case.item_id:
-                    exists.case_id = chroma2_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='skin',
-                rarity=rarity,
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=chroma2_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            c2_added += 1
+            if clone_items_for_case(db, [name], 'skin', chroma2_case, rarity):
+                c2_added += 1
         if c2_added:
             db.commit()
             print(f"Přidáno Chroma 2 skinů: {c2_added}")
@@ -4720,28 +4339,7 @@ def seed_data():
                 "M9 Bayonet | Tiger Tooth",
                 "M9 Bayonet | Ultraviolet",
         ]
-        c2k_added = 0
-        for name in chroma2_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != chroma2_case.item_id:
-                    exists.case_id = chroma2_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=chroma2_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            c2k_added += 1
+        c2k_added = clone_items_for_case(db, chroma2_knives, 'knife', chroma2_case, 'Knife')
         if c2k_added:
             db.commit()
             print(f"Přidáno Chroma 2 nožů: {c2k_added}")
@@ -4771,26 +4369,8 @@ def seed_data():
         ]
         c_added = 0
         for name, rarity in chroma_skins:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'skin').first()
-            if exists:
-                if exists.case_id != chroma_case.item_id:
-                    exists.case_id = chroma_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='skin',
-                rarity=rarity,
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=chroma_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            c_added += 1
+            if clone_items_for_case(db, [name], 'skin', chroma_case, rarity):
+                c_added += 1
         if c_added:
             db.commit()
             print(f"Přidáno Chroma skinů: {c_added}")
@@ -4828,28 +4408,7 @@ def seed_data():
                 "M9 Bayonet | Tiger Tooth",
                 "M9 Bayonet | Ultraviolet",
         ]
-        ck_added = 0
-        for name in chroma_knives:
-            sl = slugify(name)
-            exists = db.query(Item).filter(Item.slug == sl, Item.item_type == 'knife').first()
-            if exists:
-                if exists.case_id != chroma_case.item_id:
-                    exists.case_id = chroma_case.item_id
-                continue
-            itm = Item(
-                name=name,
-                item_type='knife',
-                rarity='Knife',
-                wear=None,
-                wearValue=None,
-                pattern=None,
-                collection=None,
-                case_id=chroma_case.item_id,
-                current_price=None,
-                slug=sl,
-            )
-            db.add(itm)
-            ck_added += 1
+        ck_added = clone_items_for_case(db, chroma_knives, 'knife', chroma_case, 'Knife')
         if ck_added:
             db.commit()
             print(f"Přidáno Chroma nožů: {ck_added}")
