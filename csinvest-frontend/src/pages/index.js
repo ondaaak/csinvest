@@ -7,3 +7,5 @@ export { default as SkinDetailPage } from './SkinDetail.jsx';
 export { default as KnivesPage } from './Knives.jsx';
 export { default as GlovesPage } from './Gloves.jsx';
 export { default as WeaponsPage } from './Weapons.jsx';
+export { default as CollectionsPage } from './Collections.jsx';
+export { default as CollectionDetailPage } from './CollectionDetail.jsx';

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage, WeaponsPage } from './pages';
+import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage, WeaponsPage, CollectionsPage, CollectionDetailPage } from './pages';
 import LoginPage from './pages/Login.jsx';
 import RegisterPage from './pages/Register.jsx';
 import AccountPage from './pages/Account.jsx';
@@ -355,7 +355,9 @@ function App() {
                     <Route path="/search/gloves" element={<GlovesPage />} />
                     <Route path="/search/weapons" element={<WeaponsPage />} />
                     <Route path="/search/cases" element={<CasesPage />} />
+                    <Route path="/search/collections" element={<CollectionsPage />} />
                     <Route path="/case/:slug" element={<CaseDetailPage />} />
+                    <Route path="/collection/:slug" element={<CollectionDetailPage />} />
                     <Route path="/skin/:slug" element={<SkinDetailPage />} />
                     <Route path="/search/:category" element={<SearchCategory />} />
                     <Route path="/login" element={<LoginPage />} />

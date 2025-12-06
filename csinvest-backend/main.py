@@ -290,6 +290,25 @@ def get_case_detail(slug: str, db: Session = Depends(get_db)):
     }
 
 
+@app.get("/collections")
+def get_collections(db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    return repo.get_items(item_type='collection', limit=500)
+
+
+@app.get("/collections/{slug}")
+def get_collection_detail(slug: str, db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    coll = repo.get_collection_by_slug(slug)
+    if not coll:
+        raise HTTPException(status_code=404, detail="Collection nenalezena")
+    skins = repo.get_case_items_by_types(coll.item_id, ["skin"])
+    return {
+        "collection": coll,
+        "skins": skins,
+    }
+
+
 @app.post("/refresh-items")
 def refresh_items(item_type: str | None = None, db: Session = Depends(get_db)):
     """
