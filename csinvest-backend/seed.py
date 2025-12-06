@@ -136,6 +136,7 @@ def seed_data():
         "Revolver Case",
         "Shadow Case",
         "Falchion Case",
+        "Chroma 2 Case",
         # Chroma 3 Case skins and knives
         "Chroma Case",
         "Operation Vanguard Weapon Case",

@@ -4,12 +4,12 @@ import { useCurrency } from '../currency/CurrencyContext.jsx';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
-export default function GlovesPage() {
+export default function WeaponsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [sortMode, setSortMode] = useState('release_new');
+  const [sortMode, setSortMode] = useState('rarity_desc');
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -17,7 +17,7 @@ export default function GlovesPage() {
 
   const q = new URLSearchParams(location.search).get('q') || '';
 
-  const gloveImgMap = useMemo(() => {
+  const skinImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
     Object.entries(files).forEach(([path, url]) => {
@@ -29,15 +29,16 @@ export default function GlovesPage() {
   }, []);
 
   const sortedKeys = useMemo(() => {
-    return Object.keys(gloveImgMap).sort((a, b) => b.length - a.length);
-  }, [gloveImgMap]);
+    return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
+  }, [skinImgMap]);
 
-  const getGloveImage = (slug) => {
+  const getSkinImage = (slug) => {
     if (!slug) return null;
     const s = slug.toLowerCase();
-    if (gloveImgMap[s]) return gloveImgMap[s];
+    if (skinImgMap[s]) return skinImgMap[s];
+    // Try prefix match with longest keys first
     const match = sortedKeys.find(key => s.startsWith(key));
-    return match ? gloveImgMap[match] : null;
+    return match ? skinImgMap[match] : null;
   };
 
   useEffect(() => {
@@ -45,9 +46,9 @@ export default function GlovesPage() {
       setLoading(true);
       setError(null);
       try {
-        const url = q ? `${API_BASE}/search/gloves?q=${encodeURIComponent(q)}` : `${API_BASE}/search/gloves`;
+        const url = q ? `${API_BASE}/search/weapons?q=${encodeURIComponent(q)}` : `${API_BASE}/search/weapons`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to load gloves');
+        if (!res.ok) throw new Error('Failed to load weapons');
         const data = await res.json();
         const arr = Array.isArray(data) ? data : [];
         setItems(arr);
@@ -64,8 +65,8 @@ export default function GlovesPage() {
   const doRefreshPrices = async () => {
     try {
       setRefreshing(true);
-      await fetch(`${API_BASE}/refresh-items?item_type=glove`, { method: 'POST' });
-      const url = query ? `${API_BASE}/search/gloves?q=${encodeURIComponent(query)}` : `${API_BASE}/search/gloves`;
+      await fetch(`${API_BASE}/refresh-items?item_type=skin`, { method: 'POST' });
+      const url = query ? `${API_BASE}/search/weapons?q=${encodeURIComponent(query)}` : `${API_BASE}/search/weapons`;
       const res = await fetch(url);
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
@@ -80,7 +81,23 @@ export default function GlovesPage() {
     const arr = [...items];
     const getPrice = (c) => typeof c.current_price === 'number' ? c.current_price : 0;
     const getDate = (c) => c.release_date ? new Date(c.release_date) : new Date(0);
+    const getRarityValue = (rarity) => {
+      if (!rarity) return 0;
+      const r = rarity.toLowerCase();
+      if (r.includes('contraband')) return 7;
+      if (r.includes('covert') || r.includes('extraordinary')) return 6;
+      if (r.includes('classified')) return 5;
+      if (r.includes('restricted')) return 4;
+      if (r.includes('mil-spec')) return 3;
+      if (r.includes('industrial')) return 2;
+      if (r.includes('consumer')) return 1;
+      return 0;
+    };
+
     switch (sortMode) {
+      case 'rarity_desc':
+        arr.sort((a,b) => getRarityValue(b.rarity) - getRarityValue(a.rarity));
+        break;
       case 'price_asc':
         arr.sort((a,b) => getPrice(a) - getPrice(b));
         break;
@@ -100,18 +117,31 @@ export default function GlovesPage() {
     return ql ? arr.filter(c => (c.name || '').toLowerCase().includes(ql) || (c.slug || '').toLowerCase().includes(ql)) : arr;
   }, [items, sortMode, query]);
 
+  const getRarityColor = (rarity) => {
+    if (!rarity) return { bg: 'rgba(107,114,128,0.25)', color: 'var(--text-color)' };
+    const r = rarity.toLowerCase();
+    if (r.includes('contraband')) return { bg: 'rgba(228, 174, 57, 0.25)', color: '#e4ae39' };
+    if (r.includes('covert') || r.includes('extraordinary')) return { bg: 'rgba(235, 75, 75, 0.25)', color: '#eb4b4b' };
+    if (r.includes('classified')) return { bg: 'rgba(211, 44, 230, 0.25)', color: '#d32ce6' };
+    if (r.includes('restricted')) return { bg: 'rgba(136, 71, 255, 0.25)', color: '#8847ff' };
+    if (r.includes('mil-spec')) return { bg: 'rgba(75, 105, 255, 0.25)', color: '#4b69ff' };
+    if (r.includes('industrial')) return { bg: 'rgba(94, 152, 217, 0.25)', color: '#5e98d9' };
+    if (r.includes('consumer')) return { bg: 'rgba(176, 195, 217, 0.25)', color: '#b0c3d9' };
+    return { bg: 'rgba(107,114,128,0.25)', color: 'var(--text-color)' };
+  };
+
   return (
     <div className="dashboard-container">
       <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <h2 style={{ margin:0, flex:1, paddingLeft:'14%' }}>Gloves</h2>
+        <h2 style={{ margin:0, flex:1, paddingLeft:'14%' }}>Weapons</h2>
         <div style={{ position: 'relative', width: 320, maxWidth: '100%' }}>
           <input
             className="search-input"
             type="text"
-            placeholder="Search gloves..."
+            placeholder="Search weapons..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             style={{ width: '100%', paddingRight: 30 }}
@@ -141,6 +171,7 @@ export default function GlovesPage() {
         <select value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
           background:'var(--surface-bg)', color:'var(--text-color)', border:'1px solid var(--border-color)', borderRadius:8, padding:'6px 8px'
         }}>
+          <option value="rarity_desc">Rarity</option>
           <option value="price_desc">Price ↓</option>
           <option value="price_asc">Price ↑</option>
           <option value="release_new">Newest</option>
@@ -159,7 +190,7 @@ export default function GlovesPage() {
           }}
         >{refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
       </div>
-      {loading && <div className="loading">Loading gloves…</div>}
+      {loading && <div className="loading">Loading weapons…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
       <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {sortedItems.map(it => (
@@ -169,19 +200,33 @@ export default function GlovesPage() {
             onClick={() => navigate(`/skin/${it.slug}`)}
             style={{ cursor: 'pointer' }}
           >
-            {getGloveImage(it.slug) ? (
-              <img src={getGloveImage(it.slug)} alt={it.name} className="category-img" />
+            {getSkinImage(it.slug) ? (
+              <img src={getSkinImage(it.slug)} alt={it.name} className="category-img" />
             ) : (
               <div className="category-icon" aria-hidden="true"></div>
             )}
             <div style={{ marginBottom:8 }}>
               <div className="category-label" style={{ fontSize:'0.95rem' }}>{it.name}</div>
+              {it.rarity && (
+                <span style={{
+                  display:'inline-block',
+                  marginTop:6,
+                  fontSize:'0.65rem',
+                  padding:'3px 6px',
+                  borderRadius:6,
+                  background: getRarityColor(it.rarity).bg,
+                  color: getRarityColor(it.rarity).color,
+                  fontWeight:600
+                }}>
+                  {it.rarity.toUpperCase()}
+                </span>
+              )}
             </div>
             <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}</div>
           </div>
         ))}
         {(!loading && items.length === 0) && (
-          <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No gloves found.</div>
+          <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No weapons found.</div>
         )}
       </div>
     </div>

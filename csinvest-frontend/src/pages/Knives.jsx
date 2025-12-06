@@ -108,14 +108,37 @@ export default function KnivesPage() {
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
         <h2 style={{ margin:0, flex:1, paddingLeft:'14%' }}>Knives</h2>
-        <input
-          className="search-input"
-          type="text"
-          placeholder="Search knives..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ maxWidth: 320 }}
-        />
+        <div style={{ position: 'relative', width: 320, maxWidth: '100%' }}>
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Search knives..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ width: '100%', paddingRight: 30 }}
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              style={{
+                position: 'absolute',
+                right: 8,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-color)',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                padding: 0,
+                lineHeight: 1,
+              }}
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
         <select value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
           background:'var(--surface-bg)', color:'var(--text-color)', border:'1px solid var(--border-color)', borderRadius:8, padding:'6px 8px'
         }}>

@@ -71,9 +71,18 @@ class SearchResponseItem(BaseModel):
     name: str
     item_type: str
     slug: str
+    rarity: str | None = None
+    current_price: float | None = None
 
 def to_search_item(itm: Item) -> SearchResponseItem:
-    return SearchResponseItem(item_id=itm.item_id, name=itm.name, item_type=itm.item_type, slug=itm.slug)
+    return SearchResponseItem(
+        item_id=itm.item_id, 
+        name=itm.name, 
+        item_type=itm.item_type, 
+        slug=itm.slug,
+        rarity=itm.rarity,
+        current_price=itm.current_price
+    )
 
 @app.get("/search")
 def search_items(q: str, limit: int = 10, db: Session = Depends(get_db)):
@@ -122,6 +131,26 @@ def search_knives(q: str | None = None, db: Session = Depends(get_db)):
 @app.get("/search/gloves")
 def search_gloves(q: str | None = None, db: Session = Depends(get_db)):
     return list_gloves(q=q, db=db)
+
+@app.get("/weapons")
+def list_weapons(q: str | None = None, db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    if q:
+        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'skin']
+    else:
+        items = repo.get_items(item_type='skin', limit=10_000_000)
+    
+    seen = set()
+    unique = []
+    for i in items:
+        if i.name not in seen:
+            seen.add(i.name)
+            unique.append(i)
+    return [to_search_item(it) for it in unique]
+
+@app.get("/search/weapons")
+def search_weapons(q: str | None = None, db: Session = Depends(get_db)):
+    return list_weapons(q=q, db=db)
 
 @app.get("/")
 def read_root():
@@ -287,7 +316,12 @@ def get_item_detail(slug: str, db: Session = Depends(get_db)):
     itm = repo.get_item_by_slug(slug)
     if not itm:
         raise HTTPException(status_code=404, detail="Item nenalezen")
-    return itm
+    
+    cases = repo.get_cases_for_item(itm.name)
+    return {
+        "item": itm,
+        "cases": cases
+    }
 
 @app.get("/items/{slug}/history")
 def get_item_price_history(slug: str, limit: int = 200, db: Session = Depends(get_db)):

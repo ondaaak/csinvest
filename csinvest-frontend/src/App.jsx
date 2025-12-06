@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage } from './pages';
+import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage, WeaponsPage } from './pages';
 import LoginPage from './pages/Login.jsx';
 import RegisterPage from './pages/Register.jsx';
 import AccountPage from './pages/Account.jsx';
@@ -273,6 +273,11 @@ function App() {
     const { currency, cycleCurrency, refreshRates, loadingRates, lastUpdated } = useCurrency();
     const location = useLocation();
     const path = location.pathname || '/';
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [path]);
+
     const isSearch = path.startsWith('/search');
     const isAuthPage = path === '/login' || path === '/register' || path === '/account';
     
@@ -348,6 +353,7 @@ function App() {
                     <Route path="/search" element={<SearchPage />} />
                     <Route path="/search/knives" element={<KnivesPage />} />
                     <Route path="/search/gloves" element={<GlovesPage />} />
+                    <Route path="/search/weapons" element={<WeaponsPage />} />
                     <Route path="/search/cases" element={<CasesPage />} />
                     <Route path="/case/:slug" element={<CaseDetailPage />} />
                     <Route path="/skin/:slug" element={<SkinDetailPage />} />

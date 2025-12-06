@@ -161,3 +161,13 @@ class ItemRepository:
         )
         self.db.add(rec)
         self.db.commit()
+
+    def get_cases_for_item(self, item_name: str):
+        items = self.db.query(Item).filter(Item.name == item_name, Item.case_id.isnot(None)).options(joinedload(Item.case)).all()
+        cases = []
+        seen_case_ids = set()
+        for it in items:
+            if it.case and it.case.item_id not in seen_case_ids:
+                cases.append(it.case)
+                seen_case_ids.add(it.case.item_id)
+        return cases

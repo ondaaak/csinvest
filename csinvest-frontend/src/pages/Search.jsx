@@ -7,6 +7,7 @@ const CATEGORIES = [
   { key: 'collections', label: 'Collections' },
   { key: 'knives', label: 'Knives' },
   { key: 'gloves', label: 'Gloves' },
+  { key: 'weapons', label: 'Weapons' },
   { key: 'agents', label: 'Agents' },
   { key: 'stickers', label: 'Stickers' },
   { key: 'charms', label: 'Charms' },
@@ -127,7 +128,30 @@ function SearchPage() {
             onFocus={() => {
               if (query.trim() && suggestions.length > 0) setOpen(true);
             }}
+            style={{ paddingRight: 30 }}
           />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-color)',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                padding: 0,
+                lineHeight: 1,
+                zIndex: 5
+              }}
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
           {open && query && suggestions.length > 0 && (
             <div className="search-suggestions">
               {suggestions.map((s) => (

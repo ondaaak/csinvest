@@ -6,6 +6,7 @@ const LABELS = {
   collections: 'Collections',
   knives: 'Knives',
   gloves: 'Gloves',
+  weapons: 'Weapons',
   agents: 'Agents',
   stickers: 'Stickers',
   charms: 'Charms',
