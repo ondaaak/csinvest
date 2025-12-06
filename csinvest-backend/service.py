@@ -20,6 +20,10 @@ class PriceService:
             time.sleep(1)
             itm = owned.item
 
+            if not itm:
+                print(f"Varování: UserItem {owned.user_item_id} nemá přiřazený Item (item_id={owned.item_id}). Přeskakuji.")
+                continue
+
             if getattr(itm, 'item_type', None) == 'skin':
                 wear_status = f"({getattr(itm, 'wear', '')})" if getattr(itm, 'wear', None) else ""
                 market_name = f"{itm.name} {wear_status}".strip()
