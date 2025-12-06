@@ -24,6 +24,10 @@ function SkinDetailPage() {
     return map;
   }, []);
 
+  const sortedKeys = useMemo(() => {
+    return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
+  }, [skinImgMap]);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -44,10 +48,6 @@ function SkinDetailPage() {
   if (loading) return <div className="dashboard-container"><div className="loading">Loading…</div></div>;
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
   if (!item) return null;
-
-  const sortedKeys = useMemo(() => {
-    return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
-  }, [skinImgMap]);
 
   const getSkinImage = (itemSlug, itemName) => {
     if (!itemSlug) return null;
