@@ -28,6 +28,19 @@ export default function KnivesPage() {
     return map;
   }, []);
 
+  const sortedKeys = useMemo(() => {
+    return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
+  }, [skinImgMap]);
+
+  const getSkinImage = (slug) => {
+    if (!slug) return null;
+    const s = slug.toLowerCase();
+    if (skinImgMap[s]) return skinImgMap[s];
+    // Try prefix match with longest keys first
+    const match = sortedKeys.find(key => s.startsWith(key));
+    return match ? skinImgMap[match] : null;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -134,8 +147,8 @@ export default function KnivesPage() {
             onClick={() => navigate(`/skin/${it.slug}`)}
             style={{ cursor: 'pointer' }}
           >
-            {skinImgMap[it.slug] ? (
-              <img src={skinImgMap[it.slug]} alt={it.name} className="category-img" />
+            {getSkinImage(it.slug) ? (
+              <img src={getSkinImage(it.slug)} alt={it.name} className="category-img" />
             ) : (
               <div className="category-icon" aria-hidden="true"></div>
             )}

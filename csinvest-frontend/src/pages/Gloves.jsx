@@ -18,7 +18,7 @@ export default function GlovesPage() {
   const q = new URLSearchParams(location.search).get('q') || '';
 
   const gloveImgMap = useMemo(() => {
-    const files = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
     Object.entries(files).forEach(([path, url]) => {
       const filename = path.split('/').pop() || '';
@@ -27,6 +27,18 @@ export default function GlovesPage() {
     });
     return map;
   }, []);
+
+  const sortedKeys = useMemo(() => {
+    return Object.keys(gloveImgMap).sort((a, b) => b.length - a.length);
+  }, [gloveImgMap]);
+
+  const getGloveImage = (slug) => {
+    if (!slug) return null;
+    const s = slug.toLowerCase();
+    if (gloveImgMap[s]) return gloveImgMap[s];
+    const match = sortedKeys.find(key => s.startsWith(key));
+    return match ? gloveImgMap[match] : null;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -134,8 +146,8 @@ export default function GlovesPage() {
             onClick={() => navigate(`/skin/${it.slug}`)}
             style={{ cursor: 'pointer' }}
           >
-            {gloveImgMap[it.slug] ? (
-              <img src={gloveImgMap[it.slug]} alt={it.name} className="category-img" />
+            {getGloveImage(it.slug) ? (
+              <img src={getGloveImage(it.slug)} alt={it.name} className="category-img" />
             ) : (
               <div className="category-icon" aria-hidden="true"></div>
             )}

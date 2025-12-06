@@ -45,8 +45,18 @@ function SkinDetailPage() {
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
   if (!item) return null;
 
+  const sortedKeys = useMemo(() => {
+    return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
+  }, [skinImgMap]);
+
   const getSkinImage = (itemSlug, itemName) => {
-    if (skinImgMap[itemSlug]) return skinImgMap[itemSlug];
+    if (!itemSlug) return null;
+    const s = itemSlug.toLowerCase();
+    if (skinImgMap[s]) return skinImgMap[s];
+    
+    const match = sortedKeys.find(key => s.startsWith(key));
+    if (match) return skinImgMap[match];
+
     if (itemName) {
       const base = itemName.toLowerCase()
         .replace(/[|]+/g, "")

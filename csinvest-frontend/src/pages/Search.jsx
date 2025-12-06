@@ -39,7 +39,7 @@ function SearchPage() {
 
   const slugNormalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
-  const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  // Gloves are now in skins folder
   const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const assetFromFolder = (globObj) => Object.fromEntries(
     Object.entries(globObj).map(([p, url]) => {
@@ -48,10 +48,18 @@ function SearchPage() {
       return [slugNormalize(keyRaw), url];
     })
   );
-  const itemThumbs = {
+  const itemThumbs = useMemo(() => ({
     ...assetFromFolder(skinsGlob),
-    ...assetFromFolder(glovesGlob),
     ...assetFromFolder(casesGlob),
+  }), []);
+
+  const sortedThumbKeys = useMemo(() => Object.keys(itemThumbs).sort((a, b) => b.length - a.length), [itemThumbs]);
+
+  const getThumb = (slug) => {
+    if (!slug) return null;
+    if (itemThumbs[slug]) return itemThumbs[slug];
+    const match = sortedThumbKeys.find(k => slug.startsWith(k));
+    return match ? itemThumbs[match] : null;
   };
 
   const onCategoryClick = (cat) => {
@@ -132,7 +140,7 @@ function SearchPage() {
                   className="search-suggestion-row"
                 >
                   {(() => {
-                    const thumb = itemThumbs[s.slug] || null;
+                    const thumb = getThumb(s.slug);
                     return thumb ? (
                       <div className="search-thumb">
                         <img src={thumb} alt={s.name} />
