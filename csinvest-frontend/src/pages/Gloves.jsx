@@ -138,11 +138,11 @@ export default function GlovesPage() {
       </div>
       {loading && <div className="loading">Loading gloves…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
-      <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+      <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {sortedItems.map(it => (
           <div
             key={it.slug}
-            className="category-card"
+            className="category-card item-card"
             onClick={() => navigate(`/skin/${it.slug}`)}
             style={{ cursor: 'pointer' }}
           >

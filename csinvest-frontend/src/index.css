@@ -180,6 +180,22 @@ body[data-theme="dark"] .icon-btn:hover { color: #e5e5e5; }
 .category-icon { width: 48px; height: 48px; border-radius: 10px; margin: 0 auto 10px auto; background: #f3f4f6; }
 .category-img { width: 64px; height: 64px; object-fit: contain; margin: 0 auto 10px auto; display: block; }
 
+/* Item card specific overrides (Knives/Gloves) */
+.item-card {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 12px;
+}
+.item-card .category-img {
+    width: 100%;
+    height: auto;
+    max-height: 45%;
+    margin-bottom: 12px;
+}
+
 /* MPI header arrow */
 .mpi-header { display: flex; align-items: center; gap: 8px; }
 .arrow-toggle { background: transparent; border: none; cursor: pointer; font-size: 1.4rem; line-height: 1; transform: rotate(0deg); transition: transform 0.15s ease; color: var(--text-color); opacity: 0.8; }

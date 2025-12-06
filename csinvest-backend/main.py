@@ -89,7 +89,14 @@ def list_knives(q: str | None = None, db: Session = Depends(get_db)):
         items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'knife']
     else:
         items = repo.get_items(item_type='knife', limit=10_000_000)
-    return [to_search_item(it) for it in items]
+    
+    seen = set()
+    unique = []
+    for i in items:
+        if i.name not in seen:
+            seen.add(i.name)
+            unique.append(i)
+    return [to_search_item(it) for it in unique]
 
 @app.get("/gloves")
 def list_gloves(q: str | None = None, db: Session = Depends(get_db)):
@@ -98,7 +105,14 @@ def list_gloves(q: str | None = None, db: Session = Depends(get_db)):
         items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'glove']
     else:
         items = repo.get_items(item_type='glove', limit=10_000_000)
-    return [to_search_item(it) for it in items]
+    
+    seen = set()
+    unique = []
+    for i in items:
+        if i.name not in seen:
+            seen.add(i.name)
+            unique.append(i)
+    return [to_search_item(it) for it in unique]
 
 # Aliases for Search buttons
 @app.get("/search/knives")
