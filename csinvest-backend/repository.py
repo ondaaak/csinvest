@@ -59,6 +59,9 @@ class ItemRepository:
     def get_case_items_by_types(self, case_id: int, types: list[str]):
         return self.db.query(Item).filter(Item.case_id == case_id, Item.item_type.in_(types)).all()
 
+    def get_collection_items(self, collection_id: int):
+        return self.db.query(Item).filter(Item.collection_id == collection_id).all()
+
     def search_items(self, query: str, limit: int = 10):
         q = (query or '').strip()
         if not q:

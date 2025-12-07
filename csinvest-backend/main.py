@@ -302,7 +302,7 @@ def get_collection_detail(slug: str, db: Session = Depends(get_db)):
     coll = repo.get_collection_by_slug(slug)
     if not coll:
         raise HTTPException(status_code=404, detail="Collection nenalezena")
-    skins = repo.get_case_items_by_types(coll.item_id, ["skin"])
+    skins = repo.get_collection_items(coll.item_id)
     return {
         "collection": coll,
         "skins": skins,
@@ -337,9 +337,15 @@ def get_item_detail(slug: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Item nenalezen")
     
     cases = repo.get_cases_for_item(itm.name)
+    
+    collection = None
+    if itm.collection_id:
+        collection = db.query(Item).filter(Item.item_id == itm.collection_id).first()
+
     return {
         "item": itm,
-        "cases": cases
+        "cases": cases,
+        "collection": collection
     }
 
 @app.get("/items/{slug}/history")

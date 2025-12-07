@@ -12,6 +12,7 @@ function SkinDetailPage() {
   const { formatPrice } = useCurrency();
   const [item, setItem] = useState(null);
   const [cases, setCases] = useState([]);
+  const [collection, setCollection] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,6 +39,17 @@ function SkinDetailPage() {
     return map;
   }, []);
 
+  const collectionImgMap = useMemo(() => {
+    const files = import.meta.glob('../assets/collections/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const map = {};
+    Object.entries(files).forEach(([path, url]) => {
+      const filename = path.split('/').pop() || '';
+      const base = filename.substring(0, filename.lastIndexOf('.'));
+      map[base.toLowerCase()] = url;
+    });
+    return map;
+  }, []);
+
   const sortedKeys = useMemo(() => {
     return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
   }, [skinImgMap]);
@@ -55,9 +67,11 @@ function SkinDetailPage() {
         if (res.data.item) {
             setItem(res.data.item);
             setCases(res.data.cases || []);
+            setCollection(res.data.collection || null);
         } else {
             setItem(res.data);
             setCases([]);
+            setCollection(null);
         }
 
         try {
@@ -109,6 +123,13 @@ function SkinDetailPage() {
       if (match) return caseImgMap[match];
       return null;
   }
+
+  const getCollectionImage = (slug) => {
+    if (!slug) return null;
+    if (collectionImgMap[slug]) return collectionImgMap[slug];
+    const k = Object.keys(collectionImgMap).find(key => slug.startsWith(key));
+    return k ? collectionImgMap[k] : null;
+  };
 
   const img = getSkinImage(item.slug, item.name);
 
@@ -186,6 +207,22 @@ function SkinDetailPage() {
                                     </Link>
                                 );
                             })}
+                        </div>
+                    </div>
+                )}
+
+                {collection && (
+                    <div style={{ marginTop: 20 }}>
+                        <strong>Found in collection:</strong>
+                        <div style={{ marginTop: 10 }}>
+                            <Link to={`/collection/${collection.slug}`} style={{ display: 'inline-block', textAlign: 'center', width: 80, textDecoration: 'none', color: 'inherit' }} title={collection.name}>
+                                {getCollectionImage(collection.slug) ? (
+                                    <img src={getCollectionImage(collection.slug)} alt={collection.name} style={{ width: 60, height: 60, objectFit: 'contain' }} />
+                                ) : (
+                                    <div style={{ width: 60, height: 60, background: '#333', borderRadius: 8, margin: '0 auto' }}></div>
+                                )}
+                                <div style={{ fontSize: '0.7rem', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{collection.name}</div>
+                            </Link>
                         </div>
                     </div>
                 )}

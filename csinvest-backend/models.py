@@ -19,8 +19,8 @@ class Item(Base):
     rarity = Column(String)                 
     wear = Column(String)                   
     wearValue = Column(Numeric(10, 8))     
-    pattern = Column(Integer)               
     collection = Column(String)            
+    collection_id = Column(Integer, ForeignKey("ITEM.item_id"))
     case_id = Column(Integer, ForeignKey("ITEM.item_id"))  
     release_date = Column(Date)             
     drop_type = Column(String, index=True) 
@@ -28,7 +28,8 @@ class Item(Base):
     last_update = Column(DateTime, default=datetime.datetime.now)
     slug = Column(String, unique=True, index=True)
 
-    case = relationship("Item", remote_side=[item_id], uselist=False) 
+    case = relationship("Item", remote_side=[item_id], foreign_keys=[case_id], uselist=False)
+    collection_item = relationship("Item", remote_side=[item_id], foreign_keys=[collection_id], uselist=False)
 
 class UserItem(Base):
     __tablename__ = "USERITEM"
