@@ -191,24 +191,28 @@ function CollectionsPage() {
               onClick={() => navigate(`/collection/${c.slug}`)}
               style={{ cursor: 'pointer', position: 'relative', aspectRatio: '1/1' }}
             >
-              {c.drop_type && (
-                <div style={{
-                  position:'absolute', top:8, right:8,
-                  background: badge.bg, color: badge.color,
-                  fontSize:'0.7rem', fontWeight:700,
-                  padding:'2px 6px', borderRadius:4,
-                  textTransform:'uppercase',
-                  zIndex: 2
-                }}>
-                  {c.drop_type.replace('-', ' ')}
-                </div>
-              )}
               {getCollectionImage(c.slug) ? (
                 <img src={getCollectionImage(c.slug)} alt={c.name} className="category-img" />
               ) : (
                 <div className="category-icon" aria-hidden="true"></div>
               )}
               <div className="category-label">{c.name}</div>
+              {c.drop_type && (
+                <div style={{ marginTop: 4 }}>
+                  <span style={{
+                    display:'inline-block',
+                    fontSize:'0.65rem',
+                    padding:'3px 6px',
+                    borderRadius:6,
+                    background: badge.bg,
+                    color: badge.color,
+                    fontWeight:600,
+                    textTransform:'uppercase'
+                  }}>
+                    {c.drop_type.replace('-', ' ')}
+                  </span>
+                </div>
+              )}
               <div style={{ fontSize:'0.85rem', fontWeight:600, marginTop:4 }}>
                 {c.current_price ? formatPrice(c.current_price) : '—'}
               </div>
