@@ -123,6 +123,22 @@ def list_gloves(q: str | None = None, db: Session = Depends(get_db)):
             unique.append(i)
     return [to_search_item(it) for it in unique]
 
+# ----------- Agents listing/search -----------
+@app.get("/agents")
+def list_agents(q: str | None = None, db: Session = Depends(get_db)):
+    repo = ItemRepository(db)
+    if q:
+        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'agent']
+    else:
+        items = repo.get_items(item_type='agent', limit=10_000_000)
+    seen = set()
+    unique = []
+    for i in items:
+        if i.name not in seen:
+            seen.add(i.name)
+            unique.append(i)
+    return [to_search_item(it) for it in unique]
+
 # Aliases for Search buttons
 @app.get("/search/knives")
 def search_knives(q: str | None = None, db: Session = Depends(get_db)):
@@ -151,6 +167,10 @@ def list_weapons(q: str | None = None, db: Session = Depends(get_db)):
 @app.get("/search/weapons")
 def search_weapons(q: str | None = None, db: Session = Depends(get_db)):
     return list_weapons(q=q, db=db)
+
+@app.get("/search/agents")
+def search_agents(q: str | None = None, db: Session = Depends(get_db)):
+    return list_agents(q=q, db=db)
 
 @app.get("/")
 def read_root():
