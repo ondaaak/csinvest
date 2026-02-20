@@ -15,6 +15,29 @@ export default function KnivesPage() {
   const location = useLocation();
   const { formatPrice } = useCurrency();
 
+  const KNIFE_TYPES = React.useMemo(() => [
+    { name: 'Karambit', imgSlug: 'karambit-vanilla' },
+    { name: 'Butterfly Knife', imgSlug: 'butterfly-knife-vanilla' },
+    { name: 'M9 Bayonet', imgSlug: 'm9-bayonet-vanilla' },
+    { name: 'Bayonet', imgSlug: 'bayonet-vanilla' },
+    { name: 'Talon Knife', imgSlug: 'talon-knife-vanilla' },
+    { name: 'Skeleton Knife', imgSlug: 'skeleton-knife-vanilla' },
+    { name: 'Nomad Knife', imgSlug: 'nomad-knife-vanilla' },
+    { name: 'Survival Knife', imgSlug: 'survival-knife-vanilla' },
+    { name: 'Paracord Knife', imgSlug: 'paracord-knife-vanilla' },
+    { name: 'Classic Knife', imgSlug: 'classic-knife-vanilla' },
+    { name: 'Stiletto Knife', imgSlug: 'stiletto-knife-vanilla' },
+    { name: 'Ursus Knife', imgSlug: 'ursus-knife-vanilla' },
+    { name: 'Navaja Knife', imgSlug: 'navaja-knife-vanilla' },
+    { name: 'Huntsman Knife', imgSlug: 'huntsman-knife-vanilla' },
+    { name: 'Falchion Knife', imgSlug: 'falchion-knife-vanilla' },
+    { name: 'Bowie Knife', imgSlug: 'bowie-knife-vanilla' },
+    { name: 'Shadow Daggers', imgSlug: 'shadow-daggers-vanilla' },
+    { name: 'Flip Knife', imgSlug: 'flip-knife-vanilla' },
+    { name: 'Gut Knife', imgSlug: 'gut-knife-vanilla' },
+    { name: 'Kukri Knife', imgSlug: 'kukri-knife-vanilla' },
+  ], []);
+
   const q = new URLSearchParams(location.search).get('q') || '';
 
   const skinImgMap = useMemo(() => {
@@ -43,10 +66,15 @@ export default function KnivesPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      // If no query parameter, we do not fetch all items. Instead we show categories.
+      if (!q) {
+        setItems([]);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const url = q ? `${API_BASE}/search/knives?q=${encodeURIComponent(q)}` : `${API_BASE}/search/knives`;
+        const url = `${API_BASE}/search/knives?q=${encodeURIComponent(q)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to load knives');
         const data = await res.json();
@@ -115,11 +143,19 @@ export default function KnivesPage() {
             placeholder="Search knives..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                navigate(`?q=${encodeURIComponent(query)}`);
+              }
+            }}
             style={{ width: '100%', paddingRight: 30 }}
           />
           {query && (
             <button
-              onClick={() => setQuery('')}
+              onClick={() => {
+                setQuery('');
+                navigate('.');
+              }}
               style={{
                 position: 'absolute',
                 right: 8,
@@ -162,29 +198,54 @@ export default function KnivesPage() {
       </div>
       {loading && <div className="loading">Loading knives…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
-      <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {sortedItems.map(it => (
-          <div
-            key={it.slug}
-            className="category-card item-card"
-            onClick={() => navigate(`/skin/${it.slug}`)}
-            style={{ cursor: 'pointer' }}
-          >
-            {getSkinImage(it.slug) ? (
-              <img src={getSkinImage(it.slug)} alt={it.name} className="category-img" />
-            ) : (
-              <div className="category-icon" aria-hidden="true"></div>
-            )}
-            <div style={{ marginBottom:8 }}>
-              <div className="category-label" style={{ fontSize:'0.95rem' }}>{it.name}</div>
+      {!q ? (
+        <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {KNIFE_TYPES.map(cat => (
+            <div
+              key={cat.name}
+              className="category-card item-card"
+              onClick={() => {
+                setQuery(cat.name + ' | ');
+                navigate(`?q=${encodeURIComponent(cat.name + ' | ')}`);
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              {getSkinImage(cat.imgSlug) ? (
+                <img src={getSkinImage(cat.imgSlug)} alt={cat.name} className="category-img" />
+              ) : (
+                <div className="category-icon" aria-hidden="true"></div>
+              )}
+              <div style={{ marginBottom:8, textAlign:'center', fontWeight:'bold' }}>
+                <div className="category-label" style={{ fontSize:'1.1rem' }}>{cat.name}</div>
+              </div>
             </div>
-            <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}</div>
-          </div>
-        ))}
-        {(!loading && items.length === 0) && (
-          <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No knives found.</div>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {sortedItems.map(it => (
+            <div
+              key={it.slug}
+              className="category-card item-card"
+              onClick={() => navigate(`/skin/${it.slug}`)}
+              style={{ cursor: 'pointer' }}
+            >
+              {getSkinImage(it.slug) ? (
+                <img src={getSkinImage(it.slug)} alt={it.name} className="category-img" />
+              ) : (
+                <div className="category-icon" aria-hidden="true"></div>
+              )}
+              <div style={{ marginBottom:8 }}>
+                <div className="category-label" style={{ fontSize:'0.95rem' }}>{it.name}</div>
+              </div>
+              <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}</div>
+            </div>
+          ))}
+          {(!loading && items.length === 0) && (
+            <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No knives found.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

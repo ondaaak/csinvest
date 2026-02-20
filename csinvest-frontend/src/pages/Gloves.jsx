@@ -15,6 +15,17 @@ export default function GlovesPage() {
   const location = useLocation();
   const { formatPrice } = useCurrency();
 
+  const GLOVE_TYPES = React.useMemo(() => [
+    { name: 'Bloodhound Gloves', imgSlug: 'bloodhound-gloves-bronzed' },
+    { name: 'Broken Fang Gloves', imgSlug: 'broken-fang-gloves-jade' },
+    { name: 'Driver Gloves', imgSlug: 'driver-gloves-black-tie' },
+    { name: 'Hand Wraps', imgSlug: 'hand-wraps-arboreal' },
+    { name: 'Hydra Gloves', imgSlug: 'hydra-gloves-emerald' },
+    { name: 'Moto Gloves', imgSlug: 'moto-gloves-boom' },
+    { name: 'Specialist Gloves', imgSlug: 'specialist-gloves-crimson-kimono' },
+    { name: 'Sport Gloves', imgSlug: 'sport-gloves-vice' },
+  ], []);
+
   const q = new URLSearchParams(location.search).get('q') || '';
 
   const gloveImgMap = useMemo(() => {
@@ -42,10 +53,15 @@ export default function GlovesPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      // If no query parameter, we do not fetch all items. Instead we show categories.
+      if (!q) {
+        setItems([]);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
-        const url = q ? `${API_BASE}/search/gloves?q=${encodeURIComponent(q)}` : `${API_BASE}/search/gloves`;
+        const url = `${API_BASE}/search/gloves?q=${encodeURIComponent(q)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to load gloves');
         const data = await res.json();
@@ -114,11 +130,19 @@ export default function GlovesPage() {
             placeholder="Search gloves..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                navigate(`?q=${encodeURIComponent(query)}`);
+              }
+            }}
             style={{ width: '100%', paddingRight: 30 }}
           />
           {query && (
             <button
-              onClick={() => setQuery('')}
+              onClick={() => {
+                setQuery('');
+                navigate('.'); 
+              }}
               style={{
                 position: 'absolute',
                 right: 8,
@@ -161,29 +185,54 @@ export default function GlovesPage() {
       </div>
       {loading && <div className="loading">Loading gloves…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
-      <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {sortedItems.map(it => (
-          <div
-            key={it.slug}
-            className="category-card item-card"
-            onClick={() => navigate(`/skin/${it.slug}`)}
-            style={{ cursor: 'pointer' }}
-          >
-            {getGloveImage(it.slug) ? (
-              <img src={getGloveImage(it.slug)} alt={it.name} className="category-img" />
-            ) : (
-              <div className="category-icon" aria-hidden="true"></div>
-            )}
-            <div style={{ marginBottom:8 }}>
-              <div className="category-label" style={{ fontSize:'0.95rem' }}>{it.name}</div>
+      {!q ? (
+        <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {GLOVE_TYPES.map(cat => (
+            <div
+              key={cat.name}
+              className="category-card item-card"
+              onClick={() => {
+                setQuery(cat.name + ' | ');
+                navigate(`?q=${encodeURIComponent(cat.name + ' | ')}`);
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              {getGloveImage(cat.imgSlug) ? (
+                <img src={getGloveImage(cat.imgSlug)} alt={cat.name} className="category-img" />
+              ) : (
+                <div className="category-icon" aria-hidden="true"></div>
+              )}
+              <div style={{ marginBottom:8, textAlign:'center', fontWeight:'bold' }}>
+                <div className="category-label" style={{ fontSize:'1.1rem' }}>{cat.name}</div>
+              </div>
             </div>
-            <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}</div>
-          </div>
-        ))}
-        {(!loading && items.length === 0) && (
-          <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No gloves found.</div>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {sortedItems.map(it => (
+            <div
+              key={it.slug}
+              className="category-card item-card"
+              onClick={() => navigate(`/skin/${it.slug}`)}
+              style={{ cursor: 'pointer' }}
+            >
+              {getGloveImage(it.slug) ? (
+                <img src={getGloveImage(it.slug)} alt={it.name} className="category-img" />
+              ) : (
+                <div className="category-icon" aria-hidden="true"></div>
+              )}
+              <div style={{ marginBottom:8 }}>
+                <div className="category-label" style={{ fontSize:'0.95rem' }}>{it.name}</div>
+              </div>
+              <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}</div>
+            </div>
+          ))}
+          {(!loading && items.length === 0) && (
+            <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No gloves found.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
