@@ -1,0 +1,1 @@
+1. Remove "collections" from add a new item search bar.
