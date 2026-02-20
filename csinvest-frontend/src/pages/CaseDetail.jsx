@@ -379,11 +379,11 @@ function CaseDetailPage() {
       <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', fontSize:'0.9rem' }}>
         <strong>Odds:</strong>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8, marginTop:8 }}>
-          <div><span className="badge milspec">Mil‑Spec</span> 1 / 1.25 → 80.00%</div>
-          <div><span className="badge restricted">Restricted</span> 1 / 6.26 → 15.97%</div>
-          <div><span className="badge classified">Classified</span> 1 / 31.28 → 3.20%</div>
-          <div><span className="badge covert">Covert</span> 1 / 156.4 → 0.64%</div>
-          <div><span className="badge contraband">Knives / Gloves</span> 1 / 391 → 0.26%</div>
+          <div><span className="badge milspec">Mil‑Spec</span> 1 in 1.25 → 80.00%</div>
+          <div><span className="badge restricted">Restricted</span> 1 in 6.26 → 15.97%</div>
+          <div><span className="badge classified">Classified</span> 1 in 31.28 → 3.20%</div>
+          <div><span className="badge covert">Covert</span> 1 in 156.4 → 0.64%</div>
+          <div><span className="badge contraband">Knives / Gloves</span> 1 in 391 → 0.26%</div>
         </div>
       </div>
       {skinItems.length === 0 && <div style={{ opacity:0.6, fontSize:'0.85rem' }}>No skins linked to this case yet.</div>}

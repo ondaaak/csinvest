@@ -336,6 +336,25 @@ function InventoryPage() {
     </svg>
   );
 
+  const WarningIcon = () => (
+    <span style={{ 
+      color: '#ff4d4d', 
+      fontWeight: 'bold', 
+      cursor: 'help',
+      fontSize: '18px',
+      marginLeft: 6,
+      lineHeight: 1
+    }}>!</span>
+  );
+
+  const isPriceOutdated = (dateString) => {
+    if (!dateString) return true;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return true;
+    const diff = Date.now() - date.getTime();
+    return diff > 24 * 60 * 60 * 1000; // older than 24 hours
+  };
+
   const handleInfoSave = async (e) => {
     e.preventDefault();
     if (!infoItem) return;
@@ -460,7 +479,16 @@ function InventoryPage() {
                   </>
                 )}
               </td>
-              <td title={`last update: ${(() => { const d = item?.item?.last_update || item?.last_update; try { return d ? new Date(d).toLocaleString() : '—'; } catch { return '—'; } })()}`}>{formatPrice(item.current_price)}</td>
+              <td title={`last update: ${(() => { const d = item?.item?.last_update || item?.last_update; try { return d ? new Date(d).toLocaleString() : '—'; } catch { return '—'; } })()}`}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  {formatPrice(item.current_price)}
+                  {isPriceOutdated(item.item?.last_update || item.last_update) && (
+                    <div title="Price outdated (>24h)">
+                      <WarningIcon />
+                    </div>
+                  )}
+                </div>
+              </td>
               <td>{formatPrice(getCurrentTotal(item))}</td>
               <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>
                 {formatPrice(item.profit)}
