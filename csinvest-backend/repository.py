@@ -62,15 +62,23 @@ class ItemRepository:
     def get_collection_items(self, collection_id: int):
         return self.db.query(Item).filter(Item.collection_id == collection_id).all()
 
-    def search_items(self, query: str, limit: int = 10):
-        q = (query or '').strip()
-        if not q:
+    def search_items(self, query: str, limit: int = 10, exclude_types: list[str] = None):
+        q_str = (query or '').strip()
+        if not q_str:
             return []
 
+        q = self.db.query(Item)
+        
+        # Split query into words and require all words to match (AND condition)
+        # This allows "tec 9 whiteout" to match "Tec-9 | Whiteout"
+        for word in q_str.split():
+            q = q.filter(func.lower(Item.name).like(f"%{word.lower()}%"))
+
+        if exclude_types:
+            q = q.filter(Item.item_type.notin_(exclude_types))
+
         return (
-            self.db.query(Item)
-            .filter(func.lower(Item.name).like(f"%{q.lower()}%"))
-            .order_by(Item.item_type.asc(), Item.name.asc())
+            q.order_by(Item.item_type.asc(), Item.name.asc())
             .limit(limit)
             .all()
         )

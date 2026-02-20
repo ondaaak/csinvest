@@ -44,7 +44,7 @@ function AddItemPage() {
     if (!q) { setSuggestions([]); setOpen(false); return; }
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(q)}&limit=8`);
+        const res = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(q)}&limit=8&exclude_item_type=collection`);
         if (res.ok) {
           const data = await res.json();
           const arr = Array.isArray(data) ? data : [];

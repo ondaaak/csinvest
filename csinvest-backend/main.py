@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from database import get_db
 from repository import ItemRepository
@@ -85,9 +86,9 @@ def to_search_item(itm: Item) -> SearchResponseItem:
     )
 
 @app.get("/search")
-def search_items(q: str, limit: int = 10, db: Session = Depends(get_db)):
+def search_items(q: str, limit: int = 10, exclude_item_type: Optional[List[str]] = Query(None), db: Session = Depends(get_db)):
     repo = ItemRepository(db)
-    results = repo.search_items(q, limit=limit)
+    results = repo.search_items(q, limit=limit, exclude_types=exclude_item_type)
     return [to_search_item(r) for r in results]
 
 # ----------- Knives & Gloves listing/search -----------
