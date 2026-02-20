@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 
@@ -11,6 +11,9 @@ export default function GlovesPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [sortMode, setSortMode] = useState('release_new');
   const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { formatPrice } = useCurrency();
@@ -50,6 +53,62 @@ export default function GlovesPage() {
     const match = sortedKeys.find(key => s.startsWith(key));
     return match ? gloveImgMap[match] : null;
   };
+
+  // Fetch suggestions
+  useEffect(() => {
+    const qTrim = query.trim();
+    if (!qTrim) {
+      setSuggestions([]);
+      return;
+    }
+    // If query matches a category filter, skip suggestions
+    const isCategoryFilter = GLOVE_TYPES.some(c => query.startsWith(c.name + ' | '));
+    if (isCategoryFilter) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/search/gloves?q=${encodeURIComponent(qTrim)}&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          const arr = Array.isArray(data) ? data : [];
+          setSuggestions(arr);
+          // Only open suggestions if the input is focused
+          const input = boxRef.current?.querySelector('input');
+          if (document.activeElement === input && arr.length > 0) {
+            setOpen(true);
+          }
+        } else {
+          setSuggestions([]);
+        }
+      } catch {
+        setSuggestions([]);
+      }
+    }, 200);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (!boxRef.current) return;
+      if (!boxRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -112,8 +171,32 @@ export default function GlovesPage() {
       default:
         break;
     }
-    const ql = (query || '').toLowerCase();
-    return ql ? arr.filter(c => (c.name || '').toLowerCase().includes(ql) || (c.slug || '').toLowerCase().includes(ql)) : arr;
+    const ql = (query || '').toLowerCase().trim();
+    if (!ql) return arr;
+
+    // Check if query starts with a known glove category
+    const categoryMatch = GLOVE_TYPES.find(g => ql.startsWith(g.name.toLowerCase() + ' |'));
+    let searchTokens = [];
+    let baseFilter = null;
+
+    if (categoryMatch) {
+      const prefix = categoryMatch.name.toLowerCase() + ' |';
+      baseFilter = (name) => name.startsWith(prefix);
+      const remaining = ql.slice(prefix.length).trim();
+      if (remaining) searchTokens = remaining.split(/\s+/).filter(Boolean);
+    } else {
+      searchTokens = ql.split(/\s+/).filter(Boolean);
+    }
+
+    return arr.filter(c => {
+      const name = (c.name || '').toLowerCase();
+      const slug = (c.slug || '').toLowerCase();
+
+      if (baseFilter && !baseFilter(name)) return false;
+
+      if (searchTokens.length === 0) return true;
+      return searchTokens.every(token => name.includes(token) || slug.includes(token));
+    });
   }, [items, sortMode, query]);
 
   return (
@@ -123,16 +206,21 @@ export default function GlovesPage() {
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
         <h2 style={{ margin:0, flex:1, paddingLeft:'14%' }}>Gloves</h2>
-        <div style={{ position: 'relative', width: 320, maxWidth: '100%' }}>
+        <div ref={boxRef} style={{ position: 'relative', width: 320, maxWidth: '100%' }}>
           <input
             className="search-input"
             type="text"
             placeholder="Search gloves..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => {
+              const qTrim = query.trim();
+              if (qTrim && suggestions.length > 0) setOpen(true);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 navigate(`?q=${encodeURIComponent(query)}`);
+                setOpen(false);
               }
             }}
             style={{ width: '100%', paddingRight: 30 }}
@@ -146,8 +234,7 @@ export default function GlovesPage() {
               style={{
                 position: 'absolute',
                 right: 8,
-                top: '50%',
-                transform: 'translateY(-50%)',
+                top: 10,
                 background: 'transparent',
                 border: 'none',
                 color: 'var(--text-color)',
@@ -160,6 +247,34 @@ export default function GlovesPage() {
             >
               ×
             </button>
+          )}
+          {open && query && suggestions.length > 0 && (
+            <div className="search-suggestions" style={{ top: '100%', left: 0, right: 0, width: '100%', zIndex: 100 }}>
+              {suggestions.map((s) => (
+                <button
+                  key={s.slug}
+                  onClick={() => {
+                    navigate(`/skin/${s.slug}`);
+                    setOpen(false);
+                  }}
+                  className="search-suggestion-row"
+                >
+                  {(() => {
+                    const thumb = getGloveImage(s.slug);
+                    return thumb ? (
+                      <div className="search-thumb">
+                        <img src={thumb} alt={s.name} />
+                      </div>
+                    ) : (
+                      <div className="category-icon" aria-hidden="true"></div>
+                    );
+                  })()}
+                  <div className="search-text">
+                    <div className="search-name">{s.name}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
         </div>
         <select value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{

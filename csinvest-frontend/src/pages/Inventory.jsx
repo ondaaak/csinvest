@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import AddItemModal from '../components/AddItemModal.jsx';
 import axios from 'axios';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
@@ -27,6 +27,36 @@ function InventoryPage() {
   const [rawSellFee, setRawSellFee] = useState('2');
   const [rawWithdrawFee, setRawWithdrawFee] = useState('2');
   const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+
+  // Import images
+  const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const assetFromFolder = (globObj) => Object.fromEntries(
+    Object.entries(globObj).map(([p, url]) => {
+      const filename = p.split('/').pop() || '';
+      const keyRaw = filename.substring(0, filename.lastIndexOf('.'));
+      return [keyRaw.toLowerCase(), url];
+    })
+  );
+  const itemThumbs = useMemo(() => ({
+    ...assetFromFolder(skinsGlob),
+    ...assetFromFolder(glovesGlob),
+    ...assetFromFolder(casesGlob),
+  }), []);
+
+  const sortedKeys = useMemo(() => {
+    return Object.keys(itemThumbs).sort((a, b) => b.length - a.length);
+  }, [itemThumbs]);
+
+  const getImage = (slug) => {
+    if (!slug) return null;
+    const s = slug.toLowerCase();
+    if (itemThumbs[s]) return itemThumbs[s];
+    const match = sortedKeys.find(key => s.startsWith(key));
+    return match ? itemThumbs[match] : null;
+  };
+
   const parseFee = (val) => {
     if (val === '' || val === null || val === undefined) return 0;
     const cleaned = String(val).replace(',', '.');
@@ -41,6 +71,7 @@ function InventoryPage() {
     setRaw(n.toFixed(2));
   };
   const [showAddModal, setShowAddModal] = useState(false);
+  const [infoItem, setInfoItem] = useState(null); // State for the item details modal
 
   const fetchItems = async () => {
     setLoading(true);
@@ -85,8 +116,6 @@ function InventoryPage() {
   useEffect(() => {
     fetchItems();
   }, []);
-
-        {/* summary cards are rendered below in the return JSX */}
 
     const saveEdit = async (id) => {
       const token = localStorage.getItem('csinvest:token');
@@ -275,6 +304,44 @@ function InventoryPage() {
     </svg>
   );
 
+  const InfoIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="16" x2="12" y2="12"></line>
+      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+    </svg>
+  );
+
+  const handleInfoSave = async (e) => {
+    e.preventDefault();
+    if (!infoItem) return;
+    
+    // Construct payload for update
+    // We only update float for now, description is placeholder
+    const id = infoItem.user_item_id;
+    const token = localStorage.getItem('csinvest:token');
+    
+    try {
+      const resp = await fetch(`${BASE_URL}/useritems/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+           // We only want to update float here. 
+           float_value: infoItem.float_value === '' ? null : Number(infoItem.float_value),
+        })
+      });
+
+      if (!resp.ok) {
+        throw new Error('Failed to update details');
+      }
+
+      await fetchItems();
+      setInfoItem(null); // Close modal
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const unauthenticatedOverlay = (
     <div className="blur-overlay">
       <div className="blur-message">Please login to view your inventory.</div>
@@ -377,6 +444,11 @@ function InventoryPage() {
                 ) : (
                   <button className="icon-btn" title="Edit" onClick={() => startEdit(item)} disabled={savingIds.has(item.user_item_id)}><PencilIcon /></button>
                 )}
+                {/* Info Action */}
+                <button className="icon-btn" title="Info & Details" onClick={() => setInfoItem({ ...item, float_value: item.float_value ?? '' })} disabled={savingIds.has(item.user_item_id)}>
+                  <InfoIcon />
+                </button>
+
                 <button className="icon-btn" title="Delete" disabled={savingIds.has(item.user_item_id)} onClick={async () => {
                   if (!window.confirm('Delete this item?')) return;
                   try {
@@ -427,6 +499,8 @@ function InventoryPage() {
             const withdrawAfterFee = sellAfterFee * (1 - withdrawFeeRate);
             const profitAfterWithdrawFee = withdrawAfterFee - totals.buy;
             const profitAfterWithdrawFeePct = totals.buy > 0 ? (profitAfterWithdrawFee / totals.buy) * 100 : 0;
+
+            const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
 
             return (
               <div>
@@ -552,6 +626,82 @@ function InventoryPage() {
           onClose={() => setShowAddModal(false)}
           onAdded={async () => { await fetchItems(); setShowAddModal(false); }}
         />
+      )}
+
+      {/* Info / Details Modal */}
+      {infoItem && (
+        <div className="modal-overlay" onClick={() => setInfoItem(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <div className="modal-header">
+              <h3>Item Details</h3>
+            </div>
+            <div className="modal-body">
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                 {(() => {
+                   // Try to get image from simple slug match first
+                   let imgUrl = infoItem.item?.image || getImage(infoItem.slug);
+                   
+                   // If not found, try more aggressive matching similar to CaseDetail/Knives/Weapons
+                   if (!imgUrl && infoItem.item?.name) {
+                      const base = infoItem.item.name.toLowerCase()
+                        .replace(/[|]+/g, "")
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/-+/g, "-")
+                        .replace(/^-|-$/g, "");
+                      if (itemThumbs[base]) imgUrl = itemThumbs[base];
+                      
+                      // Fallback: try to find by slug parts if the direct slug didn't work
+                      if (!imgUrl && infoItem.slug) {
+                          const s = infoItem.slug.toLowerCase();
+                          const match = sortedKeys.find(key => s.startsWith(key) || key.startsWith(s));
+                          if (match) imgUrl = itemThumbs[match];
+                      }
+                   }
+
+                   return imgUrl ? (
+                    <img 
+                      src={imgUrl} 
+                      alt={infoItem.item?.name} 
+                      style={{ maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }} 
+                    />
+                   ) : (
+                    <div className="category-icon" style={{ width: 64, height: 64, margin: '0 auto' }}></div>
+                   );
+                 })()}
+                 <h4 style={{ marginTop: 10 }}>{infoItem.item?.name}</h4>
+              </div>
+
+              <form onSubmit={handleInfoSave}>
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Float Value</label>
+                  <input 
+                    className="form-input" 
+                    type="number" 
+                    step="any"
+                    value={infoItem.float_value} 
+                    onChange={(e) => setInfoItem({ ...infoItem, float_value: e.target.value })}
+                    placeholder="e.g. 0.0345"
+                  />
+                </div>
+
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Description / Notes (Placeholder)</label>
+                  <textarea 
+                    className="form-input" 
+                    rows="3"
+                    placeholder="Enter notes here (e.g. sell date, reasons)..."
+                    // Placeholder logic: not connected to DB yet
+                  ></textarea>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                  <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setInfoItem(null)}>Cancel</button>
+                  <button type="submit" className="account-button">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
