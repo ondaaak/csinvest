@@ -49,12 +49,36 @@ function InventoryPage() {
     return Object.keys(itemThumbs).sort((a, b) => b.length - a.length);
   }, [itemThumbs]);
 
-  const getImage = (slug) => {
-    if (!slug) return null;
-    const s = slug.toLowerCase();
-    if (itemThumbs[s]) return itemThumbs[s];
-    const match = sortedKeys.find(key => s.startsWith(key));
-    return match ? itemThumbs[match] : null;
+  const getImage = (slug, itemName) => {
+    // 1. Try simple slug match
+    if (slug) {
+      const s = slug.toLowerCase();
+      if (itemThumbs[s]) return itemThumbs[s];
+
+      // 2. Try prefix match on slug
+      const match = sortedKeys.find(key => s.startsWith(key));
+      if (match) return itemThumbs[match];
+      
+      // 3. Reverse match (key starts with slug? rare but possible if slug is short)
+      const reverseMatch = sortedKeys.find(key => key.startsWith(s));
+      if (reverseMatch) return itemThumbs[reverseMatch];
+    }
+
+    // 4. Fallback: aggressive name matching (port from Modal logic)
+    if (itemName) {
+      const base = itemName.toLowerCase()
+        .replace(/[|]+/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      if (itemThumbs[base]) return itemThumbs[base];
+      
+      // 5. Try to find if the cleaned name is contained in keys or vice versa
+      const nameMatch = sortedKeys.find(key => base.includes(key) || key.includes(base));
+      if (nameMatch) return itemThumbs[nameMatch];
+    }
+    
+    return null;
   };
 
   const parseFee = (val) => {
@@ -377,6 +401,7 @@ function InventoryPage() {
         <thead>
           <tr>
             <th className="sortable" onClick={() => requestSort('amount')}>Amount <Arrow keyName="amount" /></th>
+            <th style={{ width: 50 }}></th>
             <th className="sortable" onClick={() => requestSort('name')}>Name <Arrow keyName="name" /></th>
             <th className="sortable" onClick={() => requestSort('buyUnit')}>Buy (unit) <Arrow keyName="buyUnit" /></th>
             <th className="sortable" onClick={() => requestSort('sellUnit')}>Sell (unit) <Arrow keyName="sellUnit" /></th>
@@ -396,6 +421,14 @@ function InventoryPage() {
                 ) : (
                   getAmount(item)
                 )}
+              </td>
+              <td style={{ padding: '4px 8px' }}>
+                {(() => {
+                   const imgUrl = item.item?.image || getImage(item.slug, item.item?.name);
+                   return imgUrl ? (
+                     <img src={imgUrl} alt="" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                   ) : null;
+                })()}
               </td>
               <td>
                 {item.item ? (
@@ -638,25 +671,7 @@ function InventoryPage() {
             <div className="modal-body">
               <div style={{ textAlign: 'center', marginBottom: 20 }}>
                  {(() => {
-                   // Try to get image from simple slug match first
-                   let imgUrl = infoItem.item?.image || getImage(infoItem.slug);
-                   
-                   // If not found, try more aggressive matching similar to CaseDetail/Knives/Weapons
-                   if (!imgUrl && infoItem.item?.name) {
-                      const base = infoItem.item.name.toLowerCase()
-                        .replace(/[|]+/g, "")
-                        .replace(/[^a-z0-9]+/g, "-")
-                        .replace(/-+/g, "-")
-                        .replace(/^-|-$/g, "");
-                      if (itemThumbs[base]) imgUrl = itemThumbs[base];
-                      
-                      // Fallback: try to find by slug parts if the direct slug didn't work
-                      if (!imgUrl && infoItem.slug) {
-                          const s = infoItem.slug.toLowerCase();
-                          const match = sortedKeys.find(key => s.startsWith(key) || key.startsWith(s));
-                          if (match) imgUrl = itemThumbs[match];
-                      }
-                   }
+                   const imgUrl = infoItem.item?.image || getImage(infoItem.slug, infoItem.item?.name);
 
                    return imgUrl ? (
                     <img 
