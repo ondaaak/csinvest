@@ -147,6 +147,8 @@ export default function KnivesPage() {
       }
     };
     fetchData();
+    window.scrollTo(0, 0);
+    setTimeout(() => window.scrollTo(0, 0), 0);
   }, [q]);
 
   const doRefreshPrices = async () => {

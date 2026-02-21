@@ -10,6 +10,7 @@ function CasesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [sortMode, setSortMode] = useState('release_new');
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
@@ -156,6 +157,26 @@ function CasesPage() {
           <option value="release_old">Oldest</option>
         </select>
         <button
+          onClick={() => setShowHelp(true)}
+          style={{
+            background: 'var(--surface-bg)',
+            color: 'var(--text-color)',
+            border: '1px solid var(--border-color)',
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1.2rem',
+            fontWeight: 'bold'
+          }}
+          title="How cases work"
+        >
+          ?
+        </button>
+        <button
           onClick={doRefreshPrices}
           disabled={refreshing}
           style={{
@@ -201,8 +222,53 @@ function CasesPage() {
           </div>
         ))}
       </div>
+
+      {showHelp && (
+        <div className="modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
+            <div className="modal-header" style={{ position: 'relative' }}>
+              <h3 style={{ margin: 0 }}>How Do Cases Work</h3>
+              <button 
+                onClick={() => setShowHelp(false)} 
+                style={{
+                  position: 'absolute', 
+                  right: 0, 
+                  top: -4, 
+                  background: 'transparent', 
+                  border: 'none', 
+                  color: 'var(--text-color)', 
+                  fontSize: '1.5rem', 
+                  cursor: 'pointer',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <p style={{ opacity: 0.85, lineHeight: 1.5, marginBottom: 20 }}>
+                Cases contain skins of different rarities. When you open a case, you have a specific probability to receive an item of a certain grade.
+                To open a case you need to buy a key in-game. Tradable keys on market are overpriced collector items from the past.
+              </p>
+              
+              <div className="stat-card" style={{ background:'transparent', boxShadow:'none', color:'inherit', fontSize:'0.9rem', padding: 0 }}>
+                <strong>Odds:</strong>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:8, marginTop:8 }}>
+                  <div><span className="badge milspec">Mil‑Spec</span> 1 in 1.25 → 80.00%</div>
+                  <div><span className="badge restricted">Restricted</span> 1 in 6.26 → 15.97%</div>
+                  <div><span className="badge classified">Classified</span> 1 in 31.28 → 3.20%</div>
+                  <div><span className="badge covert">Covert</span> 1 in 156.4 → 0.64%</div>
+                  <div><span className="badge contraband">Gold</span> 1 in 391 → 0.26%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default CasesPage;
+    

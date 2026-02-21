@@ -134,6 +134,8 @@ export default function GlovesPage() {
       }
     };
     fetchData();
+    window.scrollTo(0, 0);
+    setTimeout(() => window.scrollTo(0, 0), 0);
   }, [q]);
 
   const doRefreshPrices = async () => {

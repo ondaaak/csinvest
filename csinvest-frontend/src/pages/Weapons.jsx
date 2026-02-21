@@ -20,38 +20,50 @@ export default function WeaponsPage() {
 
   // Define weapon categories
   const WEAPON_CATEGORIES = React.useMemo(() => [
-    { name: 'AK-47', imgSlug: 'ak-47-vulcan' },
-    { name: 'M4A4', imgSlug: 'm4a4-asiimov' },
-    { name: 'M4A1-S', imgSlug: 'm4a1-s-hyper-beast' },
-    { name: 'AWP', imgSlug: 'awp-asiimov' },
-    { name: 'USP-S', imgSlug: 'usp-s-kill-confirmed' },
-    { name: 'Glock-18', imgSlug: 'glock-18-fade' },
-    { name: 'Desert Eagle', imgSlug: 'desert-eagle-blaze' },
-    { name: 'Galil AR', imgSlug: 'galil-ar-chatterbox' },
-    { name: 'FAMAS', imgSlug: 'famas-commemoration' },
-    { name: 'AUG', imgSlug: 'aug-akihabara-accept' },
-    { name: 'SG 553', imgSlug: 'sg-553-integrale' },
-    { name: 'SSG 08', imgSlug: 'ssg-08-dragonfire' },
-    { name: 'MAC-10', imgSlug: 'mac-10-neon-rider' },
-    { name: 'MP9', imgSlug: 'mp9-wild-lily' },
-    { name: 'MP7', imgSlug: 'mp7-bloodsport' },
-    { name: 'UMP-45', imgSlug: 'ump-45-primal-saber' },
-    { name: 'P90', imgSlug: 'p90-asiimov' },
-    { name: 'PP-Bizon', imgSlug: 'pp-bizon-judgement-of-anubis' },
-    { name: 'P250', imgSlug: 'p250-asiimov' },
-    { name: 'Five-SeveN', imgSlug: 'five-seven-hyper-beast' },
-    { name: 'Tec-9', imgSlug: 'tec-9-decimator' },
-    { name: 'CZ75-Auto', imgSlug: 'cz75-auto-xiangliu' },
-    { name: 'Dual Berettas', imgSlug: 'dual-berettas-cobalt-quartz' },
-    { name: 'R8 Revolver', imgSlug: 'r8-revolver-fade' },
-    { name: 'Nova', imgSlug: 'nova-hyper-beast' },
-    { name: 'XM1014', imgSlug: 'xm1014-incinegator' },
-    { name: 'MAG-7', imgSlug: 'mag-7-cinquedea' },
-    { name: 'Sawed-Off', imgSlug: 'sawed-off-the-kraken' },
-    { name: 'M249', imgSlug: 'm249-nebula-crusader' },
-    { name: 'Negev', imgSlug: 'negev-mj-lnir' },
-    { name: 'SCAR-20', imgSlug: 'scar-20-bloodsport' },
-    { name: 'G3SG1', imgSlug: 'g3sg1-chronos' },
+    // Rifles
+    { name: 'AK-47', imgSlug: 'ak-47' },
+    { name: 'M4A4', imgSlug: 'm4a4' },
+    { name: 'M4A1-S', imgSlug: 'm4a1-s' },
+    { name: 'Galil AR', imgSlug: 'galil-ar' },
+    { name: 'FAMAS', imgSlug: 'famas' },
+    { name: 'AUG', imgSlug: 'aug' },
+    { name: 'SG 553', imgSlug: 'sg-553' },
+    { name: 'AWP', imgSlug: 'awp' },
+    { name: 'SSG 08', imgSlug: 'ssg-08' },
+    { name: 'G3SG1', imgSlug: 'g3sg1' },
+    { name: 'SCAR-20', imgSlug: 'scar-20' },
+
+    // Pistols
+    { name: 'USP-S', imgSlug: 'usp-s' },
+    { name: 'P2000', imgSlug: 'p2000' },
+    { name: 'Glock-18', imgSlug: 'glock-18' },
+    { name: 'Desert Eagle', imgSlug: 'desert-eagle' },
+    { name: 'P250', imgSlug: 'p250' },
+    { name: 'Five-SeveN', imgSlug: 'five-seven' },
+    { name: 'Tec-9', imgSlug: 'tec-9' },
+    { name: 'CZ75-Auto', imgSlug: 'cz75-auto' },
+    { name: 'Dual Berettas', imgSlug: 'dual-berettas' },
+    { name: 'R8 Revolver', imgSlug: 'r8-revolver' },
+
+    // SMGs
+    { name: 'MAC-10', imgSlug: 'mac-10' },
+    { name: 'MP9', imgSlug: 'mp9' },
+    { name: 'MP7', imgSlug: 'mp7' },
+    { name: 'MP5-SD', imgSlug: 'mp5-sd' },
+    { name: 'UMP-45', imgSlug: 'ump-45' },
+    { name: 'P90', imgSlug: 'p90' },
+    { name: 'PP-Bizon', imgSlug: 'pp-bizon' },
+
+    // Heavy
+    { name: 'Nova', imgSlug: 'nova' },
+    { name: 'XM1014', imgSlug: 'xm1014' },
+    { name: 'MAG-7', imgSlug: 'mag-7' },
+    { name: 'Sawed-Off', imgSlug: 'sawed-off' },
+    { name: 'M249', imgSlug: 'm249' },
+    { name: 'Negev', imgSlug: 'negev' },
+
+    // Other
+    { name: 'Zeus x27', imgSlug: 'zeus-x27' },
   ], []);
 
   const q = new URLSearchParams(location.search).get('q') || '';
@@ -160,6 +172,9 @@ export default function WeaponsPage() {
       }
     };
     fetchData();
+    // Scroll to top with a slight delay to override browser scroll restoration
+    window.scrollTo(0, 0);
+    setTimeout(() => window.scrollTo(0, 0), 0);
   }, [q]);
 
   const doRefreshPrices = async () => {
