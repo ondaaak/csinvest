@@ -1,19 +1,14 @@
 1. Create database somewhere online.
 2. Add missing items in database.
-3. 
-4. 
+3. Make price notifications work.
+4. Info button doesnt have db column for description. Maybe add price graph ?
 5. Getting prices for float skins doesnt work.
-6. Add a ring to item in inventory, to set notifications about price change.
-7. Info button doesnt have db column for description. Maybe add price graph ?
-8. 
-9. 
-10. Add multicurrency to buyprice in adding items. Let the app calculate the usd price ont its own if user uses other currency.
-11. Reload price button to each item ? Would help API requests restrictions.
-12. 
-13. 
-14. How-To Cases page with odds.
-15. All rare cases are now discontinued.
-16. Terminals dont have knives... yet
-17. 
-18. Add redirect to previous section in skin detail page.
-19. Images in add new item dont work.
+6. After individual refresh price it reorder the items for some reason.
+7. Fix currency and then Add multicurrency to buyprice in adding items. Let the app calculate the usd price ont its own if user uses other currency.
+8. Move item updates to info window ?
+9. Keep the light mode updated.
+10. How-To Cases page with odds ? 
+11. Update skinDetail page.
+12. Terminals dont have knives... yet
+13. After searching item through boxes, add scroll-to-top when going back with back arrow.
+14. Add redirect to previous section in skin detail page.

@@ -4784,7 +4784,9 @@ def update_case_statuses():
         elif sl in disc_slugs:
             new_type = 'discontinued'
         else:
-            new_type = 'rare'
+            # Původně 'rare', nyní na žádost uživatele 'discontinued'
+            new_type = 'discontinued' 
+            
         if c.drop_type != new_type:
             c.drop_type = new_type
             changed += 1

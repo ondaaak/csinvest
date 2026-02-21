@@ -350,6 +350,22 @@ def refresh_items(item_type: str | None = None, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/items/{item_id}/refresh")
+def refresh_single_item(item_id: int, db: Session = Depends(get_db)):
+    """
+    Refresh price for a single item.
+    """
+    strategy = CSFloatStrategy()
+    service = PriceService(db, strategy)
+    try:
+        updated = service.update_single_item_price(item_id)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return updated
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/items/{slug}")
 def get_item_detail(slug: str, db: Session = Depends(get_db)):
     repo = ItemRepository(db)

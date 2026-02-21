@@ -21,6 +21,8 @@ function InventoryPage() {
   const [editing, setEditing] = useState({}); 
   const [buyMode, setBuyMode] = useState({}); 
   const [savingIds, setSavingIds] = useState(new Set()); 
+  const [updatingIds, setUpdatingIds] = useState(new Set());
+
   const [sellFeePct, setSellFeePct] = useState(2); 
   const [withdrawFeePct, setWithdrawFeePct] = useState(2); 
 
@@ -336,6 +338,21 @@ function InventoryPage() {
     </svg>
   );
 
+  const RefreshIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 4v6h-6"></path>
+      <path d="M1 20v-6h6"></path>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+    </svg>
+  );
+
+  const BellIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+    </svg>
+  );
+
   const WarningIcon = () => (
     <span style={{ 
       color: '#ff4d4d', 
@@ -382,6 +399,27 @@ function InventoryPage() {
       setInfoItem(null); // Close modal
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleRefreshPrice = async (item) => {
+    if (!item?.item?.item_id) return;
+    const uid = item.user_item_id;
+    if (updatingIds.has(uid)) return;
+
+    setUpdatingIds(prev => new Set([...prev, uid]));
+    try {
+      await axios.post(`${BASE_URL}/items/${item.item.item_id}/refresh`);
+      await fetchItems();
+    } catch (e) {
+      console.error(e);
+      alert('Price refresh failed');
+    } finally {
+      setUpdatingIds(prev => {
+        const next = new Set(prev);
+        next.delete(uid);
+        return next;
+      });
     }
   };
 
@@ -508,6 +546,16 @@ function InventoryPage() {
                 {/* Info Action */}
                 <button className="icon-btn" title="Info & Details" onClick={() => setInfoItem({ ...item, float_value: item.float_value ?? '' })} disabled={savingIds.has(item.user_item_id)}>
                   <InfoIcon />
+                </button>
+
+                {/* Refresh Price */}
+                <button className="icon-btn" title="Refresh Price" onClick={() => handleRefreshPrice(item)} disabled={savingIds.has(item.user_item_id) || updatingIds.has(item.user_item_id)}>
+                   {updatingIds.has(item.user_item_id) ? <span className="spinner" style={{width:14, height:14}}/> : <RefreshIcon />}
+                </button>
+
+                {/* Bell / Notify */}
+                <button className="icon-btn" title="Price Alert (Coming Soon)" onClick={() => alert('Price alerts coming soon!')} disabled={savingIds.has(item.user_item_id)}>
+                  <BellIcon />
                 </button>
 
                 <button className="icon-btn" title="Delete" disabled={savingIds.has(item.user_item_id)} onClick={async () => {

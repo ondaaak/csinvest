@@ -17,18 +17,58 @@ function AddItemModal({ onClose, onAdded }) {
   const [error, setError] = useState(null);
   const token = localStorage.getItem('csinvest:token');
 
-  const slugNormalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  // --- Image Loading Logic (ported from Inventory.jsx) ---
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  
   const assetFromFolder = (globObj) => Object.fromEntries(
     Object.entries(globObj).map(([p, url]) => {
       const filename = p.split('/').pop() || '';
       const keyRaw = filename.substring(0, filename.lastIndexOf('.'));
-      return [slugNormalize(keyRaw), url];
+      return [keyRaw.toLowerCase(), url];
     })
   );
-  const itemThumbs = { ...assetFromFolder(skinsGlob), ...assetFromFolder(glovesGlob), ...assetFromFolder(casesGlob) };
+  
+  const itemThumbs = { 
+    ...assetFromFolder(skinsGlob), 
+    ...assetFromFolder(glovesGlob), 
+    ...assetFromFolder(casesGlob) 
+  };
+  
+  const sortedKeys = Object.keys(itemThumbs).sort((a, b) => b.length - a.length);
+
+  const getImage = (slug, itemName) => {
+    // 1. Try simple slug match
+    if (slug) {
+      const s = slug.toLowerCase();
+      if (itemThumbs[s]) return itemThumbs[s];
+
+      // 2. Try prefix match on slug
+      const match = sortedKeys.find(key => s.startsWith(key));
+      if (match) return itemThumbs[match];
+      
+      // 3. Reverse match
+      const reverseMatch = sortedKeys.find(key => key.startsWith(s));
+      if (reverseMatch) return itemThumbs[reverseMatch];
+    }
+
+    // 4. Fallback: aggressive name matching
+    if (itemName) {
+      const base = itemName.toLowerCase()
+        .replace(/[|]+/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      if (itemThumbs[base]) return itemThumbs[base];
+      
+      // 5. Try to find if the cleaned name is contained in keys or vice versa
+      const nameMatch = sortedKeys.find(key => base.includes(key) || key.includes(base));
+      if (nameMatch) return itemThumbs[nameMatch];
+    }
+    
+    return null;
+  };
 
   useEffect(() => {
     const q = query.trim();
@@ -108,7 +148,14 @@ function AddItemModal({ onClose, onAdded }) {
                 {suggestions.map((s) => (
                   <button key={s.slug} type="button" className="search-suggestion-row"
                     onClick={() => { setSelected(s); setQuery(s.name); setSuggestions([]); setOpen(false); }}>
-                    {(() => { const thumb = itemThumbs[s.slug] || null; return thumb ? (<div className="search-thumb"><img src={thumb} alt={s.name} /></div>) : (<div className="category-icon" aria-hidden="true"></div>); })()}
+                    {(() => { 
+                      const thumb = getImage(s.slug, s.name);
+                      return thumb ? (
+                        <div className="search-thumb"><img src={thumb} alt={s.name} /></div>
+                      ) : (
+                        <div className="category-icon" aria-hidden="true"></div>
+                      ); 
+                    })()}
                     <div className="search-text">
                       <div className="search-name">{s.name}</div>
                       <div className="search-type">{s.item_type}</div>

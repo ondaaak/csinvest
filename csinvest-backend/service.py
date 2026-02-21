@@ -111,3 +111,40 @@ class PriceService:
                 continue
 
         return results
+
+    def update_single_item_price(self, item_id: int):
+        itm = self.repo.get_item_by_id(item_id)
+        if not itm:
+            return None
+
+        print(f"Aktualizuji jeden item ID={item_id}: {itm.name}")
+
+        if getattr(itm, 'item_type', None) == 'skin':
+            wear_status = f"({getattr(itm, 'wear', '')})" if getattr(itm, 'wear', None) else ""
+            market_name = f"{itm.name} {wear_status}".strip()
+        else:
+            market_name = itm.name
+
+        raw = self.strategy.fetch_price(market_name)
+        if not raw:
+            print(f"Cena pro {itm.name} nenalezena.")
+            return None
+
+        clean = self.factory.create_price(raw, itm.item_id, market_id=2)
+        if not clean:
+            return None
+
+        self.repo.save_market_price(
+            market_id=clean["market_id"],
+            item_id=clean["skin_id"], 
+            price=clean["price"]
+        )
+        
+        self.repo.update_item_current_price(itm.item_id, clean["price"])
+        self.repo.update_useritems_current_price_for_item(itm.item_id, clean["price"])
+
+        return {
+            "item_id": itm.item_id,
+            "name": itm.name,
+            "new_price": clean["price"]
+        }

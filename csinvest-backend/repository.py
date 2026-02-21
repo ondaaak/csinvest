@@ -44,6 +44,9 @@ class ItemRepository:
             q = q.filter(Item.item_type == item_type)
         return q.limit(limit).all()
 
+    def get_item_by_id(self, item_id: int):
+        return self.db.query(Item).filter(Item.item_id == item_id).first()
+
     def get_item_by_slug(self, slug: str):
         return self.db.query(Item).filter(Item.slug == slug).first()
 
