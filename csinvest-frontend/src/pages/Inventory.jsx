@@ -494,7 +494,7 @@ function InventoryPage() {
                     <div style={{ display:'flex', alignItems:'center' }}>
                       <input 
                         className="form-input compact" 
-                        style={{ maxWidth: 80, marginRight: 6 }} 
+                        style={{ width: 80, height: 30, marginRight: 6 }} 
                         value={editing[item.user_item_id].buy_price}
                         onChange={(e) => setEditing((prev) => ({ ...prev, [item.user_item_id]: { ...prev[item.user_item_id], buy_price: e.target.value } }))} 
                       />
