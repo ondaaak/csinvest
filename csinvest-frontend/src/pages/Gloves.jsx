@@ -20,11 +20,11 @@ export default function GlovesPage() {
 
   const GLOVE_TYPES = React.useMemo(() => [
     { name: 'Bloodhound Gloves', imgSlug: 'bloodhound-gloves-bronzed' },
-    { name: 'Broken Fang Gloves', imgSlug: 'broken-fang-gloves-jade' },
-    { name: 'Driver Gloves', imgSlug: 'driver-gloves-black-tie' },
-    { name: 'Hand Wraps', imgSlug: 'hand-wraps-arboreal' },
-    { name: 'Hydra Gloves', imgSlug: 'hydra-gloves-emerald' },
-    { name: 'Moto Gloves', imgSlug: 'moto-gloves-boom' },
+    { name: 'Broken Fang Gloves', imgSlug: 'broken-fang-gloves-yellow-banded' },
+    { name: 'Driver Gloves', imgSlug: 'driver-gloves-snow-leopard' },
+    { name: 'Hand Wraps', imgSlug: 'hand-wraps-cobalt-skulls' },
+    { name: 'Hydra Gloves', imgSlug: 'hydra-gloves-case-hardened' },
+    { name: 'Moto Gloves', imgSlug: 'moto-gloves-turtle' },
     { name: 'Specialist Gloves', imgSlug: 'specialist-gloves-crimson-kimono' },
     { name: 'Sport Gloves', imgSlug: 'sport-gloves-vice' },
   ], []);
