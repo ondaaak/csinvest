@@ -136,74 +136,97 @@ function AddItemModal({ onClose, onAdded }) {
     if (e.target === e.currentTarget) onClose();
   };
 
+  const cycleModalCurrency = () => {
+    const keys = Object.keys(rates);
+    const idx = keys.indexOf(inputCurrency);
+    const next = keys[(idx + 1) % keys.length];
+    setInputCurrency(next);
+  };
+
   return (
     <div className="modal-overlay" onMouseDown={handleOverlayMouseDown}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop:0, marginBottom:16 }}>Add New Item</h3>
-        <form onSubmit={onSubmit}>
-          <label className="form-label">Name</label>
-          <div ref={boxRef} style={{ position:'relative' }}>
-            <input className="form-input" placeholder="Search item" value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => { const q = query.trim(); if (q && suggestions.length > 0 && !(selected && q === (selected.name || '').trim())) setOpen(true); }} />
-            {open && query && suggestions.length > 0 && (
-              <div className="search-suggestions">
-                {suggestions.map((s) => (
-                  <button key={s.slug} type="button" className="search-suggestion-row"
-                    onClick={() => { setSelected(s); setQuery(s.name); setSuggestions([]); setOpen(false); }}>
-                    {(() => { 
-                      const thumb = getImage(s.slug, s.name);
-                      return thumb ? (
-                        <div className="search-thumb"><img src={thumb} alt={s.name} /></div>
-                      ) : (
-                        <div className="category-icon" aria-hidden="true"></div>
-                      ); 
-                    })()}
-                    <div className="search-text">
-                      <div className="search-name">{s.name}</div>
-                      <div className="search-type">{s.item_type}</div>
-                    </div>
-                  </button>
-                ))}
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+        <div className="modal-header">
+           <h3 style={{ margin:0 }}>Add New Item</h3>
+        </div>
+        <div className="modal-body">
+          <form onSubmit={onSubmit}>
+            
+            <div style={{ marginBottom: 15 }}>
+              <label className="form-label">Name</label>
+              <div ref={boxRef} style={{ position:'relative' }}>
+                <input className="form-input" placeholder="Search item" value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => { const q = query.trim(); if (q && suggestions.length > 0 && !(selected && q === (selected.name || '').trim())) setOpen(true); }} />
+                {open && query && suggestions.length > 0 && (
+                  <div className="search-suggestions">
+                    {suggestions.map((s) => (
+                      <button key={s.slug} type="button" className="search-suggestion-row"
+                        onClick={() => { setSelected(s); setQuery(s.name); setSuggestions([]); setOpen(false); }}>
+                        {(() => { 
+                          const thumb = getImage(s.slug, s.name);
+                          return thumb ? (
+                            <div className="search-thumb"><img src={thumb} alt={s.name} /></div>
+                          ) : (
+                            <div className="category-icon" aria-hidden="true"></div>
+                          ); 
+                        })()}
+                        <div className="search-text">
+                          <div className="search-name">{s.name}</div>
+                          <div className="search-type">{s.item_type}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
 
-          <label className="form-label">Amount</label>
-          <input className="form-input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1" />
-          <label className="form-label">Float</label>
-          <input className="form-input" value={floatValue} onChange={(e) => setFloatValue(e.target.value)} placeholder="0.00243581975" />
-          <label className="form-label">Buy Price</label>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input 
-              className="form-input" 
-              style={{ flex: 1 }} 
-              value={buyPrice} 
-              onChange={(e) => setBuyPrice(e.target.value)} 
-              placeholder="100" 
-            />
-            <select 
-              className="form-input" 
-              value={inputCurrency} 
-              onChange={(e) => setInputCurrency(e.target.value)}
-              style={{ width: '80px', padding: '0 5px' }}
-            >
-              {Object.keys(rates).map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-          <div className="help-text" style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: 12 }}>
-            Price per unit in {inputCurrency}
-          </div>
+            <div style={{ marginBottom: 15 }}>
+              <label className="form-label">Amount</label>
+              <input className="form-input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1" />
+            </div>
 
-          {error && <div className="error-text" style={{ marginTop: 8 }}>{error}</div>}
+            <div style={{ marginBottom: 15 }}>
+              <label className="form-label">Float</label>
+              <input className="form-input" value={floatValue} onChange={(e) => setFloatValue(e.target.value)} placeholder="0.00243581975" />
+            </div>
 
-          <div style={{ display:'flex', gap:12, marginTop:16, justifyContent:'center' }}>
-            <button type="submit" className="account-button" disabled={loading}>{loading ? 'Saving…' : 'Add'}</button>
-            <button type="button" className="account-button" onClick={onClose} style={{ background:'#444' }}>Cancel</button>
-          </div>
-        </form>
+            <div style={{ marginBottom: 15 }}>
+              <label className="form-label">Buy Price</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  className="form-input" 
+                  style={{ flex: 1 }} 
+                  value={buyPrice} 
+                  onChange={(e) => setBuyPrice(e.target.value)} 
+                  placeholder="100" 
+                />
+                <button 
+                  type="button" 
+                  className="account-button" 
+                  onClick={cycleModalCurrency}
+                  style={{ width: 'auto', minWidth: '60px', padding: '0 12px' }}
+                  title="Click to switch currency"
+                >
+                  {inputCurrency}
+                </button>
+              </div>
+              <div className="help-text" style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: 4 }}>
+                Price per unit in {inputCurrency}
+              </div>
+            </div>
+
+            {error && <div className="error-text" style={{ marginTop: 8 }}>{error}</div>}
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 20 }}>
+              <button type="button" className="account-button" style={{ background: '#444' }} onClick={onClose}>Cancel</button>
+              <button type="submit" className="account-button" disabled={loading}>
+                {loading ? 'Saving…' : 'Add'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

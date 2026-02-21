@@ -1,4 +1,19 @@
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; z-index: 200; }
+.modal-content { 
+    background: rgba(30,30,30,0.65); 
+    color: var(--card-text-color); 
+    border: 1px solid rgba(255,255,255,0.1); 
+    border-radius: 18px; 
+    padding: 24px; 
+    width: 520px; 
+    max-width: 92%; 
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35); 
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.modal-header h3 { margin: 0 0 16px 0; font-size: 1.15rem; font-weight: 600; text-align: center; }
+.modal-body form { display: flex; flex-direction: column; gap: 12px; }
+
 .modal-container { background: var(--card-bg); color: var(--card-text-color); border: 1px solid var(--surface-border); border-radius: 18px; padding: 20px 24px 24px; width: 520px; max-width: 92%; box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
 .modal-container form { max-width: 500px; }
 .modal-container h3 { font-size: 1.15rem; }
@@ -29,6 +44,8 @@ input.no-spin[type=number] { -moz-appearance: textfield; appearance: textfield; 
     --overlay-bg: rgba(255,255,255,0.85);
     --theme-toggle-dot: #111111;
 }
+
+*, *::before, *::after { box-sizing: border-box; }
 
 /* Dark theme variable overrides */
 body[data-theme="dark"] {

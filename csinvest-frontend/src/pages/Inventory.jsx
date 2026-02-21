@@ -786,7 +786,7 @@ function InventoryPage() {
                   ></textarea>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
                   <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setInfoItem(null)}>Cancel</button>
                   <button type="submit" className="account-button">Save Changes</button>
                 </div>
