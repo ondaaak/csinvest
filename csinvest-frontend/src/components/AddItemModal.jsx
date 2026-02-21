@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { useCurrency } from '../currency/CurrencyContext.jsx';
 
 const BASE_URL = 'http://127.0.0.1:8000';
 
 function AddItemModal({ onClose, onAdded }) {
   const { userId } = useAuth();
+  const { rates, currency: globalCurrency } = useCurrency();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
@@ -13,6 +15,7 @@ function AddItemModal({ onClose, onAdded }) {
   const [amount, setAmount] = useState(1);
   const [floatValue, setFloatValue] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
+  const [inputCurrency, setInputCurrency] = useState(globalCurrency || 'USD');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const token = localStorage.getItem('csinvest:token');
@@ -110,7 +113,7 @@ function AddItemModal({ onClose, onAdded }) {
       item_id: selected.item_id,
       amount: Number(amount) || 1,
       float_value: floatValue ? Number(floatValue) : null,
-      buy_price: parsePrice(buyPrice),
+      buy_price: parsePrice(buyPrice) / (rates[inputCurrency] || 1),
     };
     setLoading(true); setError(null);
     try {
@@ -170,9 +173,29 @@ function AddItemModal({ onClose, onAdded }) {
           <input className="form-input" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1" />
           <label className="form-label">Float</label>
           <input className="form-input" value={floatValue} onChange={(e) => setFloatValue(e.target.value)} placeholder="0.00243581975" />
-          <label className="form-label">Buy Price (USD unit)</label>
-          <input className="form-input" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} placeholder="$100" />
-          <div className="help-text">Jednotková cena v USD (za 1 kus)</div>
+          <label className="form-label">Buy Price</label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input 
+              className="form-input" 
+              style={{ flex: 1 }} 
+              value={buyPrice} 
+              onChange={(e) => setBuyPrice(e.target.value)} 
+              placeholder="100" 
+            />
+            <select 
+              className="form-input" 
+              value={inputCurrency} 
+              onChange={(e) => setInputCurrency(e.target.value)}
+              style={{ width: '80px', padding: '0 5px' }}
+            >
+              {Object.keys(rates).map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+          <div className="help-text" style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: 12 }}>
+            Price per unit in {inputCurrency}
+          </div>
 
           {error && <div className="error-text" style={{ marginTop: 8 }}>{error}</div>}
 

@@ -10,14 +10,14 @@ const BASE_URL = 'http://127.0.0.1:8000';
 
 function InventoryPage() {
   const { userId, logout } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, rates } = useCurrency();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState(''); 
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sortKey, setSortKey] = useState('total'); 
+  const [sortAsc, setSortAsc] = useState(false);
   const [editing, setEditing] = useState({}); 
   const [buyMode, setBuyMode] = useState({}); 
   const [savingIds, setSavingIds] = useState(new Set()); 
@@ -157,6 +157,10 @@ function InventoryPage() {
       if (buyMode[id] === 'total') {
         buyUnit = amt > 0 ? (buyUnit / amt) : buyUnit;
       }
+      
+      const rate = rates[currency] || 1;
+      const buyPriceUSD = buyUnit / rate;
+
       try {
         const resp = await fetch(`${BASE_URL}/useritems/${id}`, {
           method: 'PATCH',
@@ -165,7 +169,7 @@ function InventoryPage() {
             amount: amt,
             float_value: payload.float_value === '' ? null : Number(payload.float_value),
             pattern: payload.pattern === '' ? null : Number(payload.pattern),
-            buy_price: buyUnit,
+            buy_price: buyPriceUSD,
           })
         });
         if (!resp.ok) {
@@ -180,14 +184,7 @@ function InventoryPage() {
           alert(`Saving failed: ${text}`);
           return;
         }
-        
-        try {
-          if (userId) {
-            await axios.post(`${BASE_URL}/refresh-portfolio/${userId}`);
-          }
-        } catch (e) {
-          console.warn('Portfolio refresh after save failed (continuing):', e);
-        }
+
         await fetchItems();
       } catch (e) {
         console.error('Save failed', e);
@@ -222,13 +219,14 @@ function InventoryPage() {
 
   const startEdit = (item) => {
     const id = item.user_item_id;
+    const rate = rates[currency] || 1;
     setEditing((prev) => ({
       ...prev,
       [id]: {
         amount: getAmount(item),
         float_value: item.float_value ?? '',
         pattern: item.pattern ?? '',
-        buy_price: item.buy_price ?? 0,
+        buy_price: ((item.buy_price ?? 0) * rate).toFixed(2),
       },
     }));
     setBuyMode((prev) => ({ ...prev, [id]: prev[id] || 'unit' }));
@@ -299,9 +297,7 @@ function InventoryPage() {
   );
   const SaveIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 5h11l4 4v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
-      <path d="M12 9v6" />
-      <path d="M9 9h6" />
+      <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
   );
   const CancelIcon = () => (
@@ -495,19 +491,22 @@ function InventoryPage() {
               <td>
                 {editing[item.user_item_id] ? (
                   <div>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <label className="form-label" style={{ margin:0 }}>Buy ({buyMode[item.user_item_id] === 'total' ? 'total' : 'unit'})</label>
-                      <button className="icon-btn toggle-btn" title="Toggle unit/total" aria-label="Toggle unit or total"
+                    <div style={{ display:'flex', alignItems:'center' }}>
+                      <input 
+                        className="form-input compact" 
+                        style={{ maxWidth: 80, marginRight: 6 }} 
+                        value={editing[item.user_item_id].buy_price}
+                        onChange={(e) => setEditing((prev) => ({ ...prev, [item.user_item_id]: { ...prev[item.user_item_id], buy_price: e.target.value } }))} 
+                      />
+                      <button className="icon-btn toggle-btn" title={`Input is ${buyMode[item.user_item_id] === 'total' ? 'Total' : 'Unit'} price. Click to swap.`} aria-label="Toggle unit or total"
                         onClick={() => setBuyMode((prev) => ({ ...prev, [item.user_item_id]: (prev[item.user_item_id] === 'total' ? 'unit' : 'total') }))}>
                         <ToggleIcon />
                       </button>
                     </div>
-                    <input className="form-input compact" style={{ maxWidth: 120 }} value={editing[item.user_item_id].buy_price}
-                      onChange={(e) => setEditing((prev) => ({ ...prev, [item.user_item_id]: { ...prev[item.user_item_id], buy_price: e.target.value } }))} />
-                    <div style={{ fontSize:'0.8rem', opacity:0.75, marginTop:4 }}>
+                    <div style={{ fontSize:'0.75rem', opacity:0.7, marginTop:2 }}>
                       {buyMode[item.user_item_id] === 'total'
-                        ? `Unit preview: ${formatPrice(((Number(editing[item.user_item_id].buy_price) || 0) / (Number(editing[item.user_item_id].amount) || 1)) || 0)}`
-                        : `Total preview: ${formatPrice((Number(editing[item.user_item_id].buy_price) || 0) * (Number(editing[item.user_item_id].amount) || 1))}`}
+                        ? `Unit: ${formatPrice(((Number(editing[item.user_item_id].buy_price) || 0) / (Number(editing[item.user_item_id].amount) || 1)) || 0)}`
+                        : `Total: ${formatPrice((Number(editing[item.user_item_id].buy_price) || 0) * (Number(editing[item.user_item_id].amount) || 1))}`}
                     </div>
                   </div>
                 ) : (
@@ -541,36 +540,38 @@ function InventoryPage() {
                     <button className="icon-btn" title="Cancel" onClick={() => cancelEdit(item.user_item_id)} disabled={savingIds.has(item.user_item_id)}><CancelIcon /></button>
                   </>
                 ) : (
-                  <button className="icon-btn" title="Edit" onClick={() => startEdit(item)} disabled={savingIds.has(item.user_item_id)}><PencilIcon /></button>
+                  <>
+                    <button className="icon-btn" title="Edit" onClick={() => startEdit(item)} disabled={savingIds.has(item.user_item_id)}><PencilIcon /></button>
+                    {/* Info Action */}
+                    <button className="icon-btn" title="Info & Details" onClick={() => setInfoItem({ ...item, float_value: item.float_value ?? '' })} disabled={savingIds.has(item.user_item_id)}>
+                      <InfoIcon />
+                    </button>
+
+                    {/* Refresh Price */}
+                    <button className="icon-btn" title="Refresh Price" onClick={() => handleRefreshPrice(item)} disabled={savingIds.has(item.user_item_id) || updatingIds.has(item.user_item_id)}>
+                      {updatingIds.has(item.user_item_id) ? <span className="spinner" style={{width:14, height:14}}/> : <RefreshIcon />}
+                    </button>
+
+                    {/* Bell / Notify */}
+                    <button className="icon-btn" title="Price Alert (Coming Soon)" onClick={() => alert('Price alerts coming soon!')} disabled={savingIds.has(item.user_item_id)}>
+                      <BellIcon />
+                    </button>
+
+                    <button className="icon-btn" title="Delete" disabled={savingIds.has(item.user_item_id)} onClick={async () => {
+                      if (!window.confirm('Delete this item?')) return;
+                      try {
+                        const token = localStorage.getItem('csinvest:token');
+                        await fetch(`${BASE_URL}/useritems/${item.user_item_id}`, {
+                          method: 'DELETE',
+                          headers: { Authorization: `Bearer ${token}` },
+                        });
+                        await fetchItems();
+                      } catch (e) {
+                        console.error('Delete failed', e);
+                      }
+                    }}><TrashIcon /></button>
+                  </>
                 )}
-                {/* Info Action */}
-                <button className="icon-btn" title="Info & Details" onClick={() => setInfoItem({ ...item, float_value: item.float_value ?? '' })} disabled={savingIds.has(item.user_item_id)}>
-                  <InfoIcon />
-                </button>
-
-                {/* Refresh Price */}
-                <button className="icon-btn" title="Refresh Price" onClick={() => handleRefreshPrice(item)} disabled={savingIds.has(item.user_item_id) || updatingIds.has(item.user_item_id)}>
-                   {updatingIds.has(item.user_item_id) ? <span className="spinner" style={{width:14, height:14}}/> : <RefreshIcon />}
-                </button>
-
-                {/* Bell / Notify */}
-                <button className="icon-btn" title="Price Alert (Coming Soon)" onClick={() => alert('Price alerts coming soon!')} disabled={savingIds.has(item.user_item_id)}>
-                  <BellIcon />
-                </button>
-
-                <button className="icon-btn" title="Delete" disabled={savingIds.has(item.user_item_id)} onClick={async () => {
-                  if (!window.confirm('Delete this item?')) return;
-                  try {
-                    const token = localStorage.getItem('csinvest:token');
-                    await fetch(`${BASE_URL}/useritems/${item.user_item_id}`, {
-                      method: 'DELETE',
-                      headers: { Authorization: `Bearer ${token}` },
-                    });
-                    await fetchItems();
-                  } catch (e) {
-                    console.error('Delete failed', e);
-                  }
-                }}><TrashIcon /></button>
               </td>
             </tr>
           ))}
