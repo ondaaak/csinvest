@@ -12,3 +12,4 @@
 12. Terminals dont have knives... yet
 13. After searching item through boxes, add scroll-to-top when going back with back arrow.
 14. Add redirect to previous section in skin detail page.
+15. Add neutral pictures of weapons and gloves as initial filter.
