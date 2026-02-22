@@ -89,6 +89,25 @@ function CasesPage() {
     return filtered;
   }, [cases, sortMode, query]);
 
+  const WarningIcon = () => (
+    <span style={{ 
+      color: '#ff4d4d', 
+      fontWeight: 'bold', 
+      cursor: 'help',
+      fontSize: '16px',
+      marginLeft: 4,
+      lineHeight: 1
+    }}>!</span>
+  );
+
+  const isPriceOutdated = (dateString) => {
+    if (!dateString) return true;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return true;
+    const diff = Date.now() - date.getTime();
+    return diff > 24 * 60 * 60 * 1000; // older than 24 hours
+  };
+
   const badgeColors = (dt) => {
     switch ((dt || '').toLowerCase()) {
       case 'active':
@@ -218,7 +237,10 @@ function CasesPage() {
               )})()}
             </div>
             <div style={{ fontSize:'0.75rem', opacity:0.65, marginBottom:6 }}>Released: {cs.release_date || '—'}</div>
-            <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{formatPrice(cs.current_price)}</div>
+            <div style={{ fontSize:'0.85rem', fontWeight:600 }} title={`Last update: ${cs.last_update ? new Date(cs.last_update).toLocaleString() : 'Never'}`}>
+              {formatPrice(cs.current_price)}
+              {isPriceOutdated(cs.last_update) && <WarningIcon />}
+            </div>
           </div>
         ))}
       </div>
