@@ -1,9 +1,7 @@
 1. Create database somewhere online. - after finalizing database structure
-2. Add missing items in database.
-3. Make price notifications work.
-4. Info button doesnt have db column for description. Maybe add price graph ?
+2. Add missing items in database. - after setting up cloud db to tryout realtime adding new skins.
+3. Make price notifications work. - discord as first then maybe email.
+4. Responzive design for inventory with more/different items.
 5. Getting prices for float skins doesnt work.
-6. Add redirect to previous section in skin detail page.
+6. Update skinDetail page. - Add redirect to previous section in skin detail page.
 7. Keep the light mode updated.
-8. Update skinDetail page.
-9. Add neutral pictures of gloves as initial filter.

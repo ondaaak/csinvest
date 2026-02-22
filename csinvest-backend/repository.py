@@ -4,6 +4,27 @@ import datetime
 from sqlalchemy import func
 
 
+def calculate_wear(float_value: float) -> str | None:
+    if float_value is None:
+        return None
+    
+    # Ensure float is treated as a number
+    try:
+        val = float(float_value)
+    except (ValueError, TypeError):
+        return None
+
+    if val < 0.07:
+        return "Factory New"
+    elif val < 0.15:
+        return "Minimal Wear"
+    elif val < 0.38:
+        return "Field-Tested"
+    elif val < 0.45:
+        return "Well-Worn"
+    else:
+        return "Battle-Scarred"
+
 class ItemRepository:
     def __init__(self, db: Session):
         self.db = db
@@ -22,6 +43,8 @@ class ItemRepository:
             except Exception:
                 current_price = float(price)
 
+        wear_str = calculate_wear(float_value)
+
         new_item = UserItem(
             user_id=user_id,
             item_id=item_id,
@@ -30,6 +53,7 @@ class ItemRepository:
             pattern=pattern,
             buy_price=price,
             current_price=current_price,
+            wear=wear_str,
             buy_date=datetime.date.today(),
             last_update=datetime.datetime.now()
         )
@@ -141,8 +165,17 @@ class ItemRepository:
             return None
         
         allowed = {
-            'amount', 'float_value', 'pattern', 'buy_price'
+            'amount', 'float_value', 'pattern', 'buy_price', 'description', 'wear'
         }
+
+        # If float_value is being updated, automatically recalculate wear
+        if 'float_value' in fields:
+             fval = fields['float_value']
+             # Calculate wear based on the new float value
+             new_wear = calculate_wear(fval)
+             # Update wear field in the object (it will be committed with other fields)
+             rec.wear = new_wear
+
         for k, v in fields.items():
             if k in allowed and v is not None:
                 setattr(rec, k, v)

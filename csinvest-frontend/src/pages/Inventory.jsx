@@ -368,6 +368,17 @@ function InventoryPage() {
     return diff > 24 * 60 * 60 * 1000; // older than 24 hours
   };
 
+  const getWearName = (floatVal) => {
+    if (floatVal === '' || floatVal === null || floatVal === undefined) return '';
+    const n = Number(floatVal);
+    if (isNaN(n)) return '';
+    if (n < 0.07) return 'Factory New';
+    if (n < 0.15) return 'Minimal Wear';
+    if (n < 0.38) return 'Field-Tested';
+    if (n < 0.45) return 'Well-Worn';
+    return 'Battle-Scarred';
+  };
+
   const handleInfoSave = async (e) => {
     e.preventDefault();
     if (!infoItem) return;
@@ -384,6 +395,7 @@ function InventoryPage() {
         body: JSON.stringify({
            // We only want to update float here. 
            float_value: infoItem.float_value === '' ? null : Number(infoItem.float_value),
+           description: infoItem.description || null,
         })
       });
 
@@ -766,23 +778,39 @@ function InventoryPage() {
               <form onSubmit={handleInfoSave}>
                 <div style={{ marginBottom: 15 }}>
                   <label className="form-label">Float Value</label>
-                  <input 
-                    className="form-input" 
-                    type="number" 
-                    step="any"
-                    value={infoItem.float_value} 
-                    onChange={(e) => setInfoItem({ ...infoItem, float_value: e.target.value })}
-                    placeholder="e.g. 0.0345"
-                  />
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <input 
+                      className="form-input" 
+                      type="number" 
+                      step="any"
+                      value={infoItem.float_value} 
+                      onChange={(e) => setInfoItem({ ...infoItem, float_value: e.target.value })}
+                      placeholder="e.g. 0.0345"
+                      style={{ flex: 1 }}
+                    />
+                    <div style={{ 
+                      flex: 1, 
+                      padding: '8px', 
+                      background: '#2a2a2a', 
+                      borderRadius: 4, 
+                      fontSize: '0.9rem',
+                      color: '#ddd',
+                      textAlign: 'center',
+                      border: '1px solid #444'
+                    }}>
+                      {getWearName(infoItem.float_value) || 'No Wear'}
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: 15 }}>
-                  <label className="form-label">Description / Notes (Placeholder)</label>
+                  <label className="form-label">Description / Notes</label>
                   <textarea 
                     className="form-input" 
                     rows="3"
                     placeholder="Enter notes here (e.g. sell date, reasons)..."
-                    // Placeholder logic: not connected to DB yet
+                    value={infoItem.description || ''}
+                    onChange={(e) => setInfoItem({ ...infoItem, description: e.target.value })}
                   ></textarea>
                 </div>
 

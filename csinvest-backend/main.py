@@ -7,7 +7,7 @@ from service import PriceService
 from strategy import CSFloatStrategy
 from models import PortfolioHistory, User, Item, MarketPrice
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from config import Config
 from sqlalchemy import func
@@ -226,6 +226,8 @@ class UpdateUserItemRequest(BaseModel):
     float_value: float | None = None
     pattern: int | None = None
     buy_price: float | None = None
+    description: str | None = Field(None, max_length=1000)
+    wear: str | None = Field(None, max_length=100)
 
 @app.patch("/useritems/{user_item_id}")
 def update_user_item(user_item_id: int, payload: UpdateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
