@@ -11,7 +11,6 @@ function CollectionDetailPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
 
   const collectionImgMap = useMemo(() => {
@@ -56,19 +55,6 @@ function CollectionDetailPage() {
     };
     load();
   }, [slug]);
-
-  const doRefresh = async () => {
-    try {
-      setRefreshing(true);
-      // Refresh logic if needed
-      const res = await axios.get(`${BASE_URL}/collections/${slug}`);
-      setData(res.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   if (loading) return <div className="dashboard-container"><div className="loading">Loading…</div></div>;
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
@@ -124,11 +110,6 @@ function CollectionDetailPage() {
         }}>←</button>
         <h2 style={{ margin:0 }}>{coll.name}</h2>
         <div style={{ flex:1 }}></div>
-        <button onClick={doRefresh} disabled={refreshing} style={{
-          background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', padding:'8px 12px', borderRadius:10, cursor: refreshing ? 'not-allowed':'pointer'
-        }}>
-          {refreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
       </div>
 
       <div style={{ display:'flex', gap:24, alignItems:'flex-start', marginBottom:32 }}>

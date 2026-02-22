@@ -9,7 +9,6 @@ function CollectionsPage() {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [sortMode, setSortMode] = useState('release_new');
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
@@ -55,23 +54,6 @@ function CollectionsPage() {
     };
     load();
   }, []);
-
-  const doRefreshPrices = async () => {
-    try {
-      setRefreshing(true);
-      // Assuming refresh-items can handle 'collection' or we just refresh 'skin' which updates collections too?
-      // The backend refresh_items takes item_type. If we pass 'collection', it might not be implemented yet.
-      // But usually collections are just containers of skins.
-      // For now let's just refresh the list.
-      const res = await axios.get(`${BASE_URL}/collections`);
-      const arr = Array.isArray(res.data) ? res.data : [];
-      setCollections(arr);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   const sortedCollections = useMemo(() => {
     const arr = [...collections];
@@ -167,18 +149,6 @@ function CollectionsPage() {
           <option value="price_desc">Price ↓</option>
           <option value="price_asc">Price ↑</option>
         </select>
-        <button
-          onClick={doRefreshPrices}
-          disabled={refreshing}
-          style={{
-            background:'var(--button-bg)',
-            color:'var(--button-text)',
-            border:'1px solid var(--border-color)',
-            padding:'8px 12px',
-            borderRadius:10,
-            cursor: refreshing ? 'not-allowed':'pointer'
-          }}
-        >{refreshing ? 'Refreshing…' : 'Refresh'}</button>
       </div>
 
       <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>

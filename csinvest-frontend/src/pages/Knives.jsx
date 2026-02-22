@@ -8,7 +8,6 @@ export default function KnivesPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [sortMode, setSortMode] = useState('release_new');
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -151,21 +150,6 @@ export default function KnivesPage() {
     setTimeout(() => window.scrollTo(0, 0), 0);
   }, [q]);
 
-  const doRefreshPrices = async () => {
-    try {
-      setRefreshing(true);
-      await fetch(`${API_BASE}/refresh-items?item_type=knife`, { method: 'POST' });
-      const url = query ? `${API_BASE}/search/knives?q=${encodeURIComponent(query)}` : `${API_BASE}/search/knives`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setItems(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   const sortedItems = React.useMemo(() => {
     const arr = [...items];
     const getPrice = (c) => typeof c.current_price === 'number' ? c.current_price : 0;
@@ -304,24 +288,12 @@ export default function KnivesPage() {
           <option value="release_new">Newest</option>
           <option value="release_old">Oldest</option>
         </select>
-        <button
-          onClick={doRefreshPrices}
-          disabled={refreshing}
-          style={{
-            background:'var(--button-bg)',
-            color:'var(--button-text)',
-            border:'1px solid var(--border-color)',
-            padding:'8px 12px',
-            borderRadius:10,
-            cursor: refreshing ? 'not-allowed':'pointer'
-          }}
-        >{refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
       </div>
       {loading && <div className="loading">Loading knives…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
       {!q ? (
         <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          {KNIFE_TYPES.map(cat => (
+          {KNIFE_TYPES.map((cat) => (
             <div
               key={cat.name}
               className="category-card item-card"
