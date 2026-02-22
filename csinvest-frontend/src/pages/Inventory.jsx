@@ -411,13 +411,20 @@ function InventoryPage() {
   };
 
   const handleRefreshPrice = async (item) => {
-    if (!item?.item?.item_id) return;
+    if (!item?.user_item_id) return;
     const uid = item.user_item_id;
     if (updatingIds.has(uid)) return;
 
     setUpdatingIds(prev => new Set([...prev, uid]));
     try {
-      await axios.post(`${BASE_URL}/items/${item.item.item_id}/refresh`);
+      const token = localStorage.getItem('csinvest:token');
+      await axios.post(
+        `${BASE_URL}/useritems/${uid}/refresh`, 
+        {}, // empty body
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
       await fetchItems();
     } catch (e) {
       console.error(e);
@@ -528,10 +535,10 @@ function InventoryPage() {
                   </>
                 )}
               </td>
-              <td title={`last update: ${(() => { const d = item?.item?.last_update || item?.last_update; try { return d ? new Date(d).toLocaleString() : '—'; } catch { return '—'; } })()}`}>
+              <td title={`last update: ${(() => { const d = item.last_update || item.item?.last_update; try { return d ? new Date(d).toLocaleString() : '—'; } catch { return '—'; } })()}`}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   {formatPrice(item.current_price)}
-                  {isPriceOutdated(item.item?.last_update || item.last_update) && (
+                  {isPriceOutdated(item.last_update || item.item?.last_update) && (
                     <div title="Price outdated (>24h)">
                       <WarningIcon />
                     </div>

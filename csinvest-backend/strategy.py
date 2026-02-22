@@ -11,7 +11,7 @@ load_dotenv()
 
 class IMarketStrategy(ABC):
     @abstractmethod
-    def fetch_price(self, skin_name: str) -> dict:
+    def fetch_price(self, skin_name: str, min_float: float = None, max_float: float = None) -> dict:
         pass
 
 class CSFloatStrategy(IMarketStrategy):
@@ -20,8 +20,8 @@ class CSFloatStrategy(IMarketStrategy):
     def __init__(self, config: Config | None = None) -> None:
         self.config = config or Config()
 
-    def fetch_price(self, skin_name: str) -> dict:
-        print(f"[CSFloatStrategy] Hledám cenu USD pro: {skin_name}")
+    def fetch_price(self, skin_name: str, min_float: float = None, max_float: float = None) -> dict:
+        print(f"[CSFloatStrategy] Hledám cenu pro: {skin_name} (Float: {min_float}-{max_float})")
         
         params = {
             "market_hash_name": skin_name,
@@ -29,6 +29,11 @@ class CSFloatStrategy(IMarketStrategy):
             "limit": 50,
             "type": "buy_now"
         }
+
+        if min_float is not None:
+            params["min_float"] = min_float
+        if max_float is not None:
+            params["max_float"] = max_float
         
         headers = {
             "Authorization": self.config.CSFLOAT_API_KEY,

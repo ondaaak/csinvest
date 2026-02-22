@@ -34,6 +34,12 @@ class ItemRepository:
             joinedload(UserItem.item)
         ).all()
 
+    def get_user_item_by_id(self, user_item_id: int, user_id: int):
+        return self.db.query(UserItem).filter(
+            UserItem.user_item_id == user_item_id, 
+            UserItem.user_id == user_id
+        ).options(joinedload(UserItem.item)).first()
+
     def add_user_item(self, user_id: int, item_id: int, price: float, amount: int = 1, float_value: float | None = None, pattern: int | None = None):
         catalog_item = self.db.query(Item).filter(Item.item_id == item_id).first()
         current_price = float(price)

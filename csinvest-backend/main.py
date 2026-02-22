@@ -352,6 +352,26 @@ def refresh_items(item_type: str | None = None, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/useritems/{user_item_id}/refresh")
+def refresh_user_item_price(user_item_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    """
+    Refresh price for a specific UserItem (taking wear/float into account).
+    """
+    strategy = CSFloatStrategy()
+    service = PriceService(db, strategy)
+    try:
+        updated = service.update_specific_user_item_price(user_item_id, current.user_id)
+        if not updated:
+             # If update returns None (not found or error fetching), return a 404 or 400
+             # raising 404 is okay, but user will get an error in frontend.
+             # Ideally we might want to say "Price not found" but that's still an error state for this action.
+             raise HTTPException(status_code=404, detail="Price not found or item unavailable")
+        return updated
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/items/{item_id}/refresh")
 def refresh_single_item(item_id: int, db: Session = Depends(get_db)):
     """
