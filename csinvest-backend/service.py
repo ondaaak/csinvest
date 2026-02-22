@@ -92,7 +92,9 @@ class PriceService:
         return results
 
     def update_items_prices(self, item_type: str | None = None, limit: int = 1000):
-        from models import Item  # local import to avoid cycles in type hints
+        from models import Item
+        import datetime
+
         if item_type:
             items = self.repo.get_items(item_type=item_type, limit=limit)
         else:
@@ -100,7 +102,25 @@ class PriceService:
 
         results = []
         print(f"Aktualizuji ceny pro item_type={item_type or 'skin,case'}; počet: {len(items)}")
+        
+        now = datetime.datetime.now()
+
         for itm in items:
+            # 24-hour check
+            if itm.last_update and itm.current_price is not None:
+                # Ensure we are comparing compatible datetimes (naive vs aware)
+                # If we don't know, we can try robust check or just try-except
+                try:
+                    # Assuming itm.last_update is a datetime object
+                    diff = now - itm.last_update
+                    if diff.total_seconds() < 24 * 3600:
+                        # Less than 24 hours old, skip
+                        # print(f"Skipping {itm.name}, updated recently ({itm.last_update})")
+                        continue
+                except Exception:
+                    # Fallback if comparison fails (e.g. tz mismatch), just update to be safe or ignore
+                    pass
+
             try:
                 time.sleep(1)
                 if itm.item_type == 'skin':

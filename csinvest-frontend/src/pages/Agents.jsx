@@ -113,6 +113,25 @@ export default function AgentsPage() {
     return { bg: 'rgba(107,114,128,0.25)', color: 'var(--text-color)' };
   };
 
+  const WarningIcon = () => (
+    <span style={{ 
+      color: '#ff4d4d', 
+      fontWeight: 'bold', 
+      cursor: 'help',
+      fontSize: '16px',
+      marginLeft: 4,
+      lineHeight: 1
+    }}>!</span>
+  );
+
+  const isPriceOutdated = (dateString) => {
+    if (!dateString) return true;
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return true;
+    const diff = Date.now() - date.getTime();
+    return diff > 24 * 60 * 60 * 1000; // older than 24 hours
+  };
+
   return (
     <div className="dashboard-container">
       <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
@@ -204,7 +223,10 @@ export default function AgentsPage() {
                 </span>
               )}
             </div>
-            <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}</div>
+            <div style={{ fontSize:'0.85rem', fontWeight:600 }} title={`Last update: ${it.last_update ? new Date(it.last_update).toLocaleString() : 'Never'}`}>
+              {typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}
+              {isPriceOutdated(it.last_update) && <WarningIcon />}
+            </div>
           </div>
         ))}
         {(!loading && items.length === 0) && (
