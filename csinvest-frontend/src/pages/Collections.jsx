@@ -183,9 +183,6 @@ function CollectionsPage() {
                   </span>
                 </div>
               )}
-              <div style={{ fontSize:'0.85rem', fontWeight:600, marginTop:4 }}>
-                {c.current_price ? formatPrice(c.current_price) : '—'}
-              </div>
             </div>
           );
         })}

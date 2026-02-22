@@ -397,7 +397,6 @@ export default function WeaponsPage() {
                   </span>
                 )}
               </div>
-              <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}</div>
             </div>
           ))}
           {(!loading && items.length === 0) && (

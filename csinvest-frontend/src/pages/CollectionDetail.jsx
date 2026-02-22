@@ -182,9 +182,6 @@ function CollectionDetailPage() {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize:'0.85rem', fontWeight:600 }}>
-                  {it.current_price ? formatPrice(it.current_price) : '—'}
-                </div>
               </div>
             ))}
           </div>

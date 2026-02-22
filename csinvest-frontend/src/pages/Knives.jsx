@@ -331,7 +331,6 @@ export default function KnivesPage() {
               <div style={{ marginBottom:8 }}>
                 <div className="category-label" style={{ fontSize:'0.95rem' }}>{it.name}</div>
               </div>
-              <div style={{ fontSize:'0.85rem', fontWeight:600 }}>{typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}</div>
             </div>
           ))}
           {(!loading && items.length === 0) && (
