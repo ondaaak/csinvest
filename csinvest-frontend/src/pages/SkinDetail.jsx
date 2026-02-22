@@ -50,6 +50,17 @@ function SkinDetailPage() {
     return map;
   }, []);
 
+  const agentImgMap = useMemo(() => {
+    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const map = {};
+    Object.entries(files).forEach(([path, url]) => {
+      const filename = path.split('/').pop() || '';
+      const base = filename.substring(0, filename.lastIndexOf('.'));
+      map[base.toLowerCase()] = url;
+    });
+    return map;
+  }, []);
+
   const sortedKeys = useMemo(() => {
     return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
   }, [skinImgMap]);
@@ -58,12 +69,17 @@ function SkinDetailPage() {
     return Object.keys(caseImgMap).sort((a, b) => b.length - a.length);
   }, [caseImgMap]);
 
+  const sortedAgentKeys = useMemo(() => {
+    return Object.keys(agentImgMap).sort((a, b) => b.length - a.length);
+  }, [agentImgMap]);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
         const res = await axios.get(`${BASE_URL}/items/${slug}`);
+        console.log("API Response:", res.data); // Debugging log
         if (res.data.item) {
             setItem(res.data.item);
             setCases(res.data.cases || []);
@@ -98,8 +114,13 @@ function SkinDetailPage() {
   const getSkinImage = (itemSlug, itemName) => {
     if (!itemSlug) return null;
     const s = itemSlug.toLowerCase();
+    
+    if (agentImgMap[s]) return agentImgMap[s];
     if (skinImgMap[s]) return skinImgMap[s];
     
+    const agentMatch = sortedAgentKeys.find(key => s.startsWith(key));
+    if (agentMatch) return agentImgMap[agentMatch];
+
     const match = sortedKeys.find(key => s.startsWith(key));
     if (match) return skinImgMap[match];
 
@@ -109,6 +130,7 @@ function SkinDetailPage() {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "");
+      if (agentImgMap[base]) return agentImgMap[base];
       if (skinImgMap[base]) return skinImgMap[base];
     }
     return null;
@@ -158,6 +180,14 @@ function SkinDetailPage() {
       case 'knife':
       case 'glove':
         return 'contraband';
+      case 'distinguished':
+        return 'milspec'; 
+      case 'exceptional':
+        return 'restricted';
+      case 'superior':
+        return 'classified';
+      case 'master':
+        return 'covert';
       default:
         return '';
     }
@@ -176,6 +206,22 @@ function SkinDetailPage() {
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
         <h2 style={{ margin:0, flex:1 }}>{item.name}</h2>
+          <a
+            href={item.inspect ? `steam://rungame/730/76561202255233023/+csgo_econ_action_preview%${item.inspect}` : '#'}
+            className="badge"
+            style={{
+              textDecoration: 'none',
+              background: 'var(--button-bg)',
+              color: 'var(--button-text)',
+              border: '1px solid var(--border-color)',
+              cursor: 'pointer',
+              marginLeft: 8,
+              opacity: item.inspect ? 1 : 0.5,
+              pointerEvents: item.inspect ? 'auto' : 'none'
+            }}
+          >
+          Inspect in-game
+          </a>
         <span className={`badge ${rarityClass(item.rarity)}`}>{item.rarity || '—'}</span>
       </div>
       
@@ -184,13 +230,9 @@ function SkinDetailPage() {
             {img && (
             <img src={img} alt={item.name} style={{ width:200, height:200, objectFit:'contain', borderRadius:12 }} />
             )}
-            <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:12, fontSize:'0.9rem' }}>
-                <div><strong>Current Price:</strong> {formatPrice(item.current_price)}</div>
-                </div>
-                
+            <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 {cases.length > 0 && (
-                    <div style={{ marginTop: 20 }}>
+                    <div style={{ marginTop: 0 }}>
                         <strong>Found in cases:</strong>
                         <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
                             {cases.map(c => {
@@ -203,7 +245,6 @@ function SkinDetailPage() {
                                             <div style={{ width: 60, height: 60, background: '#333', borderRadius: 8 }}></div>
                                         )}
                                         <div style={{ fontSize: '0.7rem', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary, #aaa)' }}>{formatPrice(c.current_price)}</div>
                                     </Link>
                                 );
                             })}
@@ -212,7 +253,7 @@ function SkinDetailPage() {
                 )}
 
                 {collection && (
-                    <div style={{ marginTop: 20 }}>
+                    <div style={{ marginTop: cases.length > 0 ? 20 : 0 }}>
                         <strong>Found in collection:</strong>
                         <div style={{ marginTop: 10 }}>
                             <Link to={`/collection/${collection.slug}`} style={{ display: 'inline-block', textAlign: 'center', width: 80, textDecoration: 'none', color: 'inherit' }} title={collection.name}>
@@ -230,20 +271,6 @@ function SkinDetailPage() {
         </div>
       </div>
 
-      {finalChartData.length > 0 && (
-          <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', height: 400 }}>
-              <h3>Price History</h3>
-              <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={finalChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                      <XAxis dataKey="date" stroke="#888" />
-                      <YAxis stroke="#888" />
-                      <Tooltip contentStyle={{ backgroundColor: '#222', border: '1px solid #444' }} />
-                      <Line type="monotone" dataKey="price" stroke="#8884d8" dot={false} />
-                  </LineChart>
-              </ResponsiveContainer>
-          </div>
-      )}
     </div>
   );
 }

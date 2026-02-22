@@ -25,6 +25,7 @@ class Item(Base):
     current_price = Column(Numeric(10, 2))
     last_update = Column(DateTime, default=datetime.datetime.now)
     slug = Column(String, unique=True, index=True)
+    inspect = Column(String)
 
     case = relationship("Item", remote_side=[item_id], foreign_keys=[case_id], uselist=False)
     collection_item = relationship("Item", remote_side=[item_id], foreign_keys=[collection_id], uselist=False)
