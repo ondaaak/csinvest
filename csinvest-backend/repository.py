@@ -171,7 +171,7 @@ class ItemRepository:
             return None
         
         allowed = {
-            'amount', 'float_value', 'pattern', 'buy_price', 'description', 'wear'
+            'amount', 'float_value', 'pattern', 'buy_price', 'description', 'wear', 'discord_webhook_url'
         }
 
         # If float_value is being updated, automatically recalculate wear
@@ -183,7 +183,7 @@ class ItemRepository:
              rec.wear = new_wear
 
         for k, v in fields.items():
-            if k in allowed and v is not None:
+            if k in allowed:
                 setattr(rec, k, v)
         rec.last_update = datetime.datetime.now()
         self.db.commit()

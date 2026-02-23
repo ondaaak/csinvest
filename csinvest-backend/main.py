@@ -228,6 +228,7 @@ class UpdateUserItemRequest(BaseModel):
     buy_price: float | None = None
     description: str | None = Field(None, max_length=1000)
     wear: str | None = Field(None, max_length=100)
+    discord_webhook_url: str | None = Field(None, max_length=500)
 
 @app.patch("/useritems/{user_item_id}")
 def update_user_item(user_item_id: int, payload: UpdateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -235,7 +236,7 @@ def update_user_item(user_item_id: int, payload: UpdateUserItemRequest, db: Sess
     updated = repo.update_user_item(
         user_item_id=user_item_id,
         user_id=current.user_id,
-        **payload.model_dump(exclude_none=True)
+        **payload.model_dump(exclude_unset=True)
     )
     if not updated:
         raise HTTPException(status_code=404, detail="User item nenalezen")

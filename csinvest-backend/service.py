@@ -3,12 +3,42 @@ from repository import ItemRepository
 from strategy import IMarketStrategy
 from price_factory import PriceFactory
 import time
+import requests
 
 class PriceService:
     def __init__(self, db: Session, strategy: IMarketStrategy):
         self.repo = ItemRepository(db)
         self.strategy = strategy
         self.factory = PriceFactory()
+
+    def _send_discord_notification(self, webhook_url: str, item_name: str, old_price: float, new_price: float):
+        if not webhook_url:
+            return
+            
+        try:
+            diff = new_price - old_price
+            if old_price > 0:
+                pct = (diff / old_price) * 100
+            else:
+                pct = 0 if diff == 0 else 100
+
+            emoji = "📈" if diff >= 0 else "📉"
+            color = 5763719 if diff >= 0 else 15548997  # Green or Red
+
+            embed = {
+                "title": f"{emoji} Price Update: {item_name}",
+                "color": color,
+                "fields": [
+                    {"name": "Old Price", "value": f"${old_price:.2f}", "inline": True},
+                    {"name": "New Price", "value": f"${new_price:.2f}", "inline": True},
+                    {"name": "Change", "value": f"{diff:+.2f} ({pct:+.2f}%)", "inline": False}
+                ],
+                "footer": {"text": "CSInvest Portfolio Tracker"}
+            }
+            
+            requests.post(webhook_url, json={"embeds": [embed]}, timeout=5)
+        except Exception as e:
+            print(f"Failed to send Discord notification: {e}")
 
     def update_portfolio_prices(self, user_id: int):
         user_items = self.repo.get_user_items(user_id)
@@ -76,13 +106,20 @@ class PriceService:
                 price=clean_data["price"]
             )
 
-            self.repo.update_item_current_price(itm.item_id, clean_data["price"])
-            self.repo.update_useritems_current_price_for_item(itm.item_id, clean_data["price"])
+            old_price = float(owned.current_price) if owned.current_price else 0.0
+            new_price = clean_data["price"]
+
+            self.repo.update_item_current_price(itm.item_id, new_price)
+            self.repo.update_useritems_current_price_for_item(itm.item_id, new_price)
+
+            # Check for webhook notification
+            if owned.discord_webhook_url:
+                self._send_discord_notification(owned.discord_webhook_url, itm.name, old_price, new_price)
 
             results.append({
                 "item": itm.name,
-                "old_price": float(owned.current_price) if owned.current_price else 0,
-                "new_price": clean_data["price"],
+                "old_price": old_price,
+                "new_price": new_price,
                 "currency": "USD",
                 "item_type": getattr(itm, 'item_type', None)
             })
@@ -258,9 +295,15 @@ class PriceService:
         if not clean:
             return None
 
+        old_price = float(user_item.current_price) if user_item.current_price else 0.0
+        new_price = clean["price"]
+
         # Update ONLY this user item price
-        self.repo.update_price(user_item_id, clean["price"])
+        self.repo.update_price(user_item_id, new_price)
         
+        if user_item.discord_webhook_url:
+             self._send_discord_notification(user_item.discord_webhook_url, market_name, old_price, new_price)
+
         # Also save historical market price record for this item type?
         # Maybe, but be careful as it is specific float price.
         # Generally we save market price for analytics.

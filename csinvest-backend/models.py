@@ -44,6 +44,7 @@ class UserItem(Base):
     wear = Column(String)
     buy_date = Column(Date, default=datetime.date.today)
     last_update = Column(DateTime, default=datetime.datetime.now)
+    discord_webhook_url = Column(String)
     item = relationship("Item")
 
 class Market(Base):

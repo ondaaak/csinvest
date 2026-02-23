@@ -98,6 +98,7 @@ function InventoryPage() {
   };
   const [showAddModal, setShowAddModal] = useState(false);
   const [infoItem, setInfoItem] = useState(null); // State for the item details modal
+  const [notificationItem, setNotificationItem] = useState(null); // State for notification modal
 
   const fetchItems = async () => {
     setLoading(true);
@@ -410,6 +411,33 @@ function InventoryPage() {
     }
   };
 
+  const handleNotificationSave = async (e) => {
+    e.preventDefault();
+    if (!notificationItem) return;
+
+    const id = notificationItem.user_item_id;
+    const token = localStorage.getItem('csinvest:token');
+
+    try {
+      const resp = await fetch(`${BASE_URL}/useritems/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          discord_webhook_url: notificationItem.discord_webhook_url || null
+        })
+      });
+
+      if (!resp.ok) {
+        throw new Error('Failed to update notification settings');
+      }
+
+      await fetchItems();
+      setNotificationItem(null);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const handleRefreshPrice = async (item) => {
     if (!item?.user_item_id) return;
     const uid = item.user_item_id;
@@ -572,8 +600,8 @@ function InventoryPage() {
                     </button>
 
                     {/* Bell / Notify */}
-                    <button className="icon-btn" title="Price Alert (Coming Soon)" onClick={() => alert('Price alerts coming soon!')} disabled={savingIds.has(item.user_item_id)}>
-                      <BellIcon />
+                    <button className={`icon-btn ${item.discord_webhook_url ? 'active' : ''}`} title="Notification Settings" onClick={() => setNotificationItem(item)} disabled={savingIds.has(item.user_item_id)}>
+                      <BellIcon style={{ color: item.discord_webhook_url ? '#f5a623' : 'currentColor' }} />
                     </button>
 
                     <button className="icon-btn" title="Delete" disabled={savingIds.has(item.user_item_id)} onClick={async () => {
@@ -764,6 +792,7 @@ function InventoryPage() {
             <div className="modal-header">
               <h3>Item Details</h3>
             </div>
+            {/* ... */}
             <div className="modal-body">
               <div style={{ textAlign: 'center', marginBottom: 20 }}>
                  {(() => {
@@ -824,6 +853,69 @@ function InventoryPage() {
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
                   <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setInfoItem(null)}>Cancel</button>
                   <button type="submit" className="account-button">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Modal */}
+      {notificationItem && (
+        <div className="modal-overlay" onClick={() => setNotificationItem(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <div className="modal-header">
+              <h3>Notification Settings</h3>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: 15, opacity: 0.8 }}>
+                Configure Discord notifications for <strong>{notificationItem.item?.name}</strong>.
+                You will key notifications when price changes.
+              </p>
+              
+              <form onSubmit={handleNotificationSave}>
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Discord Webhook URL</label>
+                  <input 
+                    className="form-input" 
+                    type="text" 
+                    placeholder="https://discord.com/api/webhooks/..."
+                    value={notificationItem.discord_webhook_url || ''}
+                    onChange={(e) => setNotificationItem({ ...notificationItem, discord_webhook_url: e.target.value })}
+                  />
+                  <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: 4 }}>
+                    Create a webhook in your Discord server settings (Integrations - Webhooks) and paste the URL here.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+                   <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setNotificationItem(null)}>Cancel</button>
+                   {notificationItem.discord_webhook_url && (
+                     <button 
+                       type="button" 
+                       className="account-button" 
+                       style={{ background: '#d32f2f' }} 
+                       onClick={async () => {
+                         if(!window.confirm('Stop getting notifications for this item?')) return;
+                         
+                         try {
+                           const token = localStorage.getItem('csinvest:token');
+                           const resp = await fetch(`${BASE_URL}/useritems/${notificationItem.user_item_id}`, {
+                             method: 'PATCH',
+                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                             body: JSON.stringify({ discord_webhook_url: null })
+                           });
+                           if (!resp.ok) throw new Error('Failed to remove webhook');
+
+                           await fetchItems();
+                           setNotificationItem(null);
+                         } catch(e) { alert(e.message); }
+                       }}
+                     >
+                       Remove Webhook
+                     </button>
+                   )}
+                   <button type="submit" className="account-button">Save Settings</button>
                 </div>
               </form>
             </div>
