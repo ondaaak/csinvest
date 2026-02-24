@@ -15,7 +15,13 @@ from sqlalchemy import func
 app = FastAPI()
 
 cfg = Config()
-origins = cfg.CORS_ORIGINS
+origins = [
+    "http://localhost:5175",
+    "http://127.0.0.1:5175",
+    # Add your friend's IP if they are accessing it over network
+    # "http://192.168.1.X:5175", 
+    "*" # Use "*" to allow ALL (easiest for testing, but less secure)
+]
 
 app.add_middleware(
     CORSMiddleware,
