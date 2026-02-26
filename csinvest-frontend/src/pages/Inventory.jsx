@@ -480,7 +480,19 @@ function InventoryPage() {
   );
 
   // Separate Cash item from standard items
-  const cashItem = items.find(i => i.slug === 'cash' || i.item?.name === 'cash');
+  // Handle multiple cash items by summing them up
+  const cashItems = items.filter(i => i.slug === 'cash' || i.item?.name === 'cash');
+  let cashItem = null;
+  if (cashItems.length > 0) {
+    // If multiple cash items, create a synthetic combined one
+    const totalCashVal = cashItems.reduce((acc, c) => acc + (c.buy_price * getAmount(c)), 0);
+    // Use the first one as a base for ID/updates, but ideally we should merge them in backend.
+    // For now, let's just use the first item and display the total value.
+    // Note: Editing this 'merged' item will only update the first database row. 
+    // This isn't perfect for duplicates but handles display.
+    cashItem = { ...cashItems[0], buy_price: totalCashVal, amount: 1 };
+  }
+  
   const displayItems = sorted.filter(i => i.slug !== 'cash' && i.item?.name !== 'cash');
 
   return (
@@ -702,18 +714,38 @@ function InventoryPage() {
                 {editing[cashItem.user_item_id] ? (
                   <>
                     <button className="icon-btn" title="Save" onClick={async () => {
-                         // Special save for cash to ensure current_price matches buy_price logic if needed
-                         // but standard saveEdit sends buy_price. 
-                         // We probably need backend to ensure current_price updates for cash?
-                         // Or we just update buy_price and we ignore current_price for cash display.
-                         // But we need 'current_price' for the Total Portfolio Value calculation below.
-                         // Standard 'saveEdit' updates 'buy_price'. 
-                         // We might need a small hack to update 'current_price' to match 'buy_price' for cash items 
-                         // OR just assume for cash: Value = Buy Price.
-                         await saveEdit(cashItem.user_item_id);
-                         // After save, we ideally want the backend to sync current_price = buy_price for this item
-                         // If backend doesn't do it, we might see a discrepancy until next refresh if we relied on current_price.
-                         // But since we control the render here, we can just use buy_price.
+                         // Special save for cash to ensure current_price matches buy_price logic
+                         
+                         // If we have multiple cash items (duplicates), we should merge them now.
+                         // 1. Update the FIRST cash item to the new total value.
+                         // 2. Delete all other cash items.
+                         
+                         const newTotal = editing[cashItem.user_item_id].buy_price;
+                         const token = localStorage.getItem('csinvest:token');
+                         
+                         // Update first item
+                         await fetch(`${BASE_URL}/useritems/${cashItem.user_item_id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({
+                              amount: 1,
+                              buy_price: parseFloat(newTotal) || 0,
+                            })
+                         });
+                         
+                         // Delete duplicates
+                         if (cashItems.length > 1) {
+                            const duplicates = cashItems.slice(1);
+                            for (const dup of duplicates) {
+                                await fetch(`${BASE_URL}/useritems/${dup.user_item_id}`, {
+                                  method: 'DELETE',
+                                  headers: { Authorization: `Bearer ${token}` },
+                                });
+                            }
+                         }
+
+                         await fetchItems();
+                         cancelEdit(cashItem.user_item_id);
                     }} disabled={savingIds.has(cashItem.user_item_id)}><SaveIcon /></button>
                     <button className="icon-btn" title="Cancel" onClick={() => cancelEdit(cashItem.user_item_id)} disabled={savingIds.has(cashItem.user_item_id)}><CancelIcon /></button>
                   </>
