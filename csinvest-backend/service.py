@@ -54,6 +54,10 @@ class PriceService:
                 print(f"Varování: UserItem {owned.user_item_id} nemá přiřazený Item (item_id={owned.item_id}). Přeskakuji.")
                 continue
 
+            # Skip 'cash' item updates
+            if itm.slug == 'cash' or itm.name == 'cash':
+                continue
+
             min_float = None
             max_float = None
 

@@ -78,8 +78,10 @@ function SearchPage() {
         if (res.ok) {
           const data = await res.json();
           const arr = Array.isArray(data) ? data : [];
-          setSuggestions(arr);
-          setOpen(arr.length > 0);
+          // Filter out cash item from general search suggestions
+          const filtered = arr.filter(i => i.slug !== 'cash' && i.name !== 'cash');
+          setSuggestions(filtered);
+          setOpen(filtered.length > 0);
         } else {
           setSuggestions([]);
           setOpen(false);

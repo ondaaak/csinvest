@@ -244,6 +244,10 @@ function InventoryPage() {
   };
 
   const sorted = [...filtered].sort((a, b) => {
+    // Cash item always at the bottom if it ends up in this list (fallback)
+    if (a.slug === 'cash') return 1;
+    if (b.slug === 'cash') return -1;
+
     const dir = sortAsc ? 1 : -1;
     switch (sortKey) {
       case 'amount':
@@ -475,6 +479,10 @@ function InventoryPage() {
     </div>
   );
 
+  // Separate Cash item from standard items
+  const cashItem = items.find(i => i.slug === 'cash' || i.item?.name === 'cash');
+  const displayItems = sorted.filter(i => i.slug !== 'cash' && i.item?.name !== 'cash');
+
   return (
     <div className="dashboard-container">
       <h2 style={{ textAlign: 'center' }}>Items</h2>
@@ -515,7 +523,7 @@ function InventoryPage() {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((item) => (
+          {displayItems.map((item) => (
             <tr key={item.user_item_id}>
               <td>
                 {editing[item.user_item_id] ? (
@@ -637,6 +645,97 @@ function InventoryPage() {
               </td>
             </tr>
           ))}
+          
+          {/* Cash Row - Always at the bottom if it exists */}
+          {cashItem && (
+             <tr key={cashItem.user_item_id} style={{ borderTop: '2px solid #444', background: 'rgba(255, 255, 255, 0.05)' }}>
+               <td></td>
+               <td style={{ padding: '4px 8px' }}>
+                 <div style={{ 
+                   width: 32, 
+                   height: 32, 
+                   display: 'flex', 
+                   alignItems: 'center', 
+                   justifyContent: 'center',
+                   background: '#1a1a1a', 
+                   borderRadius: '50%',
+                   color: '#eee',
+                   border: '1px solid #333'
+                 }}>
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path>
+                     <path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path>
+                     <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path>
+                   </svg>
+                 </div>
+               </td>
+               <td style={{ color: '#ffffff' }}>Cash</td>
+               <td colSpan="2">
+                 {/* Treating 'amount' as the cash value for simplicity, or we can use buy_price * amount. 
+                     Let's stick to the convention: Amount is 1, and Price is the value. 
+                     OR Amount is value and Price is 1. 
+                     
+                     User said: "uzivatel by si mohl zvolit kolik ma a prepisovat si to".
+                     The easiest logic for 'Cash' is: Amount = 1, Buy Price = X, Current Price = X.
+                 */}
+                 {editing[cashItem.user_item_id] ? (
+                    <div style={{ display:'flex', alignItems:'center' }}>
+                      <input 
+                        className="form-input compact" 
+                        style={{ width: 100, height: 30, marginRight: 6 }} 
+                        // editing uses 'buy_price' field
+                        value={editing[cashItem.user_item_id].buy_price}
+                        onChange={(e) => setEditing((prev) => ({ ...prev, [cashItem.user_item_id]: { ...prev[cashItem.user_item_id], buy_price: e.target.value } }))} 
+                      />
+                      <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>{currency}</span>
+                    </div>
+                 ) : (
+                    <span style={{ fontSize: '1em' }}>
+                      {formatPrice(cashItem.buy_price)}
+                    </span>
+                 )}
+               </td>
+               <td>{formatPrice(cashItem.buy_price)}</td>{/* Total is same as Unit for cash if amount=1 */}
+               <td></td>{/* No Profit */}
+               <td></td>{/* No Profit % */}
+               <td>
+                {editing[cashItem.user_item_id] ? (
+                  <>
+                    <button className="icon-btn" title="Save" onClick={async () => {
+                         // Special save for cash to ensure current_price matches buy_price logic if needed
+                         // but standard saveEdit sends buy_price. 
+                         // We probably need backend to ensure current_price updates for cash?
+                         // Or we just update buy_price and we ignore current_price for cash display.
+                         // But we need 'current_price' for the Total Portfolio Value calculation below.
+                         // Standard 'saveEdit' updates 'buy_price'. 
+                         // We might need a small hack to update 'current_price' to match 'buy_price' for cash items 
+                         // OR just assume for cash: Value = Buy Price.
+                         await saveEdit(cashItem.user_item_id);
+                         // After save, we ideally want the backend to sync current_price = buy_price for this item
+                         // If backend doesn't do it, we might see a discrepancy until next refresh if we relied on current_price.
+                         // But since we control the render here, we can just use buy_price.
+                    }} disabled={savingIds.has(cashItem.user_item_id)}><SaveIcon /></button>
+                    <button className="icon-btn" title="Cancel" onClick={() => cancelEdit(cashItem.user_item_id)} disabled={savingIds.has(cashItem.user_item_id)}><CancelIcon /></button>
+                  </>
+                ) : (
+                  <button className="icon-btn" title="Edit Amount" onClick={() => {
+                        // Force amount to 1 for edits to keep it simple, edit price instead
+                        const rate = rates[currency] || 1;
+                        setEditing((prev) => ({
+                          ...prev,
+                          [cashItem.user_item_id]: {
+                            amount: 1, 
+                            float_value: '',
+                            pattern: '',
+                            buy_price: ((cashItem.buy_price ?? 0) * rate).toFixed(2),
+                          },
+                        }));
+                        setBuyMode((prev) => ({ ...prev, [cashItem.user_item_id]: 'total' })); // doesn't matter for qty 1
+                  }} disabled={savingIds.has(cashItem.user_item_id)}><PencilIcon /></button>
+                )}
+               </td>
+             </tr>
+          )}
         </tbody>
         </table>
           ) : (
@@ -651,7 +750,7 @@ function InventoryPage() {
       {items.length > 0 && (
         <div style={{ marginTop: 24 }}>
           {(() => {
-            const totals = items.reduce((acc, it) => {
+            const totals = displayItems.reduce((acc, it) => {
               const amt = getAmount(it);
               const buyT = (it.buy_price || 0) * amt;
               const sellT = (it.current_price || 0) * amt;
@@ -659,18 +758,32 @@ function InventoryPage() {
               acc.sell += sellT;
               return acc;
             }, { buy: 0, sell: 0 });
-            const profit = totals.sell - totals.buy;
-            const profitPct = totals.buy > 0 ? (profit / totals.buy) * 100 : 0;
+            
+            // Add Cash to totals (only adds to Value, not really profit? Or adds to both?)
+            // Usually cash is: Deposit = X, Value = X. Profit = 0.
+            const cashValue = cashItem ? (cashItem.buy_price || 0) * getAmount(cashItem) : 0;
+            
+            // Raw totals with cash included
+            const totalBuyWithCash = totals.buy + cashValue;
+            const totalSellWithCash = totals.sell + cashValue;
+
+            const profit = totalSellWithCash - totalBuyWithCash;
+            const profitPct = totalBuyWithCash > 0 ? (profit / totalBuyWithCash) * 100 : 0;
 
             const sellFeeRate = Math.max(0, Number(sellFeePct) || 0) / 100;
-            const sellAfterFee = totals.sell * (1 - sellFeeRate);
-            const profitAfterSellFee = sellAfterFee - totals.buy;
-            const profitAfterSellFeePct = totals.buy > 0 ? (profitAfterSellFee / totals.buy) * 100 : 0;
+            // Fee applies ONLY to the invested items (totals.sell), NOT to cash
+            const sellAfterFee = (totals.sell * (1 - sellFeeRate)) + cashValue;
+            const profitAfterSellFee = sellAfterFee - totalBuyWithCash;
+            const profitAfterSellFeePct = totalBuyWithCash > 0 ? (profitAfterSellFee / totalBuyWithCash) * 100 : 0;
 
             const withdrawFeeRate = Math.max(0, Number(withdrawFeePct) || 0) / 100;
-            const withdrawAfterFee = sellAfterFee * (1 - withdrawFeeRate);
-            const profitAfterWithdrawFee = withdrawAfterFee - totals.buy;
-            const profitAfterWithdrawFeePct = totals.buy > 0 ? (profitAfterWithdrawFee / totals.buy) * 100 : 0;
+            // Fee applies ONLY to the invested items (totals.sell), NOT to cash (assuming one withdraws cash 1:1 or fee logic is only for skin sales)
+            // If withdraw fee is for cashing out everything including cash balance, then it should apply to everything.
+            // User request: "kdyz ma clovek jen cash 100€ tak mu to po poplatcich dava 96€ ale on prece zadne poplatky platit nemusi kdyz ma cash u sebe"
+            // So fees should NOT apply to cash.
+            const withdrawAfterFee = (totals.sell * (1 - sellFeeRate) * (1 - withdrawFeeRate)) + cashValue;
+            const profitAfterWithdrawFee = withdrawAfterFee - totalBuyWithCash;
+            const profitAfterWithdrawFeePct = totalBuyWithCash > 0 ? (profitAfterWithdrawFee / totalBuyWithCash) * 100 : 0;
 
             const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
 
@@ -682,11 +795,11 @@ function InventoryPage() {
                     <div>{/* spacer to align with fee input in other rows */}</div>
                     <div>
                       <div style={{ opacity:0.7 }}>Deposit</div>
-                      <div>{formatPrice(totals.buy)}</div>
+                      <div>{formatPrice(totalBuyWithCash)}</div>
                     </div>
                     <div>
                       <div style={{ opacity:0.7 }}>Sell price</div>
-                      <div>{formatPrice(totals.sell)}</div>
+                      <div>{formatPrice(totalSellWithCash)}</div>
                     </div>
                     <div>
                       <div style={{ opacity:0.7 }}>Profit</div>
@@ -726,7 +839,7 @@ function InventoryPage() {
                       </div>
                       <div>
                         <div style={{ opacity:0.7 }}>Deposit</div>
-                        <div>{formatPrice(totals.buy)}</div>
+                        <div>{formatPrice(totalBuyWithCash)}</div>
                       </div>
                       <div>
                         <div style={{ opacity:0.7 }}>Sell price</div>
@@ -770,7 +883,7 @@ function InventoryPage() {
                       </div>
                       <div>
                         <div style={{ opacity:0.7 }}>Deposit</div>
-                        <div>{formatPrice(totals.buy)}</div>
+                        <div>{formatPrice(totalBuyWithCash)}</div>
                       </div>
                       <div>
                         <div style={{ opacity:0.7 }}>Sell price</div>

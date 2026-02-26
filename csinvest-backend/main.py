@@ -52,6 +52,24 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Automatically add default 'cash' item to new user
+    cash_item = db.query(Item).filter(Item.slug == 'cash').first()
+    if cash_item:
+        from models import UserItem
+        import datetime
+        default_cash = UserItem(
+            user_id=user.user_id,
+            item_id=cash_item.item_id,
+            amount=1,
+            buy_price=0,
+            current_price=0,
+            buy_date=datetime.date.today(),
+            last_update=datetime.datetime.now()
+        )
+        db.add(default_cash)
+        db.commit()
+
     token = create_access_token(str(user.user_id))
     return {"access_token": token, "token_type": "bearer", "user": user_to_schema(user)}
 

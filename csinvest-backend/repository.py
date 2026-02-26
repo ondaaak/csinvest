@@ -45,7 +45,11 @@ class ItemRepository:
         current_price = float(price)
         if catalog_item and catalog_item.current_price is not None:
             try:
-                current_price = float(catalog_item.current_price)
+                # Special case for cash: ignore catalog price if it might be 0, always use buy price
+                if catalog_item.slug == 'cash':
+                    current_price = float(price)
+                else:
+                    current_price = float(catalog_item.current_price)
             except Exception:
                 current_price = float(price)
 
@@ -204,6 +208,13 @@ class ItemRepository:
         for k, v in fields.items():
             if k in allowed:
                 setattr(rec, k, v)
+        
+        # If item is 'cash', sync current_price with buy_price
+        # This ensures cash always has 0 profit and correct value in totals
+        if rec.item and (rec.item.slug == 'cash' or rec.item.name == 'cash'):
+            if rec.buy_price is not None:
+                rec.current_price = rec.buy_price
+
         rec.last_update = datetime.datetime.now()
         self.db.commit()
         self.db.refresh(rec)
