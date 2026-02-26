@@ -751,20 +751,37 @@ function InventoryPage() {
                     <button className="icon-btn" title="Cancel" onClick={() => cancelEdit(cashItem.user_item_id)} disabled={savingIds.has(cashItem.user_item_id)}><CancelIcon /></button>
                   </>
                 ) : (
-                  <button className="icon-btn" title="Edit Amount" onClick={() => {
-                        // Force amount to 1 for edits to keep it simple, edit price instead
-                        const rate = rates[currency] || 1;
-                        setEditing((prev) => ({
-                          ...prev,
-                          [cashItem.user_item_id]: {
-                            amount: 1, 
-                            float_value: '',
-                            pattern: '',
-                            buy_price: ((cashItem.buy_price ?? 0) * rate).toFixed(2),
-                          },
-                        }));
-                        setBuyMode((prev) => ({ ...prev, [cashItem.user_item_id]: 'total' })); // doesn't matter for qty 1
-                  }} disabled={savingIds.has(cashItem.user_item_id)}><PencilIcon /></button>
+                  <>
+                    <button className="icon-btn" title="Edit Amount" onClick={() => {
+                          // Force amount to 1 for edits to keep it simple, edit price instead
+                          const rate = rates[currency] || 1;
+                          setEditing((prev) => ({
+                            ...prev,
+                            [cashItem.user_item_id]: {
+                              amount: 1, 
+                              float_value: '',
+                              pattern: '',
+                              buy_price: ((cashItem.buy_price ?? 0) * rate).toFixed(2),
+                            },
+                          }));
+                          setBuyMode((prev) => ({ ...prev, [cashItem.user_item_id]: 'total' })); // doesn't matter for qty 1
+                    }} disabled={savingIds.has(cashItem.user_item_id)}><PencilIcon /></button>
+                    <button className="icon-btn" title="Delete Cash" disabled={savingIds.has(cashItem.user_item_id)} onClick={async () => {
+                      if (!window.confirm('Delete cash item?')) return;
+                      try {
+                        const token = localStorage.getItem('csinvest:token');
+                        for (const c of cashItems) {
+                          await fetch(`${BASE_URL}/useritems/${c.user_item_id}`, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+                        }
+                        await fetchItems();
+                      } catch (e) {
+                        console.error('Delete cash failed', e);
+                      }
+                    }}><TrashIcon /></button>
+                  </>
                 )}
                </td>
              </tr>

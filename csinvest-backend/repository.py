@@ -116,12 +116,6 @@ class ItemRepository:
         if exclude_types:
             q = q.filter(Item.item_type.notin_(exclude_types))
 
-        # Always exclude 'cash' item from search to prevent duplicates
-        try:
-            q = q.filter(Item.slug != 'cash')
-        except:
-            pass 
-
         # Fetch more items to allow for deduplication in Python
         # Distinct or Group By can be tricky across different DB engines (SQLite vs Postgres)
         # So we fetch a larger batch and filter duplicates by name in code.

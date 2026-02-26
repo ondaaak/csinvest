@@ -104,9 +104,21 @@ def to_search_item(itm: Item) -> SearchResponseItem:
     )
 
 @app.get("/search")
-def search_items(q: str, limit: int = 10, exclude_item_type: Optional[List[str]] = Query(None), db: Session = Depends(get_db)):
+def search_items(q: str, limit: int = 10, exclude_item_type: Optional[List[str]] = Query(None), user_id: Optional[int] = Query(None), db: Session = Depends(get_db)):
     repo = ItemRepository(db)
     results = repo.search_items(q, limit=limit, exclude_types=exclude_item_type)
+    
+    # If user_id is provided, check if they already have cash and exclude it from results
+    if user_id:
+        from models import UserItem
+        has_cash = db.query(UserItem).join(Item).filter(
+            UserItem.user_id == user_id, 
+            Item.slug == 'cash'
+        ).first() is not None
+        
+        if has_cash:
+            results = [r for r in results if r.slug != 'cash']
+            
     return [to_search_item(r) for r in results]
 
 # ----------- Knives & Gloves listing/search -----------
@@ -223,6 +235,14 @@ def create_user_item(payload: CreateUserItemRequest, db: Session = Depends(get_d
     itm = db.query(Item).filter(Item.item_id == payload.item_id).first()
     if not itm:
         raise HTTPException(status_code=404, detail="Item nenalezen")
+        
+    # Prevent multiple cash items
+    if itm.slug == 'cash' or itm.name == 'cash':
+        from models import UserItem
+        existing_cash = db.query(UserItem).filter(UserItem.user_id == current.user_id, UserItem.item_id == itm.item_id).first()
+        if existing_cash:
+            raise HTTPException(status_code=400, detail="Cash položku už máte v inventáři. Můžete ji upravit přímo tam.")
+
     created = repo.add_user_item(
         user_id=current.user_id,
         item_id=payload.item_id,

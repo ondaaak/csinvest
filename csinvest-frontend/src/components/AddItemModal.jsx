@@ -97,7 +97,8 @@ function AddItemModal({ onClose, onAdded }) {
     if (!q) { setSuggestions([]); setOpen(false); return; }
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(q)}&limit=8&exclude_item_type=collection`);
+        const userQueryParam = userId ? `&user_id=${userId}` : '';
+        const res = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(q)}&limit=8&exclude_item_type=collection${userQueryParam}`);
         if (res.ok) {
           const data = await res.json();
           const arr = Array.isArray(data) ? data : [];
@@ -106,7 +107,7 @@ function AddItemModal({ onClose, onAdded }) {
       } catch { setSuggestions([]); setOpen(false); }
     }, 200);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, userId]);
 
   useEffect(() => {
     const handleClick = (e) => { if (!boxRef.current) return; if (!boxRef.current.contains(e.target)) setOpen(false); };
