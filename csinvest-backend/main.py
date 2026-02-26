@@ -104,21 +104,9 @@ def to_search_item(itm: Item) -> SearchResponseItem:
     )
 
 @app.get("/search")
-def search_items(q: str, limit: int = 10, exclude_item_type: Optional[List[str]] = Query(None), user_id: Optional[int] = Query(None), db: Session = Depends(get_db)):
+def search_items(q: str, limit: int = 10, exclude_item_type: Optional[List[str]] = Query(None), db: Session = Depends(get_db)):
     repo = ItemRepository(db)
     results = repo.search_items(q, limit=limit, exclude_types=exclude_item_type)
-    
-    # If user_id is provided, check if they already have cash and exclude it from results
-    if user_id:
-        from models import UserItem
-        has_cash = db.query(UserItem).join(Item).filter(
-            UserItem.user_id == user_id, 
-            Item.slug == 'cash'
-        ).first() is not None
-        
-        if has_cash:
-            results = [r for r in results if r.slug != 'cash']
-            
     return [to_search_item(r) for r in results]
 
 # ----------- Knives & Gloves listing/search -----------
