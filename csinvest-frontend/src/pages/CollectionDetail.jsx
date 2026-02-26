@@ -11,6 +11,7 @@ function CollectionDetailPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
 
   const collectionImgMap = useMemo(() => {
@@ -50,22 +51,39 @@ function CollectionDetailPage() {
     return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
   }, [skinImgMap]);
 
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await axios.get(`${BASE_URL}/collections/${slug}`);
+      setData(res.data);
+    } catch (e) {
+      console.error(e);
+      setError('Collection not found');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await axios.get(`${BASE_URL}/collections/${slug}`);
-        setData(res.data);
-      } catch (e) {
-        console.error(e);
-        setError('Collection not found');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    loadData();
   }, [slug]);
+
+  const doRefreshPackagePrices = async () => {
+    const pkgs = (data?.skins || []).filter(i => i.item_type === 'case' || i.name.toLowerCase().includes('package'));
+    if (!pkgs.length) return;
+    setRefreshing(true);
+    try {
+      for (const p of pkgs) {
+        await axios.post(`${BASE_URL}/items/${p.item_id}/refresh`);
+      }
+      await loadData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const allItems = data?.skins || [];
   const packages = useMemo(() => allItems.filter(i => i.item_type === 'case' || i.name.toLowerCase().includes('package')), [allItems]);
@@ -173,7 +191,23 @@ function CollectionDetailPage() {
 
       {packages.length > 0 && (
         <>
-          <h3 style={{ borderBottom:'1px solid var(--surface-border)', paddingBottom:8, marginBottom:16 }}>Souvenir Packages</h3>
+          <div style={{ display:'flex', alignItems:'center', gap:12, borderBottom:'1px solid var(--surface-border)', paddingBottom:8, marginBottom:16 }}>
+            <h3 style={{ margin:0 }}>Souvenir Packages</h3>
+            <div style={{ flex:1 }} />
+            <button
+              onClick={doRefreshPackagePrices}
+              disabled={refreshing}
+              style={{
+                background:'var(--button-bg)',
+                color:'var(--button-text)',
+                border:'1px solid var(--border-color)',
+                padding:'6px 12px',
+                borderRadius:10,
+                cursor: refreshing ? 'not-allowed' : 'pointer',
+                fontSize:'0.85rem'
+              }}
+            >{refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
+          </div>
           <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 32 }}>
             {packages.map(p => (
               <div
@@ -189,11 +223,12 @@ function CollectionDetailPage() {
                 )}
                 <div style={{ marginBottom:8 }}>
                   <div className="category-label" style={{ fontSize:'0.9rem' }}>{p.name}</div>
-                  {p.current_price !== null && p.current_price !== undefined && (
-                    <div style={{ fontWeight:'bold', marginTop:4, color:'var(--active-color)' }}>
-                      {formatPrice(p.current_price)}
-                    </div>
-                  )}
+                  <div
+                    style={{ marginTop:4, color:'var(--active-color)', cursor: p.last_update ? 'help' : 'default' }}
+                    title={p.last_update ? `Last update: ${new Date(p.last_update).toLocaleString('cs-CZ')}` : 'Price not yet updated'}
+                  >
+                    {p.current_price ? formatPrice(p.current_price) : '-'}
+                  </div>
                 </div>
               </div>
             ))}
