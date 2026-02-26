@@ -16,9 +16,27 @@ function AddItemModal({ onClose, onAdded }) {
   const [floatValue, setFloatValue] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
   const [inputCurrency, setInputCurrency] = useState(globalCurrency || 'USD');
+  const [selectedVariant, setSelectedVariant] = useState(''); // '' | 'StatTrak™' | 'Souvenir'
+  const [selectedPhase, setSelectedPhase] = useState(''); // for Doppler
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const token = localStorage.getItem('csinvest:token');
+
+  // Helper to determine if item is eligible for Doppler phases
+  const isDoppler = (item) => {
+    if (!item || !item.name) return false;
+    return item.name.includes('Doppler');
+  };
+
+  // Helper to check if item can be StatTrak or Souvenir (simple check: most skins can be StatTrak, some Souvenir)
+  // For simplicity, we allow user to choose. But we know Souvenir + StatTrak is impossible.
+  // Also gloves cannot be StatTrak usually (except very rare glitched ones? No standard ones).
+  // Knives can be StatTrak.
+  // Cases/Keys cannot be either.
+  const isSkinOrKnife = (item) => {
+     if (!item) return false;
+     return ['skin', 'knife'].includes(item.item_type) || (item.rarity && item.rarity.includes('Knife'));
+  };
 
   // --- Image Loading Logic (ported from Inventory.jsx) ---
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
@@ -114,6 +132,8 @@ function AddItemModal({ onClose, onAdded }) {
       amount: Number(amount) || 1,
       float_value: floatValue ? Number(floatValue) : null,
       buy_price: parsePrice(buyPrice) / (rates[inputCurrency] || 1),
+      variant: selectedVariant || null,
+      phase: selectedPhase || null,
     };
     setLoading(true); setError(null);
     try {
@@ -191,6 +211,44 @@ function AddItemModal({ onClose, onAdded }) {
               <label className="form-label">Float</label>
               <input className="form-input" value={floatValue} onChange={(e) => setFloatValue(e.target.value)} placeholder="0.00243581975" />
             </div>
+
+            {selected && isSkinOrKnife(selected) && (
+              <div style={{ display: 'flex', gap: 10, marginBottom: 15 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Type</label>
+                  <select 
+                    className="form-input" 
+                    value={selectedVariant}
+                    onChange={(e) => setSelectedVariant(e.target.value)}
+                  >
+                    <option value="">Normal</option>
+                    <option value="StatTrak™">StatTrak™</option>
+                    <option value="Souvenir">Souvenir</option>
+                  </select>
+                </div>
+                
+                {isDoppler(selected) && (
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label">Phase</label>
+                    <select 
+                      className="form-input"
+                      value={selectedPhase}
+                      onChange={(e) => setSelectedPhase(e.target.value)}
+                    >
+                      <option value="">(None)</option>
+                      <option value="Phase 1">Phase 1</option>
+                      <option value="Phase 2">Phase 2</option>
+                      <option value="Phase 3">Phase 3</option>
+                      <option value="Phase 4">Phase 4</option>
+                      <option value="Ruby">Ruby</option>
+                      <option value="Sapphire">Sapphire</option>
+                      <option value="Black Pearl">Black Pearl</option>
+                      <option value="Emerald">Emerald</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ marginBottom: 15 }}>
               <label className="form-label">Buy Price</label>

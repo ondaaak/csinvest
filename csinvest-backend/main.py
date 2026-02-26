@@ -193,9 +193,11 @@ def get_items(item_type: str = None, limit: int = 100, db: Session = Depends(get
 class CreateUserItemRequest(BaseModel):
     item_id: int
     amount: int = 1
+    buy_price: float
     float_value: float | None = None
     pattern: int | None = None
-    buy_price: float
+    variant: str | None = None
+    phase: str | None = None
 
 @app.post("/useritems")
 def create_user_item(payload: CreateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -210,6 +212,8 @@ def create_user_item(payload: CreateUserItemRequest, db: Session = Depends(get_d
         amount=payload.amount,
         float_value=payload.float_value,
         pattern=payload.pattern,
+        variant=payload.variant,
+        phase=payload.phase,
     )
     return created
 
@@ -229,6 +233,8 @@ class UpdateUserItemRequest(BaseModel):
     description: str | None = Field(None, max_length=1000)
     wear: str | None = Field(None, max_length=100)
     discord_webhook_url: str | None = Field(None, max_length=500)
+    variant: str | None = None
+    phase: str | None = None
 
 @app.patch("/useritems/{user_item_id}")
 def update_user_item(user_item_id: int, payload: UpdateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):

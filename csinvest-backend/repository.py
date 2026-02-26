@@ -40,7 +40,7 @@ class ItemRepository:
             UserItem.user_id == user_id
         ).options(joinedload(UserItem.item)).first()
 
-    def add_user_item(self, user_id: int, item_id: int, price: float, amount: int = 1, float_value: float | None = None, pattern: int | None = None):
+    def add_user_item(self, user_id: int, item_id: int, price: float, amount: int = 1, float_value: float | None = None, pattern: int | None = None, variant: str | None = None, phase: str | None = None):
         catalog_item = self.db.query(Item).filter(Item.item_id == item_id).first()
         current_price = float(price)
         if catalog_item and catalog_item.current_price is not None:
@@ -61,7 +61,9 @@ class ItemRepository:
             current_price=current_price,
             wear=wear_str,
             buy_date=datetime.date.today(),
-            last_update=datetime.datetime.now()
+            last_update=datetime.datetime.now(),
+            variant=variant,
+            phase=phase
         )
         self.db.add(new_item)
         self.db.commit()
@@ -110,11 +112,27 @@ class ItemRepository:
         if exclude_types:
             q = q.filter(Item.item_type.notin_(exclude_types))
 
-        return (
+        # Fetch more items to allow for deduplication in Python
+        # Distinct or Group By can be tricky across different DB engines (SQLite vs Postgres)
+        # So we fetch a larger batch and filter duplicates by name in code.
+        raw_results = (
             q.order_by(Item.item_type.asc(), Item.name.asc())
-            .limit(limit)
+            .limit(limit * 5) 
             .all()
         )
+        
+        unique_results = []
+        seen_names = set()
+        
+        for item in raw_results:
+            if item.name not in seen_names:
+                seen_names.add(item.name)
+                unique_results.append(item)
+                
+            if len(unique_results) >= limit:
+                break
+                
+        return unique_results
 
     def update_price(self, user_item_id: int, new_price: float):
         itm = self.db.query(UserItem).filter(UserItem.user_item_id == user_item_id).first()
@@ -171,7 +189,8 @@ class ItemRepository:
             return None
         
         allowed = {
-            'amount', 'float_value', 'pattern', 'buy_price', 'description', 'wear', 'discord_webhook_url'
+            'amount', 'float_value', 'pattern', 'buy_price', 'description', 'wear', 'discord_webhook_url',
+            'variant', 'phase'
         }
 
         # If float_value is being updated, automatically recalculate wear

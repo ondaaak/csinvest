@@ -65,7 +65,35 @@ class PriceService:
                     wear_val = getattr(itm, 'wear', None)
                 
                 wear_status = f"({wear_val})" if wear_val else ""
+                
+                # Base name construction
                 market_name = f"{itm.name} {wear_status}".strip()
+
+                # Prepend 'StatTrak™' or 'Souvenir' if present in owned.variant
+                variant = getattr(owned, 'variant', None)
+                if variant:
+                    # e.g. "StatTrak™ AK-47 | Case Hardened (Field-Tested)"
+                    # e.g. "Souvenir SSG 08 | Detour (Factory New)"
+                    market_name = f"{variant} {market_name}"
+
+                # Handle star prefix for Knives and Gloves
+                # In DB, knives are usually stored as "Skeleton Knife | Doppler"
+                # But market name requires star prefix: "★ Skeleton Knife | Doppler" or "★ StatTrak™ ..."
+                # Standard guns do NOT have star.
+                is_knife_or_glove = (getattr(itm, 'item_type', '') in ('knife', 'glove'))
+                # Also check rarities just in case type is not perfectly set but likely correct
+                # However, relying on item_type 'knife' or 'glove' should be safer if your DB is consistent.
+                
+                if is_knife_or_glove and not market_name.startswith("★"):
+                    market_name = f"★ {market_name}"
+
+                # Append Doppler Phase if present in owned.phase
+                # e.g. "★ Paracord Knife | Doppler (Factory New) Phase 1"
+                phase = getattr(owned, 'phase', None)
+                if phase:
+                    market_name = f"{market_name} {phase}"
+                
+                market_name = market_name.strip()
 
                 # If user provided a specific float_value, use it to range
                 # Logic: min_float = 0.0 (or "tier-min"? User says 0.0)
@@ -271,6 +299,23 @@ class PriceService:
 
             wear_status = f"({wear_val})" if wear_val else ""
             market_name = f"{itm.name} {wear_status}".strip()
+
+            # Prepend 'StatTrak™' or 'Souvenir' if present in owned.variant
+            variant = getattr(user_item, 'variant', None)
+            if variant:
+                 market_name = f"{variant} {market_name}"
+
+            # Handle star prefix for Knives and Gloves
+            is_knife_or_glove = (getattr(itm, 'item_type', '') in ('knife', 'glove'))
+            if is_knife_or_glove and not market_name.startswith("★"):
+                 market_name = f"★ {market_name}"
+            
+            # Append Doppler Phase
+            phase = getattr(user_item, 'phase', None)
+            if phase:
+                 market_name = f"{market_name} {phase}"
+            
+            market_name = market_name.strip()
 
             user_float = getattr(user_item, 'float_value', None)
             if user_float is not None:

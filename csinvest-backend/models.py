@@ -45,6 +45,8 @@ class UserItem(Base):
     buy_date = Column(Date, default=datetime.date.today)
     last_update = Column(DateTime, default=datetime.datetime.now)
     discord_webhook_url = Column(String)
+    variant = Column(String) # For 'StatTrak™' or 'Souvenir'
+    phase = Column(String)   # For Doppler phases
     item = relationship("Item")
 
 class Market(Base):

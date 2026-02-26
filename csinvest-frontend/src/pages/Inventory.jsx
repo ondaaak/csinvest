@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 const USER_ID = 1;
 const BASE_URL = 'http://127.0.0.1:8000';
 
+const isDoppler = (nm) => nm && nm.includes('Doppler');
+
 function InventoryPage() {
   const { userId, logout } = useAuth();
   const { formatPrice, currency, rates } = useCurrency();
@@ -394,9 +396,10 @@ function InventoryPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-           // We only want to update float here. 
            float_value: infoItem.float_value === '' ? null : Number(infoItem.float_value),
            description: infoItem.description || null,
+           variant: infoItem.variant || null,
+           phase: infoItem.phase || null 
         })
       });
 
@@ -532,7 +535,19 @@ function InventoryPage() {
               </td>
               <td>
                 {item.item ? (
-                  <button className="link-btn" onClick={() => openItem(item.item)}>{item.item.name}</button>
+                  <button className="link-btn" onClick={() => openItem(item.item)}>
+                    {item.variant ? (
+                      <span style={{ color: item.variant === 'StatTrak™' ? '#cf6a32' : '#ffd700', marginRight: 4 }}>
+                        {item.variant}
+                      </span>
+                    ) : null}
+                    {item.item.name}
+                    {item.phase ? (
+                      <span style={{ color: '#ff00aa', marginLeft: 4 }}>
+                         ({item.phase})
+                      </span>
+                    ) : null}
+                  </button>
                 ) : '—'}
               </td>
               <td>
@@ -837,6 +852,42 @@ function InventoryPage() {
                       {getWearName(infoItem.float_value) || 'No Wear'}
                     </div>
                   </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, marginBottom: 15 }}>
+                  <div style={{ flex: 1 }}>
+                     <label className="form-label">Variant</label>
+                     <select 
+                       className="form-input" 
+                       value={infoItem.variant || ''}
+                       onChange={(e) => setInfoItem({ ...infoItem, variant: e.target.value })}
+                     >
+                       <option value="">(Normal)</option>
+                       <option value="StatTrak™">StatTrak™</option>
+                       <option value="Souvenir">Souvenir</option>
+                     </select>
+                  </div>
+                  
+                  {isDoppler(infoItem.item?.name) && (
+                    <div style={{ flex: 1 }}>
+                      <label className="form-label">Phase</label>
+                      <select 
+                        className="form-input"
+                        value={infoItem.phase || ''}
+                        onChange={(e) => setInfoItem({ ...infoItem, phase: e.target.value })}
+                      >
+                        <option value="">(None)</option>
+                        <option value="Phase 1">Phase 1</option>
+                        <option value="Phase 2">Phase 2</option>
+                        <option value="Phase 3">Phase 3</option>
+                        <option value="Phase 4">Phase 4</option>
+                        <option value="Ruby">Ruby</option>
+                        <option value="Sapphire">Sapphire</option>
+                        <option value="Black Pearl">Black Pearl</option>
+                        <option value="Emerald">Emerald</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ marginBottom: 15 }}>
