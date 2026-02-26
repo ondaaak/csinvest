@@ -24,6 +24,17 @@ function CollectionDetailPage() {
     return map;
   }, []);
 
+  const caseImgMap = useMemo(() => {
+    const files = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const map = {};
+    Object.entries(files).forEach(([path, url]) => {
+      const filename = path.split('/').pop() || '';
+      const base = filename.substring(0, filename.lastIndexOf('.'));
+      map[base.toLowerCase()] = url;
+    });
+    return map;
+  }, []);
+
   const skinImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
@@ -56,11 +67,15 @@ function CollectionDetailPage() {
     load();
   }, [slug]);
 
+  const allItems = data?.skins || [];
+  const packages = useMemo(() => allItems.filter(i => i.item_type === 'case' || i.name.toLowerCase().includes('package')), [allItems]);
+  const skins = useMemo(() => allItems.filter(i => !(i.item_type === 'case' || i.name.toLowerCase().includes('package'))), [allItems]);
+
   if (loading) return <div className="dashboard-container"><div className="loading">Loading…</div></div>;
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
   if (!data) return null;
 
-  const { collection: coll, skins = [] } = data;
+  const { collection: coll } = data;
 
   const getSkinImage = (slug) => {
     if (!slug) return null;
@@ -100,6 +115,13 @@ function CollectionDetailPage() {
     if (collectionImgMap[slug]) return collectionImgMap[slug];
     const k = Object.keys(collectionImgMap).find(key => slug.startsWith(key));
     return k ? collectionImgMap[k] : null;
+  };
+
+  const getCaseImage = (slug) => {
+    if (!slug) return null;
+    if (caseImgMap[slug]) return caseImgMap[slug];
+    const k = Object.keys(caseImgMap).find(key => slug.startsWith(key));
+    return k ? caseImgMap[k] : null;
   };
 
   return (
@@ -148,6 +170,36 @@ function CollectionDetailPage() {
           </div>
         </div>
       </div>
+
+      {packages.length > 0 && (
+        <>
+          <h3 style={{ borderBottom:'1px solid var(--surface-border)', paddingBottom:8, marginBottom:16 }}>Souvenir Packages</h3>
+          <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 32 }}>
+            {packages.map(p => (
+              <div
+                key={p.slug}
+                className="category-card item-card"
+                onClick={() => navigate(`/case/${p.slug}`)} // Or whereever cases go, maybe just no click or generic item page
+                style={{ cursor: 'pointer' }}
+              >
+                 {getCaseImage(p.slug) ? (
+                  <img src={getCaseImage(p.slug)} alt={p.name} className="category-img" />
+                ) : (
+                  <div className="category-icon" aria-hidden="true" style={{ fontSize:'2rem' }}>🎁</div>
+                )}
+                <div style={{ marginBottom:8 }}>
+                  <div className="category-label" style={{ fontSize:'0.9rem' }}>{p.name}</div>
+                  {p.current_price !== null && p.current_price !== undefined && (
+                    <div style={{ fontWeight:'bold', marginTop:4, color:'var(--active-color)' }}>
+                      {formatPrice(p.current_price)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {skins.length > 0 && (
         <>
