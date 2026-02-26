@@ -722,6 +722,7 @@ function InventoryPage() {
                          
                          const newTotal = editing[cashItem.user_item_id].buy_price;
                          const token = localStorage.getItem('csinvest:token');
+                         const rate = rates[currency] || 1;
                          
                          // Update first item
                          await fetch(`${BASE_URL}/useritems/${cashItem.user_item_id}`, {
@@ -729,7 +730,7 @@ function InventoryPage() {
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                             body: JSON.stringify({
                               amount: 1,
-                              buy_price: parseFloat(newTotal) || 0,
+                              buy_price: (parseFloat(newTotal) || 0) / rate,
                             })
                          });
                          

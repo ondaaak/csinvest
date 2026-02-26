@@ -11,3 +11,4 @@
 11. Add option to make section of inventory items, change color and then filter ?
 12. Maybe history of sold items ?
 13. Notifications about whole portfolio every night ?
+14. Update Souvenir packages to show its collection items.
