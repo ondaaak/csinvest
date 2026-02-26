@@ -7,7 +7,7 @@
 7. Keep the light mode updated.
 8. Inspect links for all items. 
 9. Make Phases work.
-10. Add custom items? probably no reason if we add all the items but yk.
+10. 
 11. Add option to make section of inventory items, change color and then filter ?
 12. Maybe history of sold items ?
 13. Notifications about whole portfolio every night ?
