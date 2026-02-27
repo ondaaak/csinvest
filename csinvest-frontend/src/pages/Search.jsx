@@ -9,15 +9,15 @@ const CATEGORIES = [
   { key: 'gloves', label: 'Gloves' },
   { key: 'weapons', label: 'Weapons' },
   { key: 'agents', label: 'Agents' },
-  { key: 'stickers', label: 'Stickers' },
+  { key: 'stickers', label: 'Stickers', disabled: true },
   { key: 'charms', label: 'Charms' },
-  { key: 'patches', label: 'Patches' },
-  { key: 'pins', label: 'Pins' },
-  { key: 'graffities', label: 'Graffities' },
-  { key: 'music-kits', label: 'Music kits' },
-  { key: 'passes', label: 'Passes' },
-  { key: 'medals', label: 'Medals' },
-  { key: 'other', label: 'Other' },
+  { key: 'patches', label: 'Patches', disabled: true },
+  { key: 'pins', label: 'Pins', disabled: true },
+  { key: 'graffities', label: 'Graffities', disabled: true },
+  { key: 'music-kits', label: 'Music kits', disabled: true },
+  { key: 'passes', label: 'Passes', disabled: true },
+  { key: 'medals', label: 'Medals', disabled: true },
+  { key: 'other', label: 'Other', disabled: true },
 ];
 
 function SearchPage() {
@@ -195,7 +195,13 @@ function SearchPage() {
           let src = undefined;
           for (const k of aliases) { if (imgMap[k]) { src = imgMap[k]; break; } }
           return (
-            <button key={c.key} className="category-card" onClick={() => onCategoryClick(c)}>
+            <button
+              key={c.key}
+              className={`category-card ${c.disabled ? 'disabled-category' : ''}`}
+              onClick={() => !c.disabled && onCategoryClick(c)}
+              disabled={c.disabled}
+              style={c.disabled ? { opacity: 0.5, cursor: 'not-allowed', filter: 'grayscale(100%)' } : {}}
+            >
               {src ? (
                 <img className="category-img" src={src} alt={c.label} />
               ) : (
