@@ -118,7 +118,7 @@ class PriceService:
                     except ValueError:
                         pass
             elif getattr(itm, 'item_type', None) == 'charm':
-                 market_name = f"Charm | {itm.name}"
+                 market_name = itm.name
             else:
                 market_name = itm.name
 
@@ -198,7 +198,7 @@ class PriceService:
                     wear_status = f"({itm.wear})" if getattr(itm, 'wear', None) else ""
                     market_name = f"{itm.name} {wear_status}".strip()
                 elif itm.item_type == 'charm':
-                    market_name = f"Charm | {itm.name}"
+                    market_name = itm.name
                 else:
                     market_name = itm.name
 
