@@ -7,6 +7,7 @@ import LoginPage from './pages/Login.jsx';
 import RegisterPage from './pages/Register.jsx';
 import AccountPage from './pages/Account.jsx';
 import AgentsPage from './pages/Agents.jsx';
+import CharmsPage from './pages/Charms.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import './App.css'; 
 import { useCurrency } from './currency/CurrencyContext.jsx';
@@ -355,6 +356,7 @@ function App() {
                     <Route path="/search/knives" element={<KnivesPage />} />
                     <Route path="/search/gloves" element={<GlovesPage />} />
                     <Route path="/search/agents" element={<AgentsPage />} />
+                    <Route path="/search/charms" element={<CharmsPage />} />
                     <Route path="/search/weapons" element={<WeaponsPage />} />
                     <Route path="/search/cases" element={<CasesPage />} />
                     <Route path="/search/collections" element={<CollectionsPage />} />
