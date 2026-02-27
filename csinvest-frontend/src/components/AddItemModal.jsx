@@ -42,6 +42,7 @@ function AddItemModal({ onClose, onAdded }) {
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const charmsGlob = import.meta.glob('../assets/charms/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   
   const assetFromFolder = (globObj) => Object.fromEntries(
     Object.entries(globObj).map(([p, url]) => {
@@ -51,10 +52,11 @@ function AddItemModal({ onClose, onAdded }) {
     })
   );
   
-  const itemThumbs = { 
-    ...assetFromFolder(skinsGlob), 
-    ...assetFromFolder(glovesGlob), 
-    ...assetFromFolder(casesGlob) 
+  const itemThumbs = {
+    ...assetFromFolder(skinsGlob),
+    ...assetFromFolder(glovesGlob),
+    ...assetFromFolder(casesGlob),
+    ...assetFromFolder(charmsGlob),
   };
   
   const sortedKeys = Object.keys(itemThumbs).sort((a, b) => b.length - a.length);
@@ -64,6 +66,14 @@ function AddItemModal({ onClose, onAdded }) {
     if (slug) {
       const s = slug.toLowerCase();
       if (itemThumbs[s]) return itemThumbs[s];
+      
+      // Specifically try matching charm slug if it starts with charm-
+      if (s.startsWith('charm-')) {
+         if (itemThumbs[s]) return itemThumbs[s];
+         // Try checking if any key in map matches start
+         const match = sortedKeys.find(key => s.startsWith(key));
+         if (match) return itemThumbs[match];
+      }
 
       // 2. Try prefix match on slug
       const match = sortedKeys.find(key => s.startsWith(key));

@@ -61,9 +61,24 @@ function SkinDetailPage() {
     return map;
   }, []);
 
+  const charmImgMap = useMemo(() => {
+    const files = import.meta.glob('../assets/charms/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const map = {};
+    Object.entries(files).forEach(([path, url]) => {
+      const filename = path.split('/').pop() || '';
+      const base = filename.substring(0, filename.lastIndexOf('.'));
+      map[base.toLowerCase()] = url;
+    });
+    return map;
+  }, []);
+
   const sortedKeys = useMemo(() => {
     return Object.keys(skinImgMap).sort((a, b) => b.length - a.length);
   }, [skinImgMap]);
+
+  const sortedCharmKeys = useMemo(() => {
+    return Object.keys(charmImgMap).sort((a, b) => b.length - a.length);
+  }, [charmImgMap]);
 
   const sortedCaseKeys = useMemo(() => {
     return Object.keys(caseImgMap).sort((a, b) => b.length - a.length);
@@ -117,12 +132,17 @@ function SkinDetailPage() {
     
     if (agentImgMap[s]) return agentImgMap[s];
     if (skinImgMap[s]) return skinImgMap[s];
+    if (charmImgMap[s]) return charmImgMap[s];
     
+    const charmMatch = sortedCharmKeys.find(key => s.startsWith(key));
+    if (charmMatch) return charmImgMap[charmMatch];
+
     const agentMatch = sortedAgentKeys.find(key => s.startsWith(key));
     if (agentMatch) return agentImgMap[agentMatch];
 
     const match = sortedKeys.find(key => s.startsWith(key));
     if (match) return skinImgMap[match];
+
 
     if (itemName) {
       const base = itemName.toLowerCase()

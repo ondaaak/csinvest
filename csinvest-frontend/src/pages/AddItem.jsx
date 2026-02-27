@@ -26,6 +26,7 @@ function AddItemPage() {
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const charmsGlob = import.meta.glob('../assets/charms/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const assetFromFolder = (globObj) => Object.fromEntries(
     Object.entries(globObj).map(([p, url]) => {
       const filename = p.split('/').pop() || '';
@@ -37,7 +38,14 @@ function AddItemPage() {
     ...assetFromFolder(skinsGlob),
     ...assetFromFolder(glovesGlob),
     ...assetFromFolder(casesGlob),
+    ...assetFromFolder(charmsGlob),
   };
+
+  // Debug logs
+  useEffect(() => {
+    // console.log('Loaded charm thumbs keys:', Object.keys(assetFromFolder(charmsGlob)));
+  }, []);
+
 
   useEffect(() => {
     const q = query.trim();

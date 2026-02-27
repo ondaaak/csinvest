@@ -13,3 +13,4 @@
 13. Notifications about whole portfolio every night ?
 14. Update Souvenir packages to show its collection items.
 15. Modify Add/Cancel buttons in modal window.
+16. Shared CSFloat API keys.

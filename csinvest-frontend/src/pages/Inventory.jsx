@@ -36,6 +36,7 @@ function InventoryPage() {
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
+  const charmsGlob = import.meta.glob('../assets/charms/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const assetFromFolder = (globObj) => Object.fromEntries(
     Object.entries(globObj).map(([p, url]) => {
       const filename = p.split('/').pop() || '';
@@ -47,6 +48,7 @@ function InventoryPage() {
     ...assetFromFolder(skinsGlob),
     ...assetFromFolder(glovesGlob),
     ...assetFromFolder(casesGlob),
+    ...assetFromFolder(charmsGlob),
   }), []);
 
   const sortedKeys = useMemo(() => {
