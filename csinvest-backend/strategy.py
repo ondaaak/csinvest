@@ -80,7 +80,7 @@ class CSFloatStrategy(IMarketStrategy):
             "market_hash_name": base_name,
             "sort_by": "lowest_price",
             "limit": 50,
-            "type": "buy_now"
+            "type": "buy_now"  # Explicitly only buy_now to avoid auctions
         }
         
         # Klíčová oprava: Pro vzácné fáze (Emerald, Ruby, Sapphire, Black Pearl)
@@ -130,6 +130,10 @@ class CSFloatStrategy(IMarketStrategy):
                 target_phase = phase_filter.lower()
                 
                 for listing in listings:
+                    # Filter out auctions explicitly just in case API returns them
+                    if listing.get("type") == "auction":
+                        continue
+
                     item_data = listing.get("item", {})
                     item_phase = item_data.get("phase")
                     
