@@ -176,8 +176,26 @@ function AddItemModal({ onClose, onAdded }) {
   return (
     <div className="modal-overlay" onMouseDown={handleOverlayMouseDown}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-        <div className="modal-header">
+        <div className="modal-header" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
            <h3 style={{ margin:0 }}>Add New Item</h3>
+           <button 
+             type="button" 
+             onClick={onClose} 
+             style={{ 
+               position: 'absolute',
+               right: 0,
+               top: '50%',
+               transform: 'translateY(-50%)',
+               background: 'transparent', 
+               border: 'none', 
+               color: 'inherit', 
+               fontSize: '1.25rem', 
+               cursor: 'pointer',
+               padding: '0 10px'
+             }}
+           >
+             ✖
+           </button>
         </div>
         <div className="modal-body">
           <form onSubmit={onSubmit}>
@@ -287,10 +305,9 @@ function AddItemModal({ onClose, onAdded }) {
 
             {error && <div className="error-text" style={{ marginTop: 8 }}>{error}</div>}
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 20 }}>
-              <button type="button" className="account-button" style={{ background: '#444' }} onClick={onClose}>Cancel</button>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
               <button type="submit" className="account-button" disabled={loading}>
-                {loading ? 'Saving…' : 'Add'}
+                {loading ? 'Saving…' : 'Confirm'}
               </button>
             </div>
           </form>
