@@ -5,11 +5,30 @@ import axios from 'axios';
 const BASE_URL = 'http://127.0.0.1:8000';
 
 export default function AccountPage() {
-  const { user, userId, logout } = useAuth();
+  const { user, userId, logout, setUser } = useAuth(); // Assuming setUser is exposed in AuthContext, if not we might need to fetch /auth/me locally or update context
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  // Local state for portfolio webhook to ensure we have latest even if context is stale
+  const [portfolioWebhook, setPortfolioWebhook] = useState(null);
 
-  // Import images (Copied from Inventory.jsx - TODO: Extract to hook)
+  // ... imports ...
+
+  // Fetch latest user data to get webhook
+  useEffect(() => {
+    const fetchMe = async () => {
+        const token = localStorage.getItem('csinvest:token');
+        if (!token) return;
+        try {
+            const res = await axios.get(`${BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+            setPortfolioWebhook(res.data.discord_portfolio_webhook_url);
+            // Optionally update global context if meaningful
+            // setUser(res.data); 
+        } catch (e) { console.error(e); }
+    };
+    fetchMe();
+  }, [userId]);
+  
+  // ... existing code ...
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const glovesGlob = import.meta.glob('../assets/gloves/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
   const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
@@ -77,6 +96,20 @@ export default function AccountPage() {
     }
   }, [userId, user]);
 
+  const removePortfolioWebhook = async () => {
+    if (!window.confirm("Stop portfolio-wide notifications?")) return;
+    try {
+        const token = localStorage.getItem('csinvest:token');
+        await axios.patch(`${BASE_URL}/users/me`, 
+            { discord_portfolio_webhook_url: null }, 
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setPortfolioWebhook(null);
+    } catch (e) {
+        alert(e.message);
+    }
+  };
+
   const removeWebhook = async (item) => {
     if (!window.confirm(`Stop notifications for ${item.item?.name}?`)) return;
     try {
@@ -112,11 +145,43 @@ export default function AccountPage() {
             <h3>Notifications</h3>
             {loading && <p>Loading items...</p>}
             
-            {!loading && notifiedItems.length === 0 && (
+            {!loading && !portfolioWebhook && notifiedItems.length === 0 && (
                 <p style={{ opacity: 0.6 }}>No active webhook notifications.</p>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>
+                {portfolioWebhook && (
+                    <div className="stat-card" style={{ display: 'flex', alignItems: 'center', padding: '10px 15px', borderLeft: '4px solid #f5a623' }}>
+                        {/* Image for Portfolio */}
+                        <div style={{ marginRight: 15 }}>
+                           <div style={{ width: 48, height: 48, background: '#333', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
+                             📊
+                           </div>
+                        </div>
+                        
+                        {/* Info */}
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600 }}>Complete Inventory</div>
+                            <div style={{ fontSize: '0.8rem', opacity: 0.6, maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {portfolioWebhook}
+                            </div>
+                        </div>
+
+                        {/* Remove Button */}
+                        <button 
+                            className="icon-btn" 
+                            title="Remove Webhook" 
+                            style={{ color: '#ff4d4d', padding: 8 }}
+                            onClick={removePortfolioWebhook}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                )}
+
                 {notifiedItems.map((it) => (
                     <div key={it.user_item_id} className="stat-card" style={{ display: 'flex', alignItems: 'center', padding: '10px 15px' }}>
                         {/* Image */}

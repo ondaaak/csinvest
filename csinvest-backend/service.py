@@ -40,57 +40,87 @@ class PriceService:
         except Exception as e:
             print(f"Failed to send Discord notification: {e}")
 
-    def _send_portfolio_summary_notification(self, webhook_url: str, items: list):
+    def _send_portfolio_summary_notification(self, webhook_url: str, items: list, username: str = "User"):
         if not webhook_url or not items:
             return
 
         try:
-            # Calculate totals for header
-            total_value = sum(i['new_price'] * i['amount'] for i in items)
-            total_invested = sum(i['buy_price'] * i['amount'] for i in items)
-            total_profit = total_value - total_invested
-            total_pct = (total_profit / total_invested * 100) if total_invested > 0 else 0
+            import datetime
+            now_dt = datetime.datetime.now()
             
+            # Recalculate totals based on latest prices vs old prices
+            total_new_value = sum(i['new_price'] * i['amount'] for i in items)
+            total_old_value = sum(i['old_price'] * i['amount'] for i in items) # old_price is per unit
+            
+            total_diff = total_new_value - total_old_value
+            total_pct = (total_diff / total_old_value * 100) if total_old_value > 0 else 0
+
             # Sort by profit % descending
             items.sort(key=lambda x: x['profit_pct'], reverse=True)
             
-            emoji_total = "🚀" if total_profit >= 0 else "📉"
-            color = 5763719 if total_profit >= 0 else 15548997
-
-            fields = []
-            
-            # Since Discord has limits (25 fields, 6000 chars), we might need to paginate or summarize.
-            # Let's show top winners and top losers or just list them until limit.
-            # Table-like format in description using code block is often cleaner for many items.
-            
-            # Format: Name | Old -> New | Profit %
-            
-            lines = []
-            lines.append(f"**Total Value:** ${total_value:,.2f}")
-            lines.append(f"**Total Profit:** ${total_profit:,.2f} ({total_pct:+.2f}%)")
-            lines.append("")
-            lines.append("```")
-            # Header
-            # Name (truncated) | New Price | Change
-            lines.append(f"{'Item':<25} | {'Price':<8} | {'Profit':<8}")
-            lines.append("-" * 48)
-
-            for item in items:
-                name = item['name'][:24] # Truncate
-                price = f"${item['new_price']:.2f}"
-                pct = f"{item['profit_pct']:+.1f}%"
+            # Select top 15 and bottom 15
+            top_15 = items[:15]
+            bottom_15 = items[-15:] if len(items) > 15 else [] 
+            # If overlap (e.g. 20 items total), just show all via simple logic
+            if len(items) <= 30:
+                display_items = items
+                has_gap = False
+            else:
+                display_items = top_15
+                has_gap = True
                 
-                # Check line length
-                line = f"{name:<25} | {price:<8} | {pct:<8}"
-                if len("\n".join(lines)) + len(line) + 4 > 1900: # Safety margin for Discord 2000 char limit
-                    lines.append("... (truncated)")
-                    break
-                lines.append(line)
+            emoji_total = "🚀" if total_diff >= 0 else "📉"
+            color = 5763719 if total_diff >= 0 else 15548997
+
+            lines = []
+            # Header
+            # Old Total Value: 1000 (datum posledni aktualizace) -> We don't have exact old date per item easily accessible here, but we can assume "Previous Update"
+            # We can use NOW as current date
             
+            lines.append(f"**Old Total Value:** ${total_old_value:,.2f} (Previous)")
+            lines.append(f"**New Total Value:** ${total_new_value:,.2f} ({now_dt.strftime('%d.%m.%Y %H:%M')})")
+            lines.append(f"**Total Profit:** ${total_diff:,.2f} ({total_pct:+.2f}%)")
+            lines.append("")
+            
+            lines.append("```")
+            # Table Header: Item | Old Price | New Price | Profit
+            # Adjust spacing to be more compact
+            # Item: 22, Old: 8, New: 8, Profit: 9 => ~55 chars
+            
+            header = f"{'Item':<22} | {'Old':<8} | {'New':<8} | {'Profit':<9}"
+            lines.append(header)
+            lines.append("-" * len(header))
+
+            def add_rows(rows):
+                for item in rows:
+                    name = item['name'][:21] # Truncate slightly more
+                    old_p = f"${item['old_price']:.2f}"
+                    new_p = f"${item['new_price']:.2f}"
+                    
+                    # profit is diff between new and old
+                    # item['profit_pct'] is correctly calculated as change %
+                    pct = f"{item['profit_pct']:+.1f}%"
+                    
+                    # Use narrower columns
+                    line = f"{name:<22} | {old_p:<8} | {new_p:<8} | {pct:<9}"
+                    lines.append(line)
+
+            if not has_gap:
+                add_rows(display_items)
+            else:
+                add_rows(top_15)
+                lines.append("")
+                lines.append(f"... {len(items)-30} items hidden ...")
+                lines.append("")
+                # Before adding bottom 15, we should ensure they are not already in top 15 (handled by len check above)
+                # But bottom 15 are legally the last 15 of the sorted array
+                # If array is [0..99], top is [0..14], bottom is [85..99]
+                add_rows(bottom_15)
+
             lines.append("```")
 
             embed = {
-                "title": f"{emoji_total} Portfolio Update Summary",
+                "title": f"{emoji_total} {username}'s Portfolio Update Summary",
                 "description": "\n".join(lines),
                 "color": color,
                 "footer": {"text": f"Updated {len(items)} items"}
@@ -217,17 +247,36 @@ class PriceService:
                 self._send_discord_notification(owned.discord_webhook_url, itm.name, old_price, new_price)
 
             # Add to portfolio notification list
-            buy_price = float(owned.buy_price) if owned.buy_price else 0.0
+            # We want change since last update, so we use old_price which is captured before update
+            # old_price is owned.current_price
+            
+            # If old_price is 0 or None, we can't calculate change percentage meaningfully (it is 100% or infinite).
+            # But for display, we treat it as gain from 0.
+            
+            val_old = (old_price if old_price else 0.0)
+            val_new = new_price
+            
+            diff_val = val_new - val_old
+            if val_old > 0:
+                diff_pct = (diff_val / val_old) * 100
+            else:
+                # If old price was 0 and new is > 0, that's technically infinite increase, 
+                # but let's cap it or just show 100% or similar. 
+                # If both are 0, it is 0.
+                if val_new > 0:
+                    diff_pct = 100.0 
+                else:
+                    diff_pct = 0.0
+
             amount = owned.amount if owned.amount else 1
-            # Calculate profit percentage based on total value or unit value (same result)
-            profit_pct = ((new_price - buy_price) / buy_price * 100) if buy_price > 0 else 0
             
             notification_items.append({
                 "name": itm.name,
-                "new_price": new_price,
-                "buy_price": buy_price,
+                "old_price": float(val_old),
+                "new_price": float(val_new),
                 "amount": amount,
-                "profit_pct": profit_pct
+                "profit_pct": diff_pct,
+                "profit_abs": diff_val
             })
 
             results.append({
@@ -240,7 +289,9 @@ class PriceService:
         
         # Send portfolio summary if webhook is set
         if portfolio_webhook and notification_items:
-            self._send_portfolio_summary_notification(portfolio_webhook, notification_items)
+            # Pass username to personalized title
+            user_name = user.username if user else "User"
+            self._send_portfolio_summary_notification(portfolio_webhook, notification_items, user_name)
 
         totals = self.repo.calculate_portfolio_totals(user_id)
         self.repo.save_portfolio_history(user_id, totals)
