@@ -19,23 +19,23 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="dashboard-container" style={{ maxWidth: 520 }}>
+    <div className="dashboard-container" style={{ maxWidth: 480 }}>
       <h2 style={{ textAlign: 'center' }}>Register</h2>
       <form onSubmit={onSubmit} className="login-form">
-        <label>
+        <label style={{ marginBottom: 12, display: 'block' }}>
           Username
-          <input className="search-input" value={username} onChange={(e) => setUsername(e.target.value)} />
+          <input className="search-input" value={username} onChange={(e) => setUsername(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
         </label>
-        <label>
+        <label style={{ marginBottom: 12, display: 'block' }}>
           Email
-          <input type="email" className="search-input" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="email" className="search-input" value={email} onChange={(e) => setEmail(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
         </label>
-        <label>
+        <label style={{ display: 'block' }}>
           Password
-          <input type="password" className="search-input" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input type="password" className="search-input" value={password} onChange={(e) => setPassword(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
         </label>
         {error && <div style={{ color: 'var(--loss-color)', marginTop: 8 }}>{error}</div>}
-        <div style={{ marginTop: 20, textAlign:'center' }}>
+        <div style={{ marginTop: 12, textAlign:'center' }}>
           <button type="submit" className="account-button">Register</button>
         </div>
       </form>

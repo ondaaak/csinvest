@@ -333,9 +333,9 @@ function App() {
                       }}>{loadingRates ? (<span className="spinner" aria-label="Loading FX rates" />) : '↻'}</button>
                     </div>
                     {user ? (
-                        <NavLink to="/account" className="account-button">Account</NavLink>
+                        <NavLink to="/account" className="account-button" style={{ textDecoration: 'none' }}>Account</NavLink>
                     ) : (
-                        <NavLink to="/login" className="account-button">Login</NavLink>
+                        <NavLink to="/login" className="account-button" style={{ textDecoration: 'none' }}>Login</NavLink>
                     )}
                 </div>
             </div>

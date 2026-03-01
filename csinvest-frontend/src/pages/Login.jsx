@@ -21,16 +21,16 @@ export default function LoginPage() {
     <div className="dashboard-container" style={{ maxWidth: 480 }}>
       <h2 style={{ textAlign: 'center' }}>Login</h2>
       <form onSubmit={onSubmit} className="login-form">
-        <label>
+        <label style={{ marginBottom: 12, display: 'block' }}>
           Username
-          <input className="search-input" value={username} onChange={(e) => setUsername(e.target.value)} />
+          <input className="search-input" value={username} onChange={(e) => setUsername(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
         </label>
-        <label>
+        <label style={{ display: 'block' }}>
           Password
-          <input type="password" className="search-input" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input type="password" className="search-input" value={password} onChange={(e) => setPassword(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
         </label>
         {error && <div style={{ color: 'var(--loss-color)', marginTop: 8 }}>{error}</div>}
-        <div style={{ marginTop: 20, textAlign:'center' }}>
+        <div style={{ marginTop: 12, textAlign:'center' }}>
           <button type="submit" className="account-button">Login</button>
         </div>
       </form>
