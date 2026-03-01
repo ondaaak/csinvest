@@ -151,7 +151,7 @@ export default function AccountPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>
                 {portfolioWebhook && (
-                    <div className="stat-card" style={{ display: 'flex', alignItems: 'center', padding: '10px 15px', borderLeft: '4px solid #f5a623' }}>
+                    <div className="stat-card" style={{ display: 'flex', alignItems: 'center', padding: '10px 15px', borderLeft: '4px solid #ffffff' }}>
                         {/* Image for Portfolio */}
                         <div style={{ marginRight: 15 }}>
                            <div style={{ width: 48, height: 48, background: '#333', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>
@@ -183,7 +183,7 @@ export default function AccountPage() {
                 )}
 
                 {notifiedItems.map((it) => (
-                    <div key={it.user_item_id} className="stat-card" style={{ display: 'flex', alignItems: 'center', padding: '10px 15px' }}>
+                    <div key={it.user_item_id} className="stat-card" style={{ display: 'flex', alignItems: 'center', padding: '10px 15px' ,  borderLeft: '4px solid #ffffff'}}>
                         {/* Image */}
                         <div style={{ marginRight: 15 }}>
                             {(() => {
