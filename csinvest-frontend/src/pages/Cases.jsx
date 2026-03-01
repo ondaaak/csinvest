@@ -213,7 +213,13 @@ function CasesPage() {
           <div
             key={cs.item_id}
             className="category-card"
-            onClick={() => navigate(`/case/${cs.slug}`)}
+            onClick={() => {
+              if (cs.collection_slug) {
+                navigate(`/collection/${cs.collection_slug}`);
+              } else {
+                navigate(`/case/${cs.slug}`);
+              }
+            }}
             style={{ cursor: 'pointer' }}
           >
             {caseImgMap[cs.slug] ? (

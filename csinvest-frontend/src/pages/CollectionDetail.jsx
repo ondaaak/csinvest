@@ -213,8 +213,7 @@ function CollectionDetailPage() {
               <div
                 key={p.slug}
                 className="category-card item-card"
-                onClick={() => navigate(`/case/${p.slug}`)} // Or whereever cases go, maybe just no click or generic item page
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'default' }}
               >
                  {getCaseImage(p.slug) ? (
                   <img src={getCaseImage(p.slug)} alt={p.name} className="category-img" />

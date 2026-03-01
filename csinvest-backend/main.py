@@ -309,8 +309,25 @@ def get_portfolio_history(user_id: int, db: Session = Depends(get_db)):
 
 @app.get("/cases")
 def get_cases(db: Session = Depends(get_db)):
-    repo = ItemRepository(db)
-    return repo.get_items(item_type='case', limit=500)
+    from sqlalchemy.orm import joinedload
+    items = db.query(Item).filter(Item.item_type == 'case').options(
+        joinedload(Item.collection_item)
+    ).limit(500).all()
+
+    res = []
+    for i in items:
+        d = i.__dict__.copy()
+        if "_sa_instance_state" in d:
+            del d["_sa_instance_state"]
+        
+        col = i.collection_item
+        d.pop("collection_item", None)
+        
+        if col:
+            d["collection_slug"] = col.slug
+            
+        res.append(d)
+    return res
 
 
 @app.get("/cases/{slug}")
