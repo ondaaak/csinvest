@@ -10,6 +10,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     password_hash = Column(String)
     date_created = Column(Date, default=datetime.date.today)
+    discord_portfolio_webhook_url = Column(String)
 
 class Item(Base):
     __tablename__ = "ITEM"

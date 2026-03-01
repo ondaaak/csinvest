@@ -39,9 +39,15 @@ class AuthUser(BaseModel):
     user_id: int
     username: str
     email: EmailStr
+    discord_portfolio_webhook_url: str | None = None
 
 def user_to_schema(u: User) -> AuthUser:
-    return AuthUser(user_id=u.user_id, username=u.username, email=u.email)
+    return AuthUser(
+        user_id=u.user_id, 
+        username=u.username, 
+        email=u.email,
+        discord_portfolio_webhook_url=u.discord_portfolio_webhook_url
+    )
 
 @app.post("/auth/register")
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
@@ -83,6 +89,15 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 @app.get("/auth/me")
 def auth_me(current: User = Depends(get_current_user)):
+    return user_to_schema(current)
+
+class UpdateUserRequest(BaseModel):
+    discord_portfolio_webhook_url: str | None = None
+
+@app.patch("/users/me")
+def update_user_me(payload: UpdateUserRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    current.discord_portfolio_webhook_url = payload.discord_portfolio_webhook_url
+    db.commit()
     return user_to_schema(current)
 
 class SearchResponseItem(BaseModel):

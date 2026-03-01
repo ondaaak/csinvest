@@ -103,6 +103,37 @@ function InventoryPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [infoItem, setInfoItem] = useState(null); // State for the item details modal
   const [notificationItem, setNotificationItem] = useState(null); // State for notification modal
+  
+  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+  const [portfolioWebhook, setPortfolioWebhook] = useState('');
+
+  useEffect(() => {
+    if (showPortfolioModal && userId) {
+      const fetchMe = async () => {
+        try {
+           const token = localStorage.getItem('csinvest:token');
+           const res = await axios.get(`${BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+           setPortfolioWebhook(res.data.discord_portfolio_webhook_url || '');
+        } catch(e) { console.error(e); }
+      };
+      fetchMe();
+    }
+  }, [showPortfolioModal, userId]);
+
+  const handlePortfolioWebhookSave = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('csinvest:token');
+      await axios.patch(`${BASE_URL}/users/me`, 
+        { discord_portfolio_webhook_url: portfolioWebhook || null }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setShowPortfolioModal(false);
+    } catch (err) {
+      alert('Failed to save portfolio webhook');
+      console.error(err);
+    }
+  };
 
   const fetchItems = async () => {
     setLoading(true);
@@ -523,6 +554,9 @@ function InventoryPage() {
         </button>
         <button className="account-button" onClick={reloadPrices} disabled={loading}>
           {loading ? 'Loading…' : 'Reload Prices ↻'}
+        </button>
+        <button className="account-button" onClick={() => setShowPortfolioModal(true)} style={{ marginLeft: 8 }} title="Portfolio-wide notifications">
+           Portfolio Updates 🔔
         </button>
       </div>
 
@@ -1076,6 +1110,65 @@ function InventoryPage() {
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
                   <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setInfoItem(null)}>Cancel</button>
                   <button type="submit" className="account-button">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Portfolio Notification Modal */}
+      {showPortfolioModal && (
+        <div className="modal-overlay" onClick={() => setShowPortfolioModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <div className="modal-header">
+              <h3>Portfolio Updates Settings</h3>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: 15, opacity: 0.8 }}>
+                Configure a Discord webhook to receive a summary of your ENTIRE portfolio whenever prices are reloaded.
+                The notification will include a table of changes sorted by percentage profit/loss.
+              </p>
+              
+              <form onSubmit={handlePortfolioWebhookSave}>
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Discord Webhook URL (Portfolio)</label>
+                  <input 
+                    className="form-input" 
+                    type="text" 
+                    placeholder="https://discord.com/api/webhooks/..."
+                    value={portfolioWebhook}
+                    onChange={(e) => setPortfolioWebhook(e.target.value)}
+                  />
+                  <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: 4 }}>
+                    Leave empty to disable portfolio-wide notifications.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+                   <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setShowPortfolioModal(false)}>Cancel</button>
+                   {portfolioWebhook && (
+                     <button 
+                       type="button" 
+                       className="account-button" 
+                       style={{ background: '#d32f2f' }} 
+                       onClick={async () => {
+                         if(!window.confirm('Stop getting portfolio notifications?')) return;
+                         setPortfolioWebhook('');
+                         try {
+                           const token = localStorage.getItem('csinvest:token');
+                           await axios.patch(`${BASE_URL}/users/me`, 
+                             { discord_portfolio_webhook_url: null }, 
+                             { headers: { Authorization: `Bearer ${token}` } }
+                           );
+                           setShowPortfolioModal(false);
+                         } catch(e) { alert('Failed to remove webhook'); }
+                       }}
+                     >
+                       Disable
+                     </button>
+                   )}
+                   <button type="submit" className="account-button">Save Settings</button>
                 </div>
               </form>
             </div>

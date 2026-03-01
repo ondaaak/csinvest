@@ -40,9 +40,75 @@ class PriceService:
         except Exception as e:
             print(f"Failed to send Discord notification: {e}")
 
+    def _send_portfolio_summary_notification(self, webhook_url: str, items: list):
+        if not webhook_url or not items:
+            return
+
+        try:
+            # Calculate totals for header
+            total_value = sum(i['new_price'] * i['amount'] for i in items)
+            total_invested = sum(i['buy_price'] * i['amount'] for i in items)
+            total_profit = total_value - total_invested
+            total_pct = (total_profit / total_invested * 100) if total_invested > 0 else 0
+            
+            # Sort by profit % descending
+            items.sort(key=lambda x: x['profit_pct'], reverse=True)
+            
+            emoji_total = "🚀" if total_profit >= 0 else "📉"
+            color = 5763719 if total_profit >= 0 else 15548997
+
+            fields = []
+            
+            # Since Discord has limits (25 fields, 6000 chars), we might need to paginate or summarize.
+            # Let's show top winners and top losers or just list them until limit.
+            # Table-like format in description using code block is often cleaner for many items.
+            
+            # Format: Name | Old -> New | Profit %
+            
+            lines = []
+            lines.append(f"**Total Value:** ${total_value:,.2f}")
+            lines.append(f"**Total Profit:** ${total_profit:,.2f} ({total_pct:+.2f}%)")
+            lines.append("")
+            lines.append("```")
+            # Header
+            # Name (truncated) | New Price | Change
+            lines.append(f"{'Item':<25} | {'Price':<8} | {'Profit':<8}")
+            lines.append("-" * 48)
+
+            for item in items:
+                name = item['name'][:24] # Truncate
+                price = f"${item['new_price']:.2f}"
+                pct = f"{item['profit_pct']:+.1f}%"
+                
+                # Check line length
+                line = f"{name:<25} | {price:<8} | {pct:<8}"
+                if len("\n".join(lines)) + len(line) + 4 > 1900: # Safety margin for Discord 2000 char limit
+                    lines.append("... (truncated)")
+                    break
+                lines.append(line)
+            
+            lines.append("```")
+
+            embed = {
+                "title": f"{emoji_total} Portfolio Update Summary",
+                "description": "\n".join(lines),
+                "color": color,
+                "footer": {"text": f"Updated {len(items)} items"}
+            }
+
+            requests.post(webhook_url, json={"embeds": [embed]}, timeout=10)
+        except Exception as e:
+            print(f"Failed to send Portfolio notification: {e}")
+
     def update_portfolio_prices(self, user_id: int):
+        # Fetch user to get webhook
+        from models import User
+        user = self.repo.db.query(User).filter(User.user_id == user_id).first()
+        portfolio_webhook = user.discord_portfolio_webhook_url if user else None
+
         user_items = self.repo.get_user_items(user_id)
         results = []
+        notification_items = []
 
         print(f"Začínám aktualizaci pro uživatele {user_id}. Počet položek: {len(user_items)}")
 
@@ -150,6 +216,20 @@ class PriceService:
             if owned.discord_webhook_url:
                 self._send_discord_notification(owned.discord_webhook_url, itm.name, old_price, new_price)
 
+            # Add to portfolio notification list
+            buy_price = float(owned.buy_price) if owned.buy_price else 0.0
+            amount = owned.amount if owned.amount else 1
+            # Calculate profit percentage based on total value or unit value (same result)
+            profit_pct = ((new_price - buy_price) / buy_price * 100) if buy_price > 0 else 0
+            
+            notification_items.append({
+                "name": itm.name,
+                "new_price": new_price,
+                "buy_price": buy_price,
+                "amount": amount,
+                "profit_pct": profit_pct
+            })
+
             results.append({
                 "item": itm.name,
                 "old_price": old_price,
@@ -157,6 +237,10 @@ class PriceService:
                 "currency": "USD",
                 "item_type": getattr(itm, 'item_type', None)
             })
+        
+        # Send portfolio summary if webhook is set
+        if portfolio_webhook and notification_items:
+            self._send_portfolio_summary_notification(portfolio_webhook, notification_items)
 
         totals = self.repo.calculate_portfolio_totals(user_id)
         self.repo.save_portfolio_history(user_id, totals)
