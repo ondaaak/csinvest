@@ -513,11 +513,7 @@ function InventoryPage() {
     }
   };
 
-  const unauthenticatedOverlay = (
-    <div className="blur-overlay">
-      <div className="blur-message">Please login to view your inventory.</div>
-    </div>
-  );
+
 
   // Separate Cash item from standard items
   // Handle multiple cash items by summing them up
@@ -549,18 +545,22 @@ function InventoryPage() {
       </div>
 
       <div className="inventory-actions">
-        <button className="account-button" onClick={() => setShowAddModal(true)}>
-          Add new item +
-        </button>
-        <button className="account-button" onClick={reloadPrices} disabled={loading}>
-          {loading ? 'Loading…' : 'Reload Prices ↻'}
-        </button>
-        <button className="account-button" onClick={() => setShowPortfolioModal(true)} style={{ marginLeft: 8 }} title="Portfolio-wide notifications">
-           Portfolio Updates 🔔
-        </button>
+        {userId && (
+          <>
+            <button className="account-button" onClick={() => setShowAddModal(true)}>
+              Add new item +
+            </button>
+            <button className="account-button" onClick={reloadPrices} disabled={loading}>
+              {loading ? 'Loading…' : 'Reload Prices ↻'}
+            </button>
+            <button className="account-button" onClick={() => setShowPortfolioModal(true)} style={{ marginLeft: 8 }} title="Portfolio-wide notifications">
+              Portfolio Updates 🔔
+            </button>
+          </>
+        )}
       </div>
 
-      <div className="blur-container">
+      <div className={userId && items.length > 0 ? "blur-container" : ""}>
         {userId ? (
           items.length > 0 ? (
         <table>
@@ -835,7 +835,7 @@ function InventoryPage() {
             !loading ? <div className="loading">Portfolio is empty.</div> : null
           )
         ) : (
-          unauthenticatedOverlay
+          null
         )}
       </div>
 

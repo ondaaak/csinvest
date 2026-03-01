@@ -35,7 +35,7 @@ export default function LoginPage() {
         </div>
       </form>
       <p style={{ textAlign: 'center', marginTop: 16, color: '#6b7280' }}>
-        Need an account? <Link to="/register">Register</Link>
+        Need an account? <Link to="/register" style={{ color: 'white', textDecoration: 'none' }}>Register</Link>
       </p>
     </div>
   );

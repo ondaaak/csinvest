@@ -342,11 +342,11 @@ function App() {
             <div className={`app-content ${shouldBlur ? 'blurred' : ''}`}>
                 {shouldBlur && (
                     <div className="screen-blur">
-                        <div className="screen-message">
-                            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>Login to check your portfolio</div>
-                                                        <div style={{ textAlign:'center' }}>
-                                                            <NavLink to="/login" className="account-button">Login</NavLink>
-                                                        </div>
+                        <div className="screen-message" style={{ background: 'transparent', border: 'none', boxShadow: 'none', transform: 'translateY(-60%)' }}>
+                            <div style={{ fontSize: '2rem', marginBottom: '32px', color: 'var(--text-color)' }}>Login to check your portfolio</div>
+                            <div style={{ textAlign: 'center' }}>
+                                <NavLink to="/login" className="account-button" style={{ textDecoration: 'none', border: '1px solid white' }}>Login</NavLink>
+                            </div>
                         </div>
                     </div>
                 )}

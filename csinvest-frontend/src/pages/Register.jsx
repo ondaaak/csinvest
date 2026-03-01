@@ -40,7 +40,7 @@ export default function RegisterPage() {
         </div>
       </form>
       <p style={{ textAlign: 'center', marginTop: 16, color: '#6b7280' }}>
-        Already have an account? <Link to="/login">Login</Link>
+        Already have an account? <Link to="/login" style={{ color: 'white', textDecoration: 'none' }}>Login</Link>
       </p>
     </div>
   );
