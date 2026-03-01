@@ -281,6 +281,13 @@ function InventoryPage() {
 
   const openItem = (itm) => {
     if (!itm) return;
+    
+    // Redirect package to collection if collection info is available
+    if (itm.item_type === 'case' && itm.collection_item?.slug) {
+        navigate(`/collection/${itm.collection_item.slug}`);
+        return;
+    }
+    
     const path = itm.item_type === 'case' ? `/case/${itm.slug}` : `/skin/${itm.slug}`;
     navigate(path);
   };

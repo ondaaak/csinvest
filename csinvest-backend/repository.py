@@ -31,7 +31,7 @@ class ItemRepository:
 
     def get_user_items(self, user_id: int):
         return self.db.query(UserItem).filter(UserItem.user_id == user_id).options(
-            joinedload(UserItem.item)
+            joinedload(UserItem.item).joinedload(Item.collection_item)
         ).all()
 
     def get_user_item_by_id(self, user_item_id: int, user_id: int):

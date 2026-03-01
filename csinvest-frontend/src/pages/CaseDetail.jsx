@@ -222,23 +222,6 @@ function CaseDetailPage() {
 
               <div style={{ opacity:0.6 }}>Items:</div>
               <div>{skinItems.length + knifeItems.length + gloveItems.length}</div>
-              
-              {/* Buy Links Row */}
-              <div style={{ opacity:0.6 }}>Market:</div>
-              <div style={{ display:'flex', gap:8, alignItems:'center', justifyContent: 'center' }}>
-                <a href={`https://csfloat.com/?query=${encodeURIComponent(cs.name)}`} target="_blank" rel="noreferrer" title="CSFloat" style={{
-                    width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
-                    background:'rgba(84, 84, 99, 0.27)', color:'var(--text-color)', border:'1px solid var(--surface-border)', textDecoration:'none', overflow: 'hidden'
-                  }}>
-                    <img src={csfloatLogo} alt="CSFloat" style={{ width:16, height:16, objectFit:'contain', display: 'block' }} />
-                </a>
-                <a href={`https://haloskins.com/search?q=${encodeURIComponent(cs.name)}`} target="_blank" rel="noreferrer" title="HaloSkins" style={{
-                    width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
-                    background:'rgba(34,197,94,0.2)', color:'var(--text-color)', border:'1px solid var(--surface-border)', textDecoration:'none', overflow: 'hidden'
-                  }}>
-                    <img src={haloskinsLogo} alt="HaloSkins" style={{ width:16, height:16, objectFit:'contain', display: 'block' }} />
-                </a>
-              </div>
             </div>
           </div>
         </div>
