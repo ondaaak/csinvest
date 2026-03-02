@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
+import { useAuth } from '../auth/AuthContext';
 
 const BASE_URL = 'http://127.0.0.1:8000';
 
 function CasesPage() {
+  const { user } = useAuth();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -206,6 +208,7 @@ function CasesPage() {
         >
           ?
         </button>
+        {user && (
         <button
           onClick={doRefreshPrices}
           disabled={refreshing}
@@ -218,6 +221,7 @@ function CasesPage() {
             cursor: refreshing ? 'not-allowed':'pointer'
           }}
         >{refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
+        )}
       </div>
       <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
         {sortedCases.map(cs => (

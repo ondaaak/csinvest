@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
 export default function CharmsPage() {
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -189,6 +191,7 @@ export default function CharmsPage() {
           <option value="release_new">Newest</option>
           <option value="release_old">Oldest</option>
         </select>
+        {user && (
         <button
           onClick={doRefreshPrices}
           disabled={refreshing}
@@ -201,6 +204,7 @@ export default function CharmsPage() {
             cursor: refreshing ? 'not-allowed':'pointer'
           }}
         >{refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
+        )}
       </div>
       {loading && <div className="loading">Loading charms…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
