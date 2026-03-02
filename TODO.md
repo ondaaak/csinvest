@@ -17,4 +17,4 @@ Not needed:
     Add missing items in database.
     Inspect links for all items. 
     Update skinDetail page. - Add redirect to previous section in skin detail page.
-    Database have duplicite skins with different caseIDs
+    Database have duplicite skins with different caseIDs.
