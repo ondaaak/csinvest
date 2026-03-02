@@ -18,6 +18,9 @@ const BASE_URL = 'http://127.0.0.1:8000';
 
 const PortfolioChart = ({ history }) => {
     const { formatPrice } = useCurrency();
+    const [showTotal, setShowTotal] = useState(true);
+    const [showProfit, setShowProfit] = useState(true);
+
     if (!history || history.length === 0) {
         return (
             <div style={{ height: 350, backgroundColor: 'var(--card-bg)', padding: '15px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', color:'var(--card-text-color)' }}>
@@ -27,10 +30,16 @@ const PortfolioChart = ({ history }) => {
     }
     const dataForChartBase = history.map(record => {
         const t = new Date(record.timestamp);
+        const val = Number(record.total_value ?? 0);
+        const prof = Number(record.total_profit ?? 0);
+        const inv = Number(record.total_invested ?? (val - prof));
+        const pct = inv > 0 ? (prof / inv) * 100 : 0;
         return {
             name: t.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
             ts: t.getTime(),
-            value: Number(record.total_value ?? 0),
+            value: val,
+            profit: prof,
+            profitPct: pct,
         };
     });
     const nowMs = Date.now();
@@ -44,6 +53,8 @@ const PortfolioChart = ({ history }) => {
                     name: new Date(nowMs).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
                     ts: nowMs,
                     value: last.value,
+                    profit: last.profit,
+                    profitPct: last.profitPct,
                 },
             ];
         }
@@ -52,26 +63,47 @@ const PortfolioChart = ({ history }) => {
 
     const CustomTooltip = ({ active, payload }) => {
         if (!active || !payload || payload.length === 0) return null;
-        const p = payload[0];
-        const point = p && p.payload ? p.payload : null;
-        const amount = point && typeof point.value === 'number' ? point.value : null;
-        const time = point && point.ts ? point.ts : null;
-        const dt = typeof time === 'number' ? new Date(time) : null;
+        // payload is array of active lines: [{ name, value, stroke, ... }]
+        // We get timestamp from the first payload item's original object
+        const first = payload[0];
+        const point = first.payload;
+        const ts = point.ts;
+        const dt = new Date(ts);
+
         return (
             <div style={{ background:'var(--card-bg)', border:'1px solid #3a3a3a', color:'var(--card-text-color)', padding:'8px 10px', borderRadius:8 }}>
-                <div style={{ fontWeight:600 }}>{amount !== null ? formatPrice(amount) : '-'}</div>
-                {dt && (
-                    <div style={{ fontSize:'0.8rem', opacity:0.8 }}>
-                        {dt.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
-                    </div>
-                )}
+                <div style={{ fontSize:'0.8rem', opacity:0.8, borderBottom: '1px solid #444', marginBottom: 4, paddingBottom: 2 }}>
+                    {dt.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                </div>
+                {payload.map((entry, idx) => {
+                    const isProfit = entry.name === 'Profit';
+                    const pctStr = isProfit && point.profitPct !== undefined 
+                        ? ` (${point.profitPct >= 0 ? '+' : ''}${point.profitPct.toFixed(2)}%)` 
+                        : '';
+                    return (
+                        <div key={idx} style={{ color: entry.stroke, fontWeight: 600 }}>
+                            {entry.name}: {formatPrice(entry.value)}{pctStr}
+                        </div>
+                    );
+                })}
             </div>
         );
     };
+
     return (
-        <div style={{ height: 350, backgroundColor: 'var(--card-bg)', padding: '15px' }}>
-            <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={dataForChart} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+        <div style={{ height: 380, backgroundColor: 'var(--card-bg)', padding: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 15, marginBottom: 10, fontSize: '0.9rem' }}>
+                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
+                    <input type="checkbox" checked={showTotal} onChange={e => setShowTotal(e.target.checked)} />
+                    <span style={{ color: '#ffffff' }}>Total Value</span>
+                </label>
+                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
+                    <input type="checkbox" checked={showProfit} onChange={e => setShowProfit(e.target.checked)} />
+                    <span style={{ color: '#4caf50' }}>Profit</span>
+                </label>
+            </div>
+            <ResponsiveContainer width="100%" height={340}>
+                <LineChart data={dataForChart} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" />
                     <XAxis
                         dataKey="ts"
@@ -79,10 +111,17 @@ const PortfolioChart = ({ history }) => {
                         domain={[ 'dataMin', nowMs ]}
                         tickFormatter={(v) => new Date(v).toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
                         stroke="var(--card-text-color)"
+                        tick={{ fontSize: 12 }}
+                        tickMargin={10}
                     />
-                    <YAxis stroke="var(--card-text-color)" domain={['auto', 'auto']} tickFormatter={(value) => `$${value}`} />
+                    <YAxis stroke="var(--card-text-color)" domain={['auto', 'auto']} tickFormatter={(value) => `$${value}`} width={60} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Line type="monotone" dataKey="value" stroke="#ffffff" strokeWidth={3} dot={false} />
+                    {showTotal && (
+                        <Line type="monotone" dataKey="value" name="Total Value" stroke="#ffffff" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                    )}
+                    {showProfit && (
+                        <Line type="monotone" dataKey="profit" name="Profit" stroke="#4caf50" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                    )}
                 </LineChart>
             </ResponsiveContainer>
         </div>

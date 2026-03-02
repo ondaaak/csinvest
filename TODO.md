@@ -1,7 +1,6 @@
 Needed:
     Shared CSFloat API keys.
     Database RLS ?
-    Automatic price refresh every night ?
     Database connection type ?
     Complete code review and removal of unused code.
 
@@ -11,6 +10,8 @@ Useful:
     Maybe history of sold items ?
     Log table for users actions e.g. refreshing prices.
     Confirming emails + reset password
+    Split the notifications to only planned reload, not when you reload automatically?
+    Make better UI. Fees
 
 Not needed:
     Add missing items in database.
