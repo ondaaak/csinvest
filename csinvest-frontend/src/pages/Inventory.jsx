@@ -278,8 +278,8 @@ function InventoryPage() {
 
   const sorted = [...filtered].sort((a, b) => {
     // Cash item always at the bottom if it ends up in this list (fallback)
-    if (a.slug === 'cash') return 1;
-    if (b.slug === 'cash') return -1;
+    if (a.slug === 'cash' || a.item?.name?.toLowerCase() === 'cash') return 1;
+    if (b.slug === 'cash' || b.item?.name?.toLowerCase() === 'cash') return -1;
 
     const dir = sortAsc ? 1 : -1;
     switch (sortKey) {
@@ -517,7 +517,7 @@ function InventoryPage() {
 
   // Separate Cash item from standard items
   // Handle multiple cash items by summing them up
-  const cashItems = items.filter(i => i.slug === 'cash' || i.item?.name === 'cash');
+  const cashItems = items.filter(i => i.slug === 'cash' || i.item?.name?.toLowerCase() === 'cash');
   let cashItem = null;
   if (cashItems.length > 0) {
     // If multiple cash items, create a synthetic combined one
@@ -529,7 +529,7 @@ function InventoryPage() {
     cashItem = { ...cashItems[0], buy_price: totalCashVal, amount: 1 };
   }
   
-  const displayItems = sorted.filter(i => i.slug !== 'cash' && i.item?.name !== 'cash');
+  const displayItems = sorted.filter(i => i.slug !== 'cash' && i.item?.name?.toLowerCase() !== 'cash');
 
   return (
     <div className="dashboard-container" style={{ maxWidth: '1400px' }}>

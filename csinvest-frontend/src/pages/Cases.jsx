@@ -47,6 +47,17 @@ function CasesPage() {
   }, []);
 
   const doRefreshPrices = async () => {
+    const anyOutdated = cases.some(c => {
+      if (!c.current_price) return true;
+      if (!c.last_update) return true;
+      return (Date.now() - new Date(c.last_update).getTime()) > 3600000; // 1 hour
+    });
+
+    if (!anyOutdated && cases.length > 0) {
+       alert('Prices are up to date (updated less than 1 hour ago).');
+       return;
+    }
+
     try {
       setRefreshing(true);
       await axios.post(`${BASE_URL}/refresh-items`, null, { params: { item_type: 'case' } });

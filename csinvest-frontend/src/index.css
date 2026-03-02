@@ -161,10 +161,9 @@ th.sortable { cursor: pointer; user-select: none; }
 .search-input { width: min(600px, 90%); padding: 12px 14px; border: 1px solid var(--surface-border); border-radius: 10px; outline: none; font-size: 0.95rem; background: var(--surface-bg); color: var(--text-color); }
 .search-input::placeholder { color: #9ca3af; }
 .inventory-actions { display: flex; justify-content: center; gap: 18px; margin: 20px 0 10px 0; }
-.icon-btn { background: transparent; border: none; cursor: pointer; font-size: 1.1rem; margin-right: 6px; }
+.icon-btn { background: transparent; border: none; cursor: pointer; font-size: 1.1rem; margin-right: 6px; color: var(--text-color); }
 .icon-btn svg { display: block; }
-body[data-theme="dark"] .icon-btn { color: #ffffff; }
-body[data-theme="dark"] .icon-btn:hover { color: #e5e5e5; }
+.icon-btn:hover { color: #e5e5e5; }
 /* Toggle button specific size */
 .toggle-btn { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--surface-border); border-radius: 6px; background: var(--surface-bg); color: var(--text-color); }
 .toggle-btn:hover { background: var(--table-header-bg); }

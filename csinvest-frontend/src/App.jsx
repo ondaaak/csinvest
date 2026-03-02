@@ -150,25 +150,10 @@ function OverviewPage() {
         }
     };
 
-
-    const handleRefresh = async () => {
-        setLoading(true);
-        try {
-            if (!userId) throw new Error('Unauthenticated');
-            await axios.post(`${BASE_URL}/refresh-portfolio/${userId}`);
-            await fetchData(); 
-        } catch (err) {
-            console.error("Chyba při aktualizaci:", err);
-            setError("Aktualizace selhala. Zkontrolujte logy backendu.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
         fetchData();
         
-    }, [userId]); 
+    }, [userId]);  
 
     const now = new Date();
     const filteredHistory = history.filter((record) => {
@@ -227,10 +212,6 @@ function OverviewPage() {
                 </div>
                 <PortfolioChart history={filteredHistory} />
             </div>
-
-            <button onClick={handleRefresh} disabled={loading} className="account-button refresh-button">
-                {loading ? 'Aktualizuji ceny...' : 'Refresh Portfolia'}
-            </button>
             
             <h2 className="mpi-header">
                 Most profitable items

@@ -62,6 +62,17 @@ export default function AgentsPage() {
   }, [q]);
 
   const doRefreshPrices = async () => {
+    const anyOutdated = items.some(i => {
+      if (!i.current_price) return true;
+      if (!i.last_update) return true;
+      return (Date.now() - new Date(i.last_update).getTime()) > 3600000;
+    });
+
+    if (!anyOutdated && items.length > 0) {
+       alert('Prices are up to date (updated less than 1 hour ago).');
+       return;
+    }
+
     try {
       setRefreshing(true);
       await fetch(`${API_BASE}/refresh-items?item_type=agent`, { method: 'POST' });
