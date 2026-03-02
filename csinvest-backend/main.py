@@ -11,8 +11,14 @@ from pydantic import BaseModel, EmailStr, Field
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from config import Config
 from sqlalchemy import func
+from scheduler import start_scheduler
 
 app = FastAPI()
+
+@app.on_event("startup")
+def startup_event():
+    start_scheduler()
+
 
 cfg = Config()
 origins = cfg.CORS_ORIGINS

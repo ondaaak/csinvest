@@ -1013,7 +1013,7 @@ function InventoryPage() {
 
       {/* Info / Details Modal */}
       {infoItem && (
-        <div className="modal-overlay" onClick={() => setInfoItem(null)}>
+        <div className="modal-overlay" onMouseDown={(e) => { if(e.target === e.currentTarget) setInfoItem(null); }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="modal-header">
               <h3>Item Details</h3>
@@ -1124,7 +1124,7 @@ function InventoryPage() {
 
       {/* Portfolio Notification Modal */}
       {showPortfolioModal && (
-        <div className="modal-overlay" onClick={() => setShowPortfolioModal(false)}>
+        <div className="modal-overlay" onMouseDown={(e) => { if(e.target === e.currentTarget) setShowPortfolioModal(false); }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="modal-header">
               <h3>Portfolio Updates Settings</h3>
@@ -1177,7 +1177,7 @@ function InventoryPage() {
 
       {/* Notification Modal */}
       {notificationItem && (
-        <div className="modal-overlay" onClick={() => setNotificationItem(null)}>
+        <div className="modal-overlay" onMouseDown={(e) => { if(e.target === e.currentTarget) setNotificationItem(null); }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="modal-header">
               <h3>Notification Settings</h3>

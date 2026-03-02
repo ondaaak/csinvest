@@ -2,6 +2,8 @@ Needed:
     Shared CSFloat API keys.
     Database RLS ?
     Automatic price refresh every night ?
+    Database connection type ?
+    Complete code review and removal of unused code.
 
 Useful:
     Make price notifications more customizable. eg. different price change...
