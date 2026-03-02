@@ -213,6 +213,29 @@ function AddItemModal({ onClose, onAdded }) {
                       <button key={s.slug} type="button" className="search-suggestion-row"
                         onClick={() => { setSelected(s); setQuery(s.name); setSuggestions([]); setOpen(false); }}>
                         {(() => { 
+                          if (s.slug === 'cash' || s.name.toLowerCase() === 'cash') {
+                            return (
+                              <div className="search-thumb" style={{ background: 'transparent', border: 'none' }}>
+                                <div style={{
+                                  width: 48,
+                                  height: 48,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: '#1a1a1a',
+                                  borderRadius: '50%',
+                                  color: '#eee',
+                                  border: '1px solid #333'
+                                }}>
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path>
+                                    <path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path>
+                                    <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path>
+                                  </svg>
+                                </div>
+                              </div>
+                            );
+                          }
                           const thumb = getImage(s.slug, s.name);
                           return thumb ? (
                             <div className="search-thumb"><img src={thumb} alt={s.name} /></div>

@@ -532,7 +532,7 @@ function InventoryPage() {
   const displayItems = sorted.filter(i => i.slug !== 'cash' && i.item?.name !== 'cash');
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container" style={{ maxWidth: '1400px' }}>
       <h2 style={{ textAlign: 'center' }}>Items</h2>
 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
