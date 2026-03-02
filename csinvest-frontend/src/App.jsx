@@ -286,19 +286,6 @@ function App() {
     const blurPaths = ['/', '/inventory'];
     const shouldBlur = !user && blurPaths.includes(path) && !isAuthPage;
 
-    const [theme, setTheme] = useState('light');
-    useEffect(() => {
-        const saved = localStorage.getItem('csinvest:theme');
-        const t = saved === 'dark' ? 'dark' : 'light';
-        setTheme(t);
-        document.body.setAttribute('data-theme', t);
-    }, []);
-    const toggleTheme = () => {
-        const next = theme === 'dark' ? 'light' : 'dark';
-        setTheme(next);
-        document.body.setAttribute('data-theme', next);
-        localStorage.setItem('csinvest:theme', next);
-    };
     return (
         <>
             <div className="header">
@@ -311,7 +298,7 @@ function App() {
                     <NavLink to="/search" className={({isActive}) => isActive ? 'active' : undefined}>Search</NavLink>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <button aria-label="Toggle theme" className={`theme-toggle ${theme}`} onClick={toggleTheme}></button>
+                    
                     <div style={{ display:'flex', gap:6 }} title={lastUpdated ? `Rates updated: ${new Date(lastUpdated).toLocaleString('cs-CZ')}` : 'Rates not updated'}>
                       <button aria-label="Toggle currency" onClick={cycleCurrency} style={{
                           background:'var(--button-bg)',

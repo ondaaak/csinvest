@@ -93,28 +93,15 @@
   z-index: 10;
   box-shadow: 0 8px 20px rgba(0,0,0,0.25);
   box-sizing: border-box;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0 0 12px 12px;
 }
 
 /* Ensure search input uses border-box so its visual width matches dropdown */
 .search-input {
   box-sizing: border-box;
   width: 100%;
-}
-
-/* Light theme: white background, black border */
-body[data-theme='light'] .search-suggestions {
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-  border-radius: 0 0 12px 12px;
-  border-top: none;
-}
-
-/* Dark theme: use card colors */
-body[data-theme='dark'] .search-suggestions {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 0 0 12px 12px;
-  border-top: none;
 }
 
 .search-suggestion-row {
@@ -142,14 +129,6 @@ body[data-theme='dark'] .search-suggestions {
   justify-content: center;
   border-radius: 10px;
   overflow: hidden;
-}
-
-body[data-theme='light'] .search-thumb {
-  background: #ffffff;
-  border: 1px solid var(--border-color);
-}
-
-body[data-theme='dark'] .search-thumb {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
 }
@@ -162,5 +141,4 @@ body[data-theme='dark'] .search-thumb {
 
 .search-text { text-align: center; }
 .search-name { color: var(--card-text-color); }
-.search-name:where(body[data-theme='light'] .search-name) { color: #000000; }
 .search-type { font-size: 0.8rem; color: #6b7280; }

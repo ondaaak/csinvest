@@ -25,41 +25,27 @@
 input.no-spin[type=number]::-webkit-outer-spin-button,
 input.no-spin[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.no-spin[type=number] { -moz-appearance: textfield; appearance: textfield; }
-/* Root theme variables (light default) */
+/* Root theme variables (dark default) */
 :root {
-    --bg-color: #ffffff;
-    --text-color: #111111;
-    --accent-color: #111111;
+    --bg-color: #0b0b0b;
+    --text-color: #f3f4f6;
+    --accent-color: #f3f4f6;
     --header-h: 64px;
 
-    --card-bg: #1f1f1f;
+    --card-bg: #161616;
     --card-text-color: #e5e7eb;
 
     --profit-color: #16a34a;
     --loss-color: #ef4444;
 
-    --surface-bg: #ffffff;
-    --surface-border: #e5e7eb;
-    --table-header-bg: #f3f4f6;
-    --overlay-bg: rgba(255,255,255,0.85);
-    --theme-toggle-dot: #111111;
-}
-
-*, *::before, *::after { box-sizing: border-box; }
-
-/* Dark theme variable overrides */
-body[data-theme="dark"] {
-    --bg-color: #0b0b0b;
-    --text-color: #f3f4f6;
-    --accent-color: #f3f4f6;
-    --card-bg: #161616;
-    --card-text-color: #e5e7eb;
     --surface-bg: #111111;
     --surface-border: #2d2d2d;
     --table-header-bg: #1f1f1f;
     --overlay-bg: rgba(0,0,0,0.6);
     --theme-toggle-dot: #ffffff;
 }
+
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
     background-color: var(--bg-color);
