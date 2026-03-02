@@ -128,6 +128,7 @@ function AddItemModal({ onClose, onAdded }) {
 
   const parsePrice = (val) => {
     if (!val) return 0;
+    // Replace comma with dot to support decimal inputs with comma
     const cleaned = String(val).replace(/[^0-9.,-]/g, '').replace(',', '.');
     const num = parseFloat(cleaned);
     return isNaN(num) ? 0 : num;
@@ -140,7 +141,7 @@ function AddItemModal({ onClose, onAdded }) {
     const payload = {
       item_id: selected.item_id,
       amount: Number(amount) || 1,
-      float_value: floatValue ? Number(floatValue) : null,
+      float_value: floatValue ? Number(String(floatValue).replace(',', '.')) : null,
       buy_price: parsePrice(buyPrice) / (rates[inputCurrency] || 1),
       variant: selectedVariant || null,
       phase: selectedPhase || null,
