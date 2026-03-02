@@ -106,6 +106,7 @@ function InventoryPage() {
   
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
   const [portfolioWebhook, setPortfolioWebhook] = useState('');
+  const [portfolioNotificationTime, setPortfolioNotificationTime] = useState('');
 
   useEffect(() => {
     if (showPortfolioModal && userId) {
@@ -114,6 +115,7 @@ function InventoryPage() {
            const token = localStorage.getItem('csinvest:token');
            const res = await axios.get(`${BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
            setPortfolioWebhook(res.data.discord_portfolio_webhook_url || '');
+           setPortfolioNotificationTime(res.data.discord_portfolio_notification_time || '');
         } catch(e) { console.error(e); }
       };
       fetchMe();
@@ -125,7 +127,10 @@ function InventoryPage() {
     try {
       const token = localStorage.getItem('csinvest:token');
       await axios.patch(`${BASE_URL}/users/me`, 
-        { discord_portfolio_webhook_url: portfolioWebhook || null }, 
+        { 
+          discord_portfolio_webhook_url: portfolioWebhook || null,
+          discord_portfolio_notification_time: portfolioNotificationTime || null
+        }, 
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setShowPortfolioModal(false);
@@ -1132,42 +1137,36 @@ function InventoryPage() {
               
               <form onSubmit={handlePortfolioWebhookSave}>
                 <div style={{ marginBottom: 15 }}>
-                  <label className="form-label">Discord Webhook URL (Portfolio)</label>
+                  <label style={{ display: 'block', marginBottom: 5 }}>Discord Webhook URL</label>
                   <input 
-                    className="form-input" 
+                    className="search-input" 
                     type="text" 
                     placeholder="https://discord.com/api/webhooks/..."
                     value={portfolioWebhook}
                     onChange={(e) => setPortfolioWebhook(e.target.value)}
+                    style={{ width: '100%' }}
                   />
                   <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: 4 }}>
-                    Leave empty to disable portfolio-wide notifications.
+                    Leave empty to disable.
                   </div>
+                </div>
+
+                <div style={{ marginBottom: 15 }}>
+                  <label style={{ display: 'block', marginBottom: 5 }}>Daily Update Time (UTC)</label>
+                  <input 
+                    className="search-input" 
+                    type="time" 
+                    value={portfolioNotificationTime}
+                    onChange={(e) => setPortfolioNotificationTime(e.target.value)}
+                    style={{ width: '100%', colorScheme: 'dark' }}
+                  />
+                  <small style={{ color: '#888', display: 'block', marginTop: 4 }}>
+                    Current UTC time: {new Date().toISOString().slice(11, 16)}
+                  </small>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
                    <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setShowPortfolioModal(false)}>Cancel</button>
-                   {portfolioWebhook && (
-                     <button 
-                       type="button" 
-                       className="account-button" 
-                       style={{ background: '#d32f2f' }} 
-                       onClick={async () => {
-                         if(!window.confirm('Stop getting portfolio notifications?')) return;
-                         setPortfolioWebhook('');
-                         try {
-                           const token = localStorage.getItem('csinvest:token');
-                           await axios.patch(`${BASE_URL}/users/me`, 
-                             { discord_portfolio_webhook_url: null }, 
-                             { headers: { Authorization: `Bearer ${token}` } }
-                           );
-                           setShowPortfolioModal(false);
-                         } catch(e) { alert('Failed to remove webhook'); }
-                       }}
-                     >
-                       Disable
-                     </button>
-                   )}
                    <button type="submit" className="account-button">Save Settings</button>
                 </div>
               </form>
@@ -1200,37 +1199,12 @@ function InventoryPage() {
                     onChange={(e) => setNotificationItem({ ...notificationItem, discord_webhook_url: e.target.value })}
                   />
                   <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: 4 }}>
-                    Create a webhook in your Discord server settings (Integrations - Webhooks) and paste the URL here.
+                    Leave empty to disable.
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
                    <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setNotificationItem(null)}>Cancel</button>
-                   {notificationItem.discord_webhook_url && (
-                     <button 
-                       type="button" 
-                       className="account-button" 
-                       style={{ background: '#d32f2f' }} 
-                       onClick={async () => {
-                         if(!window.confirm('Stop getting notifications for this item?')) return;
-                         
-                         try {
-                           const token = localStorage.getItem('csinvest:token');
-                           const resp = await fetch(`${BASE_URL}/useritems/${notificationItem.user_item_id}`, {
-                             method: 'PATCH',
-                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                             body: JSON.stringify({ discord_webhook_url: null })
-                           });
-                           if (!resp.ok) throw new Error('Failed to remove webhook');
-
-                           await fetchItems();
-                           setNotificationItem(null);
-                         } catch(e) { alert(e.message); }
-                       }}
-                     >
-                       Remove Webhook
-                     </button>
-                   )}
                    <button type="submit" className="account-button">Save Settings</button>
                 </div>
               </form>

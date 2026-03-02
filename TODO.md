@@ -1,7 +1,6 @@
 Needed:
     Shared CSFloat API keys.
     Database RLS ?
-    Refresh button spamming prevention.
     Automatic price refresh every night ?
 
 Useful:

@@ -11,6 +11,7 @@ class User(Base):
     password_hash = Column(String)
     date_created = Column(Date, default=datetime.date.today)
     discord_portfolio_webhook_url = Column(String)
+    discord_portfolio_notification_time = Column(String) # Format "HH:MM"
 
 class Item(Base):
     __tablename__ = "ITEM"

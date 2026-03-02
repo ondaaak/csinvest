@@ -41,13 +41,15 @@ class AuthUser(BaseModel):
     username: str
     email: EmailStr
     discord_portfolio_webhook_url: str | None = None
+    discord_portfolio_notification_time: str | None = None
 
 def user_to_schema(u: User) -> AuthUser:
     return AuthUser(
         user_id=u.user_id, 
         username=u.username, 
         email=u.email,
-        discord_portfolio_webhook_url=u.discord_portfolio_webhook_url
+        discord_portfolio_webhook_url=u.discord_portfolio_webhook_url,
+        discord_portfolio_notification_time=u.discord_portfolio_notification_time
     )
 
 @app.post("/auth/register")
@@ -97,10 +99,13 @@ def auth_me(current: User = Depends(get_current_user)):
 
 class UpdateUserRequest(BaseModel):
     discord_portfolio_webhook_url: str | None = None
+    discord_portfolio_notification_time: str | None = None
 
 @app.patch("/users/me")
 def update_user_me(payload: UpdateUserRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
-    current.discord_portfolio_webhook_url = payload.discord_portfolio_webhook_url
+    update_data = payload.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(current, key, value)
     db.commit()
     return user_to_schema(current)
 
