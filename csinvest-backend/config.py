@@ -25,6 +25,7 @@ class Config(metaclass=_Singleton):
         self.PASSWORD_SALT: str = os.getenv("PASSWORD_SALT", "csinvest_static_salt")
         self.ACCESS_TOKEN_EXPIRE_SECONDS: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS", "3600"))
 
+        self.INVITE_CODE: str = os.getenv("INVITE_CODE", "SECRET_BETA")
 
         self.DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
         if not self.DATABASE_URL:

@@ -30,6 +30,7 @@ class RegisterRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
+    invite_code: str
 
 class LoginRequest(BaseModel):
     username: str
@@ -51,6 +52,9 @@ def user_to_schema(u: User) -> AuthUser:
 
 @app.post("/auth/register")
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
+    if data.invite_code != cfg.INVITE_CODE:
+        raise HTTPException(status_code=403, detail="Neplatný Invite Code - přístup odepřen")
+
     existing = db.query(User).filter((User.username == data.username) | (User.email == data.email)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username nebo email již existuje")

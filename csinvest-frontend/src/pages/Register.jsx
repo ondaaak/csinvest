@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext.jsx';
+import { useAuth } from '../auth/AuthContext';
 
-export default function RegisterPage() {
+export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const res = await register({ username, email, password });
-    if (res.ok) navigate('/');
-    else setError(res.error || 'Registration failed');
+    try {
+      await register({ username, email, password, inviteCode });
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Registration failed');
+    }
   };
 
   return (
@@ -24,18 +28,51 @@ export default function RegisterPage() {
       <form onSubmit={onSubmit} className="login-form">
         <label style={{ marginBottom: 12, display: 'block' }}>
           Username
-          <input className="search-input" value={username} onChange={(e) => setUsername(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
+          <input 
+            className="search-input" 
+            value={username} 
+            onChange={(e) => setUsername(e.target.value)} 
+            style={{ marginTop: 6, width: '100%' }} 
+            required 
+          />
         </label>
         <label style={{ marginBottom: 12, display: 'block' }}>
           Email
-          <input type="email" className="search-input" value={email} onChange={(e) => setEmail(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
+          <input 
+            type="email" 
+            className="search-input" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            style={{ marginTop: 6, width: '100%' }} 
+            required 
+          />
+        </label>
+        <label style={{ marginBottom: 12, display: 'block' }}>
+          Password
+          <input 
+            type="password" 
+            className="search-input" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            style={{ marginTop: 6, width: '100%' }} 
+            required 
+          />
         </label>
         <label style={{ display: 'block' }}>
-          Password
-          <input type="password" className="search-input" value={password} onChange={(e) => setPassword(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
+          Invite Code
+          <input 
+            className="search-input" 
+            value={inviteCode} 
+            onChange={(e) => setInviteCode(e.target.value)} 
+            style={{ marginTop: 6, width: '100%' }} 
+            required 
+            
+          />
         </label>
+
         {error && <div style={{ color: 'var(--loss-color)', marginTop: 8 }}>{error}</div>}
-        <div style={{ marginTop: 12, textAlign:'center' }}>
+        
+        <div style={{ marginTop: 12, textAlign: 'center' }}>
           <button type="submit" className="account-button">Register</button>
         </div>
       </form>

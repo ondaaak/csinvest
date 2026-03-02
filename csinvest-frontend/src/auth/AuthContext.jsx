@@ -54,21 +54,31 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const register = async ({ username, email, password }) => {
+  const register = async ({ username, email, password, inviteCode }) => {
     try {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password })
+        body: JSON.stringify({ username, email, password, invite_code: inviteCode })
       });
-      if (!res.ok) return { ok: false, error: 'Registration failed' };
+      if (!res.ok) {
+        const err = await res.json();
+        let msg = 'Registrace selhala';
+        if (err.detail) {
+            if (typeof err.detail === 'string') msg = err.detail;
+            else if (Array.isArray(err.detail)) msg = err.detail.map(e => e.msg).join(', ');
+            else msg = JSON.stringify(err.detail);
+        }
+        throw new Error(msg);
+      }
       const data = await res.json();
       localStorage.setItem('csinvest:token', data.access_token);
       localStorage.setItem('csinvest:user', JSON.stringify(data.user));
       setUser(data.user);
-      return { ok: true };
+      return true;
     } catch (e) {
-      return { ok: false, error: 'Network error' };
+      console.error(e);
+      throw e;
     }
   };
 

@@ -8,6 +8,8 @@ Useful:
     Make price notifications more customizable. eg. different price change...
     Make Phases work.
     Maybe history of sold items ?
+    Log table for users actions e.g. refreshing prices.
+    Confirming emails + reset password
 
 Not needed:
     Add missing items in database.
