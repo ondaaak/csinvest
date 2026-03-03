@@ -133,8 +133,22 @@ class PriceService:
     def update_portfolio_prices(self, user_id: int):
         # Fetch user to get webhook
         from models import User
+        from encryption import decrypt_api_key
         user = self.repo.db.query(User).filter(User.user_id == user_id).first()
         portfolio_webhook = user.discord_portfolio_webhook_url if user else None
+        
+        # Try to decrypt user API key
+        user_api_key = None
+        if user and user.csfloat_api_key_ciphertext:
+            try:
+                user_api_key = decrypt_api_key(
+                    user.csfloat_api_key_ciphertext, 
+                    user.csfloat_api_key_iv, 
+                    user.csfloat_api_key_tag
+                )
+                print(f"Using custom API Key for user {user.username}")
+            except Exception as e:
+                print(f"Failed to decrypt user API key: {e}")
 
         user_items = self.repo.get_user_items(user_id)
         results = []
@@ -220,7 +234,7 @@ class PriceService:
 
             print(f"Skládám název pro API: {market_name}, Float: {min_float}-{max_float}")
 
-            raw_data = self.strategy.fetch_price(market_name, min_float=min_float, max_float=max_float)
+            raw_data = self.strategy.fetch_price(market_name, min_float=min_float, max_float=max_float, api_key=user_api_key)
             if not raw_data:
                 print(f"Přeskakuji {itm.name} - chyba stahování/nenalezeno.")
                 continue

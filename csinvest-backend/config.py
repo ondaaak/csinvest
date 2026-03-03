@@ -17,7 +17,11 @@ class Config(metaclass=_Singleton):
     def __init__(self) -> None:
         load_dotenv()
 
-        self.CSFLOAT_API_KEY: str = os.getenv("CSFLOAT_API_KEY", "")
+        self.CSFLOAT_API_KEYS: List[str] = [k.strip() for k in os.getenv("CSFLOAT_API_KEY", "").split(',') if k.strip()]
+        # Primary key for backward compatibility or simple access
+        self.CSFLOAT_API_KEY: str = self.CSFLOAT_API_KEYS[0] if self.CSFLOAT_API_KEYS else ""
+        
+        self.CSFLOAT_ENCRYPTION_KEY: str = os.getenv("CSFLOAT_ENCRYPTION_KEY", "")
 
         self.SECRET_KEY: str = os.getenv("SECRET_KEY", "")
         if not self.SECRET_KEY:

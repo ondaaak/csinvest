@@ -10,6 +10,52 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   // Local state for portfolio webhook to ensure we have latest even if context is stale
   const [portfolioWebhook, setPortfolioWebhook] = useState(null);
+  
+  // CSFloat API Key State
+  const [csfloatKeySet, setCsfloatKeySet] = useState(false);
+  const [csfloatKeyInput, setCsfloatKeyInput] = useState('');
+  const [showKeyInput, setShowKeyInput] = useState(false);
+
+  // Fetch CSFloat key status
+  useEffect(() => {
+    const fetchKeyStatus = async () => {
+        const token = localStorage.getItem('csinvest:token');
+        if (!token) return;
+        try {
+            const res = await axios.get(`${BASE_URL}/user/csfloat/status`, { headers: { Authorization: `Bearer ${token}` } });
+            setCsfloatKeySet(res.data.is_set);
+        } catch (e) { console.error(e); }
+    };
+    if (userId) fetchKeyStatus();
+  }, [userId]);
+
+  const saveCsfloatKey = async () => {
+      const token = localStorage.getItem('csinvest:token');
+      if (!csfloatKeyInput.trim()) return;
+      try {
+          await axios.post(`${BASE_URL}/user/csfloat`, { api_key: csfloatKeyInput }, { headers: { Authorization: `Bearer ${token}` } });
+          setCsfloatKeySet(true);
+          setCsfloatKeyInput('');
+          setShowKeyInput(false);
+          // alert("CSFloat API Key saved safely!");
+      } catch (e) {
+          console.error(e);
+          alert("Failed to save key");
+      }
+  };
+
+  const deleteCsfloatKey = async () => {
+      const token = localStorage.getItem('csinvest:token');
+      if(!window.confirm("Are you sure you want to remove your CSFloat API Key?")) return;
+      try {
+          await axios.delete(`${BASE_URL}/user/csfloat`, { headers: { Authorization: `Bearer ${token}` } });
+          setCsfloatKeySet(false);
+          // alert("CSFloat API Key removed!");
+      } catch (e) {
+          console.error(e);
+          alert("Failed to remove key");
+      }
+  };
 
   // ... imports ...
 
@@ -142,6 +188,74 @@ export default function AccountPage() {
           <button className="account-button" onClick={logout}>Logout</button>
 
           <div style={{ marginTop: 40, textAlign: 'left' }}>
+            <h3>CSFloat Integration</h3>
+            <div style={{ background: '#1c1c1c', padding: 20, borderRadius: 8, marginBottom: 30, border: '1px solid #333' }}>
+                <p style={{ margin: '0 0 15px 0', fontSize: '0.9rem', color: '#888', lineHeight: 1.5 }}>
+                  By default we are using our own CSFloat API Keys, but there are limitations to the requests. To avoid problems, please add your CSFloat API key from Developers tab. 
+                  Your API Key is encrypted using <strong>AES-256-GCM</strong> before storage. 
+                  If you lose it, generate a new one on CSFloat.
+                </p>
+
+                {csfloatKeySet ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(76, 175, 80, 0.1)', padding: 15, borderRadius: 6, border: '1px solid rgba(76, 175, 80, 0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ background: '#4caf50', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'black', fontWeight: 'bold' }}>✓</div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#4caf50' }}>API Key Active</div>
+                        <div style={{ fontSize: '0.8rem', color: '#aaa' }}>Ready for automated requests</div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={deleteCsfloatKey}
+                      className="btn-danger"
+                      style={{ background: 'transparent', color: '#ff4d4d', border: '1px solid #ff4d4d', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontSize: '0.85rem' }}
+                    >
+                      Remove Key
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    {!showKeyInput ? (
+                      <button 
+                        onClick={() => setShowKeyInput(true)}
+                        style={{ background: '#0f0f0f', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+                      >
+                        <b>Add CSFloat API Key</b>
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <input 
+                            type="password" 
+                            placeholder="Paste your API Key (e.g. HfcuMg...)"
+                            value={csfloatKeyInput}
+                            onChange={(e) => setCsfloatKeyInput(e.target.value)}
+                            style={{ flex: 1, padding: '10px 12px', borderRadius: 6, border: '1px solid #444', background: '#0d1117', color: 'white' }}
+                            autoFocus
+                          />
+                          <button 
+                            onClick={saveCsfloatKey}
+                            style={{ background: '#238636', color: 'white', border: 'none', padding: '0 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}
+                            disabled={!csfloatKeyInput}
+                          >
+                            Encrypt & Save
+                          </button>
+                          <button 
+                            onClick={() => { setShowKeyInput(false); setCsfloatKeyInput(''); }}
+                            style={{ background: '#333', color: '#ccc', border: 'none', padding: '0 15px', borderRadius: 6, cursor: 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#666' }}>
+                            Keys are stored with a unique initialization vector (IV) and authentication tag.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
+
             <h3>Notifications</h3>
             {loading && <p>Loading items...</p>}
             

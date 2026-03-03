@@ -11,7 +11,7 @@ load_dotenv()
 
 class IMarketStrategy(ABC):
     @abstractmethod
-    def fetch_price(self, skin_name: str, min_float: float = None, max_float: float = None) -> dict:
+    def fetch_price(self, skin_name: str, min_float: float = None, max_float: float = None, api_key: str = None) -> dict:
         pass
 
 class CSFloatStrategy(IMarketStrategy):
@@ -39,6 +39,23 @@ class CSFloatStrategy(IMarketStrategy):
 
     def __init__(self, config: Config | None = None) -> None:
         self.config = config or Config()
+        self._key_index = 0
+
+    def _get_next_api_key(self) -> str:
+        """Rotates to the next available API key from config."""
+        keys = self.config.CSFLOAT_API_KEYS
+        if not keys:
+            return ""
+        
+        self._key_index = (self._key_index + 1) % len(keys)
+        print(f"[CSFloatStrategy] Switching to API Key #{self._key_index + 1}")
+        return keys[self._key_index]
+        
+    def _get_current_api_key(self) -> str:
+        keys = self.config.CSFLOAT_API_KEYS
+        if not keys:
+            return ""
+        return keys[self._key_index % len(keys)]
 
 
     def _extract_phase(self, skin_name: str):
@@ -64,7 +81,7 @@ class CSFloatStrategy(IMarketStrategy):
             
         return skin_name, None
 
-    def fetch_price(self, skin_name: str, min_float: float = None, max_float: float = None) -> dict:
+    def fetch_price(self, skin_name: str, min_float: float = None, max_float: float = None, api_key: str = None) -> dict:
         print(f"[CSFloatStrategy] Hledám cenu pro: {skin_name} (Float: {min_float}-{max_float})")
         
         base_name, phase_filter = self._extract_phase(skin_name)
@@ -93,73 +110,104 @@ class CSFloatStrategy(IMarketStrategy):
         if max_float is not None:
             params["max_float"] = max_float
         
+        # Decide which key to use
+        # If user passed api_key, use it (don't rotate user key on failure, that's up to them)
+        # If user did NOT pass api_key, use our pool and rotate on 429
+        
+        using_user_key = api_key is not None
+        current_api_key = api_key or self._get_current_api_key()
+        
         headers = {
-            "Authorization": self.config.CSFLOAT_API_KEY,
+            "Authorization": current_api_key,
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
 
-        try:
-            response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=10)
-            
-            # print(f"DEBUG: Status kód z CSFloat: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"⚠️ Chyba API: {response.status_code}. Raw Response: {response.text}")
-                return None
-            
-            data = response.json()
-            listings = data if isinstance(data, list) else data.get("data", [])
-            
-            # print(f"DEBUG: Nalezeno inzerátů (před filtrem): {len(listings)}") 
-            
-            if not listings:
-                print(f"⚠️ CSFloat vrátilo OK, ale NENALEZENO ŽÁDNÝ LISTING pro {base_name}.")
-                return None
-
-            # Filter by phase if specified
-            if phase_filter:
-                original_count = len(listings)
-                # CSFloat item object has a 'phase' field? Or we check market_hash_name or other fields?
-                # User script says: item.item.phase
-                # Let's inspect CSFloat API response structure typically:
-                # { "item": { "phase": "Phase 2", ... }, ... }
-                # Note: CSFloat API structure for item:
-                # "item": { "market_hash_name": "...", "phase": "Phase 2", ... }
+        # Retry loop for 429
+        MAX_RETRIES = 3 if not using_user_key and len(self.config.CSFLOAT_API_KEYS) > 1 else 1
+        
+        for attempt in range(MAX_RETRIES):
+            try:
+                # Refresh header if we rotated
+                headers["Authorization"] = current_api_key
                 
-                filtered_listings = []
-                target_phase = phase_filter.lower()
+                response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=10)
                 
-                for listing in listings:
-                    # Filter out auctions explicitly just in case API returns them
-                    if listing.get("type") == "auction":
-                        continue
-
-                    item_data = listing.get("item", {})
-                    item_phase = item_data.get("phase")
+                # print(f"DEBUG: Status kód z CSFloat: {response.status_code}")
+                
+                if response.status_code == 429:
+                    if using_user_key:
+                        print(f"⚠️ User API Key Rate Limited (429). Cannot rotate.")
+                        return None
                     
-                    # Some items might not have 'phase' field populated or it might be null
-                    if item_phase and str(item_phase).lower() == target_phase:
-                        filtered_listings.append(listing)
+                    print(f"⚠️ API Rate Limited (429). Attempt {attempt+1}/{MAX_RETRIES}.")
+                    if attempt < MAX_RETRIES - 1:
+                        current_api_key = self._get_next_api_key()
+                        time.sleep(1) # Brief pause
+                        continue
+                    else:
+                        print("❌ All available API keys rate limited.")
+                        return None
+
+                if response.status_code != 200:
+                    print(f"⚠️ Chyba API: {response.status_code}. Raw Response: {response.text}")
+                    return None
                 
-                listings = filtered_listings
-                # print(f"DEBUG: Po filtrování fáze '{phase_filter}': {original_count} -> {len(listings)}")
-            
-            if not listings:
-                print(f"⚠️ Žádný inzerát neodpovídá fázi {phase_filter}.")
+                data = response.json()
+                listings = data if isinstance(data, list) else data.get("data", [])
+                
+                # print(f"DEBUG: Nalezeno inzerátů (před filtrem): {len(listings)}") 
+                
+                if not listings:
+                    print(f"⚠️ CSFloat vrátilo OK, ale NENALEZENO ŽÁDNÝ LISTING pro {base_name}.")
+                    return None
+
+                # Filter by phase if specified
+                if phase_filter:
+                    original_count = len(listings)
+                    # CSFloat item object has a 'phase' field? Or we check market_hash_name or other fields?
+                    # User script says: item.item.phase
+                    # Let's inspect CSFloat API response structure typically:
+                    # { "item": { "phase": "Phase 2", ... }, ... }
+                    # Note: CSFloat API structure for item:
+                    # "item": { "market_hash_name": "...", "phase": "Phase 2", ... }
+                    
+                    filtered_listings = []
+                    target_phase = phase_filter.lower()
+                    
+                    for listing in listings:
+                        # Filter out auctions explicitly just in case API returns them
+                        if listing.get("type") == "auction":
+                            continue
+
+                        item_data = listing.get("item", {})
+                        item_phase = item_data.get("phase")
+                        
+                        # Some items might not have 'phase' field populated or it might be null
+                        if item_phase and str(item_phase).lower() == target_phase:
+                            filtered_listings.append(listing)
+                    
+                    listings = filtered_listings
+                    # print(f"DEBUG: Po filtrování fáze '{phase_filter}': {original_count} -> {len(listings)}")
+                
+                if not listings:
+                    print(f"⚠️ Žádný inzerát neodpovídá fázi {phase_filter}.")
+                    return None
+                    
+                    
+                # Success - return cheapest
+                cheapest = min(listings, key=lambda x: x.get("price"))
+                return {
+                    "success": True,
+                    "price_cents_usd": cheapest.get("price"),
+                    "item_name": cheapest.get("item", {}).get("market_hash_name"),
+                    "market_name": "CSFloat"
+                }
+
+            except json.JSONDecodeError:
+                print(f"⚠️ API vrátilo neplatný JSON. Response Text: {response.text}")
                 return None
-
-            cheapest = min(listings, key=lambda x: x.get("price"))
-            
-            return {
-                "success": True,
-                "price_cents_usd": cheapest.get("price"),
-                "item_name": cheapest.get("item", {}).get("market_hash_name"),
-                "market_name": "CSFloat"
-            }
-
-        except json.JSONDecodeError:
-            print(f"⚠️ API vrátilo neplatný JSON. Response Text: {response.text}")
-            return None
-        except Exception as e:
-            print(f"⚠️ Kritická chyba spojení: {e}")
-            return None
+            except Exception as e:
+                print(f"⚠️ Kritická chyba spojení: {e}")
+                return None
+        
+        return None

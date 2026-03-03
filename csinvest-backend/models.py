@@ -12,6 +12,11 @@ class User(Base):
     date_created = Column(Date, default=datetime.date.today)
     discord_portfolio_webhook_url = Column(String)
     discord_portfolio_notification_time = Column(String) # Format "HH:MM"
+    
+    # CSFloat API Key Encryption
+    csfloat_api_key_ciphertext = Column(String, nullable=True)
+    csfloat_api_key_iv = Column(String, nullable=True) 
+    csfloat_api_key_tag = Column(String, nullable=True)
 
 class Item(Base):
     __tablename__ = "ITEM"

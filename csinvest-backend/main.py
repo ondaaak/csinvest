@@ -12,6 +12,7 @@ from auth import hash_password, verify_password, create_access_token, get_curren
 from config import Config
 from sqlalchemy import func
 from scheduler import start_scheduler
+from encryption import encrypt_api_key
 
 app = FastAPI()
 
@@ -656,3 +657,50 @@ def link_fracture_knives(db: Session = Depends(get_db)):
             linked += 1
     db.commit()
     return {"message": "Fracture knives linked", "created": created, "updated": linked}
+# CSFloat API Key Management
+
+class CSFloatKeyRequest(BaseModel):
+    api_key: str
+
+@app.get('/user/csfloat/status')
+def get_csfloat_status(current_user: AuthUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.user_id == current_user.user_id).first()
+    key_exists = False
+    if user and user.csfloat_api_key_ciphertext:
+        key_exists = True
+    return {'is_set': key_exists}
+
+@app.post('/user/csfloat')
+def set_csfloat_api_key(req: CSFloatKeyRequest, current_user: AuthUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.user_id == current_user.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+    
+    if not req.api_key:
+         # If empty string, treat as delete? Or raise error?
+         # User said 'tlacitko na smazani nebo nastaveni noveho', so empty probably not allowed as 'set'.
+         raise HTTPException(status_code=400, detail='API Key cannot be empty')
+    
+    try:
+        enc = encrypt_api_key(req.api_key)
+        user.csfloat_api_key_ciphertext = enc['ciphertext']
+        user.csfloat_api_key_iv = enc['iv']
+        user.csfloat_api_key_tag = enc['tag']
+        
+        db.commit()
+    except Exception as e:
+        print(f'Error encrypting key: {e}')
+        raise HTTPException(status_code=500, detail='Encryption failed')
+        
+    return {'message': 'API Key saved securely'}
+
+@app.delete('/user/csfloat')
+def delete_csfloat_key(current_user: AuthUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.user_id == current_user.user_id).first()
+    if user:
+        user.csfloat_api_key_ciphertext = None
+        user.csfloat_api_key_iv = None
+        user.csfloat_api_key_tag = None
+        db.commit()
+    return {'message': 'API Key removed'}
+
