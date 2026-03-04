@@ -11,7 +11,7 @@ export default function CharmsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [sortMode, setSortMode] = useState('release_new');
+  const [sortMode, setSortMode] = useState('price_desc');
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -93,12 +93,32 @@ export default function CharmsPage() {
     const arr = [...items];
     const getPrice = (c) => typeof c.current_price === 'number' ? c.current_price : 0;
     const getDate = (c) => c.release_date ? new Date(c.release_date) : new Date(0);
+
+    const getRarityValue = (rarity) => {
+      if (!rarity) return 0;
+      const r = rarity.toLowerCase();
+      if (r.includes('contraband')) return 7;
+      if (r.includes('covert') || r.includes('extraordinary')) return 6;
+      if (r.includes('classified') || r.includes('exotic')) return 5;
+      if (r.includes('restricted') || r.includes('remarkable')) return 4;
+      if (r.includes('mil-spec') || r.includes('high grade')) return 3;
+      if (r.includes('industrial')) return 2;
+      if (r.includes('consumer')) return 1;
+      return 0;
+    };
+
     switch (sortMode) {
       case 'price_asc':
         arr.sort((a,b) => getPrice(a) - getPrice(b));
         break;
       case 'price_desc':
         arr.sort((a,b) => getPrice(b) - getPrice(a));
+        break;
+      case 'rarity_desc':
+        arr.sort((a,b) => getRarityValue(b.rarity) - getRarityValue(a.rarity));
+        break;
+      case 'rarity_asc':
+        arr.sort((a,b) => getRarityValue(a.rarity) - getRarityValue(b.rarity));
         break;
       case 'release_new':
         arr.sort((a,b) => getDate(b) - getDate(a));
@@ -188,6 +208,8 @@ export default function CharmsPage() {
         }}>
           <option value="price_desc">Price ↓</option>
           <option value="price_asc">Price ↑</option>
+          <option value="rarity_desc">Rarity ↓</option>
+          <option value="rarity_asc">Rarity ↑</option>
           <option value="release_new">Newest</option>
           <option value="release_old">Oldest</option>
         </select>

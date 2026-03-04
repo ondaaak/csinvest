@@ -250,21 +250,21 @@ function SkinDetailPage() {
             {img && (
             <img src={img} alt={item.name} style={{ width:200, height:200, objectFit:'contain', borderRadius:12 }} />
             )}
-            <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                 {cases.length > 0 && (
                     <div style={{ marginTop: 0 }}>
-                        <strong>Found in cases:</strong>
-                        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+                        <strong style={{ display: 'block', marginBottom: 10 }}>Found in cases:</strong>
+                        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
                             {cases.map(c => {
-                                const cImg = getCaseImage(c.slug);
+                                const cImg = getCaseImage(c.slug || '');
                                 return (
-                                    <Link to={`/case/${c.slug}`} key={c.item_id} style={{ textAlign: 'center', width: 80, textDecoration: 'none', color: 'inherit' }} title={c.name}>
+                                    <Link to={`/case/${c.slug}`} key={c.item_id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 80, textDecoration: 'none', color: 'inherit' }} title={c.name}>
                                         {cImg ? (
                                             <img src={cImg} alt={c.name} style={{ width: 60, height: 60, objectFit: 'contain' }} />
                                         ) : (
                                             <div style={{ width: 60, height: 60, background: '#333', borderRadius: 8 }}></div>
                                         )}
-                                        <div style={{ fontSize: '0.7rem', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                                        <div style={{ fontSize: '0.7rem', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{c.name}</div>
                                     </Link>
                                 );
                             })}
@@ -274,11 +274,11 @@ function SkinDetailPage() {
 
                 {collection && (
                     <div style={{ marginTop: cases.length > 0 ? 20 : 0 }}>
-                        <strong>Found in collection:</strong>
-                        <div style={{ marginTop: 10 }}>
+                        <strong style={{ display: 'block', marginBottom: 10 }}>Found in collection:</strong>
+                        <div style={{ marginTop: 10, display: 'flex', justifySelf: 'center' }}>
                             <Link to={`/collection/${collection.slug}`} style={{ display: 'inline-block', textAlign: 'center', width: 80, textDecoration: 'none', color: 'inherit' }} title={collection.name}>
-                                {getCollectionImage(collection.slug) ? (
-                                    <img src={getCollectionImage(collection.slug)} alt={collection.name} style={{ width: 60, height: 60, objectFit: 'contain' }} />
+                                {getCollectionImage(collection.slug || '') ? (
+                                    <img src={getCollectionImage(collection.slug || '')} alt={collection.name} style={{ width: 60, height: 60, objectFit: 'contain' }} />
                                 ) : (
                                     <div style={{ width: 60, height: 60, background: '#333', borderRadius: 8, margin: '0 auto' }}></div>
                                 )}
