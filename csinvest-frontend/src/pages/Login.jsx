@@ -14,7 +14,7 @@ export default function LoginPage() {
     setError('');
     const ok = await login({ username, password });
     if (ok) navigate('/');
-    else setError('Invalid credentials');
+    else setError('Invalid credentials. To reset contact ondaaak@gmail.com');
   };
 
   return (

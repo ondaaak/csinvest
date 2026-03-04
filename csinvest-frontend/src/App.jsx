@@ -11,6 +11,7 @@ import CharmsPage from './pages/Charms.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import './App.css'; 
 import { useCurrency } from './currency/CurrencyContext.jsx';
+import discordIcon from './assets/site/discord.png';
 
 const USER_ID = 1;
 const BASE_URL = 'http://127.0.0.1:8000'; 
@@ -380,7 +381,11 @@ function App() {
                 </Routes>
             </div>
             <footer className="footer">
-                <span>2025 CSInvest (beta) | ondaaak@gmail.com </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <span>2026 CSInvest (beta) | ondaaak@gmail.com |</span>
+                    <img src={discordIcon} alt="Discord" style={{ height: '16px', width: '16px' }} />
+                    <span>ondaaak</span>
+                </div>
             </footer>
         </>
     );
