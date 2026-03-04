@@ -140,19 +140,12 @@ export default function GlovesPage() {
   const sortedItems = React.useMemo(() => {
     const arr = [...items];
     const getPrice = (c) => typeof c.current_price === 'number' ? c.current_price : 0;
-    const getDate = (c) => c.release_date ? new Date(c.release_date) : new Date(0);
     switch (sortMode) {
       case 'price_asc':
         arr.sort((a,b) => getPrice(a) - getPrice(b));
         break;
       case 'price_desc':
         arr.sort((a,b) => getPrice(b) - getPrice(a));
-        break;
-      case 'release_new':
-        arr.sort((a,b) => getDate(b) - getDate(a));
-        break;
-      case 'release_old':
-        arr.sort((a,b) => getDate(a) - getDate(b));
         break;
       default:
         break;
@@ -268,8 +261,6 @@ export default function GlovesPage() {
         }}>
           <option value="price_desc">Price ↓</option>
           <option value="price_asc">Price ↑</option>
-          <option value="release_new">Newest</option>
-          <option value="release_old">Oldest</option>
         </select>
       </div>
       {loading && <div className="loading">Loading gloves…</div>}

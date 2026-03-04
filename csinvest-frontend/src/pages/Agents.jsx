@@ -92,7 +92,6 @@ export default function AgentsPage() {
   const sortedItems = React.useMemo(() => {
     const arr = [...items];
     const getPrice = (c) => typeof c.current_price === 'number' ? c.current_price : 0;
-    const getDate = (c) => c.release_date ? new Date(c.release_date) : new Date(0);
 
     const getRarityValue = (rarity) => {
       if (!rarity) return 0;
@@ -119,12 +118,6 @@ export default function AgentsPage() {
         break;
       case 'rarity_asc':
         arr.sort((a,b) => getRarityValue(a.rarity) - getRarityValue(b.rarity));
-        break;
-      case 'release_new':
-        arr.sort((a,b) => getDate(b) - getDate(a));
-        break;
-      case 'release_old':
-        arr.sort((a,b) => getDate(a) - getDate(b));
         break;
       default:
         break;
@@ -210,8 +203,6 @@ export default function AgentsPage() {
           <option value="price_asc">Price ↑</option>
           <option value="rarity_desc">Rarity ↓</option>
           <option value="rarity_asc">Rarity ↑</option>
-          <option value="release_new">Newest</option>
-          <option value="release_old">Oldest</option>
         </select>
         {user && (
         <button

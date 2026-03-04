@@ -8,7 +8,7 @@ export default function WeaponsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [sortMode, setSortMode] = useState('rarity_desc');
+  const [sortMode, setSortMode] = useState('price_desc');
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
@@ -179,7 +179,6 @@ export default function WeaponsPage() {
   const sortedItems = React.useMemo(() => {
     const arr = [...items];
     const getPrice = (c) => typeof c.current_price === 'number' ? c.current_price : 0;
-    const getDate = (c) => c.release_date ? new Date(c.release_date) : new Date(0);
     const getRarityValue = (rarity) => {
       if (!rarity) return 0;
       const r = rarity.toLowerCase();
@@ -197,17 +196,14 @@ export default function WeaponsPage() {
       case 'rarity_desc':
         arr.sort((a,b) => getRarityValue(b.rarity) - getRarityValue(a.rarity));
         break;
+      case 'rarity_asc':
+        arr.sort((a,b) => getRarityValue(a.rarity) - getRarityValue(b.rarity));
+        break;
       case 'price_asc':
         arr.sort((a,b) => getPrice(a) - getPrice(b));
         break;
       case 'price_desc':
         arr.sort((a,b) => getPrice(b) - getPrice(a));
-        break;
-      case 'release_new':
-        arr.sort((a,b) => getDate(b) - getDate(a));
-        break;
-      case 'release_old':
-        arr.sort((a,b) => getDate(a) - getDate(b));
         break;
       default:
         break;
@@ -334,11 +330,10 @@ export default function WeaponsPage() {
         <select value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
           background:'var(--surface-bg)', color:'var(--text-color)', border:'1px solid var(--border-color)', borderRadius:8, padding:'6px 8px'
         }}>
-          <option value="rarity_desc">Rarity</option>
           <option value="price_desc">Price ↓</option>
           <option value="price_asc">Price ↑</option>
-          <option value="release_new">Newest</option>
-          <option value="release_old">Oldest</option>
+          <option value="rarity_desc">Rarity ↓</option>
+          <option value="rarity_asc">Rarity ↑</option>
         </select>
       </div>
       {loading && <div className="loading">Loading weapons…</div>}
