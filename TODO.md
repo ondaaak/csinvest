@@ -1,5 +1,6 @@
 Needed:
     Complete code review and removal of unused code.
+    Handle multiple price refreshed in inventory.
 
 Useful:
     Make price notifications more customizable. eg. different price change...
