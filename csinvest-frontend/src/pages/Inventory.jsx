@@ -524,12 +524,13 @@ function InventoryPage() {
     try {
       const token = localStorage.getItem('csinvest:token');
       await axios.post(
-        `${BASE_URL}/useritems/${uid}/refresh`, 
-        {}, // empty body
+        `${BASE_URL}/useritems/${uid}/refresh`,
+        {},
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
+
       await fetchItems();
     } catch (e) {
       console.error(e);

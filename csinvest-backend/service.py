@@ -4,12 +4,26 @@ from strategy import IMarketStrategy
 from price_factory import PriceFactory
 import time
 import requests
+import datetime
 
 class PriceService:
+    USER_ITEM_REFRESH_MIN_AGE_SECONDS = 1800
+
     def __init__(self, db: Session, strategy: IMarketStrategy):
         self.repo = ItemRepository(db)
         self.strategy = strategy
         self.factory = PriceFactory()
+
+    def _is_user_item_refresh_too_recent(self, last_update: datetime.datetime | None) -> bool:
+        if not last_update:
+            return False
+
+        now = datetime.datetime.now()
+        try:
+            return (now - last_update).total_seconds() < self.USER_ITEM_REFRESH_MIN_AGE_SECONDS
+        except Exception:
+            # If datetime comparison fails (e.g. tz mismatch), do not block refresh.
+            return False
 
     def _send_discord_notification(self, webhook_url: str, item_name: str, old_price: float, new_price: float):
         if not webhook_url:
@@ -166,6 +180,10 @@ class PriceService:
 
             # Skip 'cash' item updates
             if itm.slug == 'cash' or itm.name == 'cash':
+                continue
+
+            if self._is_user_item_refresh_too_recent(getattr(owned, 'last_update', None)):
+                print(f"Přeskakuji UserItem {owned.user_item_id} - cena byla aktualizována před méně než 30 minutami.")
                 continue
 
             min_float = None

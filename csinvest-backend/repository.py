@@ -65,7 +65,8 @@ class ItemRepository:
             current_price=current_price,
             wear=wear_str,
             buy_date=datetime.date.today(),
-            last_update=datetime.datetime.now(),
+            # New items should be refreshable immediately by user action.
+            last_update=None,
             variant=variant,
             phase=phase
         )
@@ -199,11 +200,11 @@ class ItemRepository:
 
         # If float_value is being updated, automatically recalculate wear
         if 'float_value' in fields:
-             fval = fields['float_value']
-             # Calculate wear based on the new float value
-             new_wear = calculate_wear(fval)
-             # Update wear field in the object (it will be committed with other fields)
-             rec.wear = new_wear
+            fval = fields['float_value']
+            # Calculate wear based on the new float value
+            new_wear = calculate_wear(fval)
+            # Update wear field in the object (it will be committed with other fields)
+            rec.wear = new_wear
 
         for k, v in fields.items():
             if k in allowed:
