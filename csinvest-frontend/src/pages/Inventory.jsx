@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import AddItemModal from '../components/AddItemModal.jsx';
 import axios from 'axios';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
@@ -109,6 +109,29 @@ function InventoryPage() {
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
   const [portfolioWebhook, setPortfolioWebhook] = useState('');
   const [portfolioNotificationTime, setPortfolioNotificationTime] = useState('');
+  const actionsRef = useRef(null);
+  const [controlsWidth, setControlsWidth] = useState(null);
+
+  useEffect(() => {
+    if (!actionsRef.current || items.length === 0) return;
+
+    const measure = () => {
+      const w = actionsRef.current?.getBoundingClientRect?.().width;
+      if (w && Number.isFinite(w)) {
+        setControlsWidth(Math.round(w));
+      }
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(actionsRef.current);
+    window.addEventListener('resize', measure);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [items.length, loading]);
 
   useEffect(() => {
     if (showPortfolioModal && userId) {
@@ -539,39 +562,37 @@ function InventoryPage() {
   const displayItems = sorted.filter(i => i.slug !== 'cash' && i.item?.name?.toLowerCase() !== 'cash');
 
   return (
-    <div className="dashboard-container" style={{ maxWidth: '1400px' }}>
+    <div className="dashboard-container inventory-page" style={{ maxWidth: '1400px' }}>
       <h2 style={{ textAlign: 'center' }}>Items</h2>
 
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <input
-          className="search-input"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      {items.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <input
+            className="search-input"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ width: controlsWidth ? `${controlsWidth}px` : 'min(600px, 90vw)', maxWidth: '90vw' }}
+          />
+        </div>
+      )}
 
       <div className="inventory-actions">
-        {userId && (
-          <>
+        {userId && items.length > 0 && (
+          <div ref={actionsRef} style={{ display: 'inline-flex', alignItems: 'center', gap: 18 }}>
             <button
-              className="account-button"
+              className="account-button inventory-main-action"
               onClick={() => setShowAddModal(true)}
-              style={items.length === 0 ? { fontSize: '1.0rem', padding: '14px 24px'} : undefined}
             >
               Add New Item
             </button>
-            {items.length > 0 && (
-              <>
-                <button className="account-button" onClick={reloadPrices} disabled={loading}>
-                  {loading ? 'Loading…' : 'Reload Prices ↻'}
-                </button>
-                <button className="account-button" onClick={() => setShowPortfolioModal(true)} style={{ marginLeft: 8 }} title="Portfolio-wide notifications">
-                  Portfolio Updates 🔔
-                </button>
-              </>
-            )}
-          </>
+            <button className="account-button inventory-main-action" onClick={reloadPrices} disabled={loading}>
+              {loading ? 'Loading…' : 'Reload Prices ↻'}
+            </button>
+            <button className="account-button inventory-main-action" onClick={() => setShowPortfolioModal(true)} style={{ marginLeft: 8 }} title="Portfolio-wide notifications">
+              Portfolio Updates 🔔
+            </button>
+          </div>
         )}
       </div>
 
@@ -847,7 +868,18 @@ function InventoryPage() {
         </tbody>
         </table>
           ) : (
-            !loading ? <div className="loading">Portfolio is empty.</div> : null
+            !loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                <div className="loading">Portfolio is empty.</div>
+                <button
+                  className="account-button inventory-main-action"
+                  onClick={() => setShowAddModal(true)}
+                  style={{ fontSize: '1rem', padding: '14px 24px' }}
+                >
+                  Add New Item
+                </button>
+              </div>
+            ) : null
           )
         ) : (
           null
@@ -923,7 +955,7 @@ function InventoryPage() {
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', alignItems:'center', gap: 4 }}>
                       <div style={{ fontWeight: 600 }}>After sell fee</div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{ opacity:0.7 }}>Sell fee %</span>
+                        <span style={{ opacity:0.7 }}>%</span>
                         <input
                           className="form-input no-spin"
                           type="text"
@@ -967,7 +999,7 @@ function InventoryPage() {
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', alignItems:'center', gap: 4 }}>
                       <div style={{ fontWeight: 600 }}>After withdraw fee</div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{ opacity:0.7 }}>Withdraw fee %</span>
+                        <span style={{ opacity:0.7 }}>%</span>
                         <input
                           className="form-input no-spin"
                           type="text"

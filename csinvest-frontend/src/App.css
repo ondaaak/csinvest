@@ -142,3 +142,9 @@
 .search-text { text-align: center; }
 .search-name { color: var(--card-text-color); }
 .search-type { font-size: 0.8rem; color: #6b7280; }
+
+/* Inventory: only primary top action buttons */
+.inventory-main-action {
+  border: 1px solid #3a3a3a !important;
+  font-weight: 400;
+}

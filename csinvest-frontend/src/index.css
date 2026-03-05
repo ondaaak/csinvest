@@ -55,14 +55,44 @@ body {
     padding: 0;
 }
 
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
 .header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 18px 30px;
     background-color: var(--bg-color);
     border-bottom: 1px solid var(--surface-border);
     min-height: var(--header-h);
+}
+
+.header-left {
+    justify-self: start;
+    display: flex;
+    align-items: center;
+}
+
+.header-center {
+    justify-self: center;
+}
+
+.header-right {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav {
+    display: flex;
+    align-items: center;
+    gap: 32px;
 }
 
 .app-content { position: relative; min-height: calc(100vh - var(--header-h)); }
@@ -101,7 +131,7 @@ body {
 .nav a {
     color: var(--text-color);
     text-decoration: none;
-    margin-right: 20px;
+    margin-right: 0;
     font-size: 0.95rem;
     transition: color .15s ease, font-weight .15s ease, text-decoration-color .15s ease;
 }
@@ -122,6 +152,7 @@ body {
 }
 .account-button:hover { background-color: #000000; }
 .account-button:active { transform: translateY(1px); }
+.header-bordered-button { border: 1px solid #3a3a3a !important; }
 .refresh-button { margin-bottom: 30px; }
 .theme-toggle { width: 26px; height: 26px; border-radius: 9999px; border: 1px solid var(--surface-border); background: var(--theme-toggle-dot); cursor: pointer; }
 .theme-toggle:focus { outline: 2px solid var(--surface-border); outline-offset: 2px; }

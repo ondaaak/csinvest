@@ -333,21 +333,23 @@ function App() {
     return (
         <>
             <div className="header">
-                <NavLink to="/" style={{ textDecoration: 'none' }}>
-                    <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--accent-color)' }}>CSInvest</h1>
-                </NavLink>
-                <div className="nav" style={{ display:'flex', gap:'14px', justifyContent:'center', paddingLeft:'150px', flex:1 }}>
+                <div className="header-left">
+                    <NavLink to="/" style={{ textDecoration: 'none' }}>
+                        <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--accent-color)' }}>CSInvest</h1>
+                    </NavLink>
+                </div>
+                <div className="header-center nav">
                     <NavLink to="/" end className={({isActive}) => isActive ? 'active' : undefined}>Overview</NavLink>
                     <NavLink to="/inventory" className={({isActive}) => isActive ? 'active' : undefined}>Inventory</NavLink>
                     <NavLink to="/search" className={({isActive}) => isActive ? 'active' : undefined}>Search</NavLink>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="header-right">
                     
                     <div style={{ display:'flex', gap:6 }} title={lastUpdated ? `Rates updated: ${new Date(lastUpdated).toLocaleString('cs-CZ')}` : 'Rates not updated'}>
                       <button aria-label="Toggle currency" onClick={cycleCurrency} style={{
                           background:'var(--button-bg)',
                           color:'var(--button-text)',
-                          border:'1px solid var(--border-color)',
+                          border:'none',
                           padding:'6px 10px',
                           borderRadius:10,
                           cursor:'pointer',
@@ -356,7 +358,7 @@ function App() {
                       <button aria-label="Refresh FX rates" onClick={refreshRates} disabled={loadingRates} style={{
                           background:'var(--button-bg)',
                           color:'var(--button-text)',
-                          border:'1px solid var(--border-color)',
+                          border:'none',
                           padding:'6px 10px',
                           borderRadius:10,
                           cursor: loadingRates ? 'not-allowed':'pointer',
@@ -364,7 +366,7 @@ function App() {
                       }}>{loadingRates ? (<span className="spinner" aria-label="Loading FX rates" />) : '↻'}</button>
                     </div>
                     {user ? (
-                        <NavLink to="/account" className="account-button" style={{ textDecoration: 'none' }}>Account</NavLink>
+                        <NavLink to="/account" className="account-button header-bordered-button" style={{ textDecoration: 'none' }}>Account</NavLink>
                     ) : (
                         <NavLink to="/login" className="account-button" style={{ textDecoration: 'none' }}>Login</NavLink>
                     )}

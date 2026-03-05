@@ -187,15 +187,14 @@ export default function AccountPage() {
         <div style={{ textAlign: 'center' }}>
           <p>Logged in as <strong>{user.username}</strong></p>
           <p style={{ color:'#6b7280', fontSize:'0.85rem' }}>{user.email}</p>
-          <button className="account-button" onClick={logout}>Logout</button>
+          <button className="account-button header-bordered-button" onClick={logout} style={{ background: '#990101a2', fontWeight: 400 }}>Logout</button>
 
           <div style={{ marginTop: 40, textAlign: 'left' }}>
-            <h3>CSFloat Integration</h3>
+            <h3 style={{ textAlign: 'center' }}>CSFloat Integration</h3>
             <div style={{ background: '#1c1c1c', padding: 20, borderRadius: 8, marginBottom: 30, border: '1px solid #333' }}>
                 <p style={{ margin: '0 0 15px 0', fontSize: '0.9rem', color: '#888', lineHeight: 1.5 }}>
                   By default we are using our own CSFloat API Keys, but there are limitations to the requests. To avoid problems, please add your CSFloat API key from Developers tab. 
-                  Your API Key is encrypted using <strong>AES-256-GCM</strong> before storage. 
-                  If you lose it, generate a new one on CSFloat.
+                  Your API Key is encrypted using <strong>AES-256-GCM</strong> before storage.
                 </p>
 
                 {csfloatKeySet ? (
@@ -218,12 +217,15 @@ export default function AccountPage() {
                 ) : (
                   <div>
                     {!showKeyInput ? (
-                      <button 
-                        onClick={() => setShowKeyInput(true)}
-                        style={{ background: '#0f0f0f', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
-                      >
-                        <b>Add CSFloat API Key</b>
-                      </button>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <button
+                          className="account-button"
+                          onClick={() => setShowKeyInput(true)}
+                          style={{ border: '1px solid #3a3a3a', fontWeight: 400 }}
+                        >
+                          Add CSFloat API Key
+                        </button>
+                      </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div style={{ display: 'flex', gap: 10 }}>
@@ -236,15 +238,17 @@ export default function AccountPage() {
                             autoFocus
                           />
                           <button 
+                            className="account-button"
                             onClick={saveCsfloatKey}
-                            style={{ background: '#238636', color: 'white', border: 'none', padding: '0 20px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}
+                            style={{ background: '#238636', color: 'white', border: '1px solid #3a3a3a', padding: '10px 20px' }}
                             disabled={!csfloatKeyInput}
                           >
                             Encrypt & Save
                           </button>
                           <button 
+                            className="account-button"
                             onClick={() => { setShowKeyInput(false); setCsfloatKeyInput(''); }}
-                            style={{ background: '#333', color: '#ccc', border: 'none', padding: '0 15px', borderRadius: 6, cursor: 'pointer' }}
+                            style={{ background: '#333', color: '#ccc', border: '1px solid #3a3a3a', padding: '10px 15px' }}
                           >
                             Cancel
                           </button>
@@ -258,11 +262,11 @@ export default function AccountPage() {
                 )}
             </div>
 
-            <h3>Notifications</h3>
+            <h3 style={{ textAlign: 'center' }}>Notifications</h3>
             {loading && <p>Loading items...</p>}
             
             {!loading && !portfolioWebhook && notifiedItems.length === 0 && (
-                <p style={{ opacity: 0.6 }}>No active webhook notifications.</p>
+              <p style={{ opacity: 0.6, textAlign: 'center' }}>No active webhook notifications.</p>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>

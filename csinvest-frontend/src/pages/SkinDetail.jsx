@@ -233,59 +233,87 @@ function SkinDetailPage() {
 
   return (
     <div className="dashboard-container">
-      <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+        <button onClick={() => navigate(-1)} aria-label="Back" style={{
+          background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1
+        }}>←</button>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: '0.95rem' }}>
+          {sectionPath && navCtx?.sectionLabel && (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate(sectionPath)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', cursor: 'pointer', padding: 0, fontSize: '0.95rem' }}
+              >
+                {navCtx.sectionLabel}
+              </button>
+              {typePath && navCtx?.type && (
+                <>
+                  <span style={{ opacity: 0.7 }}>|</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate(typePath)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', cursor: 'pointer', padding: 0, fontSize: '0.95rem' }}
+                  >
+                    {navCtx.type}
+                  </button>
+                </>
+              )}
+            </>
+          )}
+          <span style={{ opacity: 0.7 }}>|</span>
+          <span style={{ fontSize: '0.95rem', opacity: 0.9 }} title={skinOnlyName || item.name}>
+            {skinOnlyName || item.name}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/search')}
+          aria-label="Go to Search"
+          title="Search"
+          style={{
+            background: 'var(--button-bg)',
+            color: 'var(--button-text)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 10,
+            width: 34,
+            height: 34,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 1,
+            flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 10.5L12 3l9 7.5" />
+            <path d="M5 9.5V21h14V9.5" />
+          </svg>
+        </button>
+      </div>
+
+      <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:8 }}>
         <h2 style={{ margin:0, flex:1 }}>{item.name}</h2>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12, fontSize: '0.9rem' }}>
-        <button onClick={() => navigate(-1)} aria-label="Back" style={{
-          background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
-        }}>←</button>
-        {sectionPath && navCtx?.sectionLabel && (
-          <>
-            <button
-              type="button"
-              onClick={() => navigate(sectionPath)}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', cursor: 'pointer', padding: 0, fontSize: '0.9rem' }}
-            >
-              {navCtx.sectionLabel}
-            </button>
-            {typePath && navCtx?.type && (
-              <>
-                <span style={{ opacity: 0.7 }}>|</span>
-                <button
-                  type="button"
-                  onClick={() => navigate(typePath)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', cursor: 'pointer', padding: 0, fontSize: '0.9rem' }}
-                >
-                  {navCtx.type}
-                </button>
-              </>
-            )}
-          </>
-        )}
-        <span style={{ opacity: 0.7 }}>|</span>
-        <span style={{ fontSize: '0.9rem', opacity: 0.9 }} title={skinOnlyName || item.name}>
-          {skinOnlyName || item.name}
-        </span>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <a
-            href={item.inspect ? `steam://rungame/730/76561202255233023/+csgo_econ_action_preview%${item.inspect}` : '#'}
-            className="badge"
-            style={{
-              textDecoration: 'none',
-              background: 'var(--button-bg)',
-              color: 'var(--button-text)',
-              border: '1px solid var(--border-color)',
-              cursor: 'pointer',
-              opacity: item.inspect ? 1 : 0.5,
-              pointerEvents: item.inspect ? 'auto' : 'none'
-            }}
-          >
-            Inspect in-game
-          </a>
-          <span className={`badge ${rarityClass(item.rarity)}`}>{item.rarity || '—'}</span>
-        </div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8, marginBottom: 16 }}>
+        <a
+          href={item.inspect ? `steam://rungame/730/76561202255233023/+csgo_econ_action_preview%${item.inspect}` : '#'}
+          className="badge"
+          style={{
+            textDecoration: 'none',
+            background: 'var(--button-bg)',
+            color: 'var(--button-text)',
+            border: '1px solid var(--border-color)',
+            cursor: 'pointer',
+            opacity: item.inspect ? 1 : 0.5,
+            pointerEvents: item.inspect ? 'auto' : 'none'
+          }}
+        >
+          Inspect in-game
+        </a>
+        <span className={`badge ${rarityClass(item.rarity)}`}>{item.rarity || '—'}</span>
       </div>
       
       <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', marginBottom: 20 }}>
