@@ -143,26 +143,26 @@ function CollectionDetailPage() {
   };
 
   return (
-    <div className="dashboard-container">
-      <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:20 }}>
+    <div className="dashboard-container collection-detail-page">
+      <div className="collection-detail-topbar" style={{ display:'flex', gap:12, alignItems:'center', marginBottom:20 }}>
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <h2 style={{ margin:0 }}>{coll.name}</h2>
+        <h2 className="collection-detail-title" style={{ margin:0 }}>{coll.name}</h2>
         <div style={{ flex:1 }}></div>
       </div>
 
-      <div style={{ display:'flex', gap:24, alignItems:'flex-start', marginBottom:32 }}>
-        <div style={{ width:200, flexShrink:0, textAlign:'center' }}>
+      <div className="collection-detail-main" style={{ display:'flex', gap:24, marginBottom:32 }}>
+        <div className="collection-detail-image-wrap" style={{ width:200, flexShrink:0, textAlign:'center' }}>
           {getCollectionImage(coll.slug) ? (
-            <img src={getCollectionImage(coll.slug)} alt={coll.name} style={{ width:'100%', borderRadius:12, border:'1px solid var(--surface-border)' }} />
+            <img src={getCollectionImage(coll.slug)} alt={coll.name} style={{ width:'100%', borderRadius:12, border:'1px solid var(--surface-border)', display:'block', margin:'0 auto' }} />
           ) : (
             <div style={{ width:'100%', aspectRatio:'1', background:'var(--surface-bg)', borderRadius:12, border:'1px solid var(--surface-border)', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <span style={{ fontSize:'2rem', opacity:0.3 }}>📦</span>
             </div>
           )}
         </div>
-        <div style={{ flex:1 }}>
+        <div className="collection-detail-info-wrap" style={{ flex:1 }}>
           <div style={{ background:'var(--card-bg)', borderRadius:12, padding:20, border:'1px solid var(--surface-border)' }}>
             <h3 style={{ marginTop:0 }}>Collection Info</h3>
             <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:'8px 16px', fontSize:'0.9rem' }}>
@@ -191,7 +191,7 @@ function CollectionDetailPage() {
 
       {packages.length > 0 && (
         <>
-          <div style={{ display:'flex', alignItems:'center', gap:12, borderBottom:'1px solid var(--surface-border)', paddingBottom:8, marginBottom:16 }}>
+          <div className="collection-packages-header" style={{ display:'flex', alignItems:'center', gap:12, borderBottom:'1px solid var(--surface-border)', paddingBottom:8, marginBottom:16 }}>
             <h3 style={{ margin:0 }}>Souvenir Packages</h3>
             <div style={{ flex:1 }} />
             <button
@@ -208,7 +208,7 @@ function CollectionDetailPage() {
               }}
             >{refreshing ? 'Refreshing…' : 'Refresh prices'}</button>
           </div>
-          <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 32 }}>
+          <div className="categories-grid collection-detail-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 32 }}>
             {packages.map(p => (
               <div
                 key={p.slug}
@@ -238,7 +238,7 @@ function CollectionDetailPage() {
       {skins.length > 0 && (
         <>
           <h3 style={{ borderBottom:'1px solid var(--surface-border)', paddingBottom:8, marginBottom:16 }}>Skins</h3>
-          <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+          <div className="categories-grid collection-detail-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
             {skins.map(it => (
               <div
                 key={it.slug}

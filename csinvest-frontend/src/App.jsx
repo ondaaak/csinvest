@@ -105,7 +105,7 @@ const PortfolioChart = ({ history, currentTotals }) => {
     };
 
     return (
-        <div style={{ height: 380, backgroundColor: 'var(--card-bg)', padding: '15px' }}>
+        <div className="overview-chart-box" style={{ height: 'clamp(260px, 52vw, 380px)', backgroundColor: 'var(--card-bg)', padding: '15px' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 15, marginBottom: 10, fontSize: '0.9rem' }}>
                 <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
                     <input type="checkbox" checked={showTotal} onChange={e => setShowTotal(e.target.checked)} />
@@ -116,7 +116,7 @@ const PortfolioChart = ({ history, currentTotals }) => {
                     <span style={{ color: '#4caf50' }}>Profit</span>
                 </label>
             </div>
-            <ResponsiveContainer width="100%" height={340}>
+            <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dataForChart} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" />
                     <XAxis
@@ -243,7 +243,7 @@ function OverviewPage() {
     const isProfit = totals.profit >= 0;
     
     return (
-        <div className="dashboard-container">
+            <div className="dashboard-container overview-page">
             <div className="total-value-block">
                 <div className="total-value-label">Total value</div>
                 <div className="value-amount">{formatPrice(totals.value)}</div>
@@ -284,7 +284,8 @@ function OverviewPage() {
                             ↓
                         </button>
                     </h2>
-                    <table>
+                        <div className="overview-table-wrap">
+                        <table>
                         <thead>
                             <tr>
                                 <th>Amount</th>
@@ -308,6 +309,7 @@ function OverviewPage() {
                             ))}
                         </tbody>
                     </table>
+                        </div>
                 </>
             )}
         </div>

@@ -129,7 +129,7 @@ function CaseDetailPage() {
   const renderItemGrid = (items) => {
     if (!items || items.length === 0) return null;
     return (
-      <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+      <div className="categories-grid case-detail-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
         {items.map(it => {
           const rarityStyle = getRarityColor(it.rarity);
           return (
@@ -168,22 +168,22 @@ function CaseDetailPage() {
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container case-detail-page">
       {/* Header */}
-      <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:20 }}>
+      <div className="case-detail-topbar" style={{ display:'flex', gap:12, alignItems:'center', marginBottom:20 }}>
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <h2 style={{ margin:0 }}>{cs.name}</h2>
+        <h2 className="case-detail-title" style={{ margin:0 }}>{cs.name}</h2>
         <div style={{ flex:1 }}></div>
       </div>
 
       {/* Main Info Section */}
-      <div style={{ display:'flex', gap:24, alignItems:'flex-start', marginBottom:32, flexWrap: 'wrap' }}>
+      <div className="case-detail-main" style={{ display:'flex', gap:24, marginBottom:32, flexWrap: 'wrap' }}>
         {/* Left: Image */}
-        <div style={{ width:200, flexShrink:0, textAlign:'center' }}>
+        <div className="case-detail-image-wrap" style={{ width:200, flexShrink:0, textAlign:'center' }}>
           {caseImgMap[slug] ? (
-            <img src={caseImgMap[slug]} alt={cs.name} style={{ width:'100%', borderRadius:12, border:'1px solid var(--surface-border)', padding: 12, background: 'var(--surface-bg)' }} />
+            <img src={caseImgMap[slug]} alt={cs.name} style={{ width:'100%', borderRadius:12, border:'1px solid var(--surface-border)', padding: 12, background: 'var(--surface-bg)', display:'block', margin:'0 auto' }} />
           ) : (
             <div style={{ width:'100%', aspectRatio:'1', background:'var(--surface-bg)', borderRadius:12, border:'1px solid var(--surface-border)', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <span style={{ fontSize:'2rem', opacity:0.3 }}>📦</span>
@@ -192,7 +192,7 @@ function CaseDetailPage() {
         </div>
 
         {/* Right: Info Card */}
-        <div style={{ flex:1, minWidth: 280 }}>
+        <div className="case-detail-info-wrap" style={{ flex:1, minWidth: 280 }}>
           <div style={{ background:'var(--card-bg)', borderRadius:12, padding:20, border:'1px solid var(--surface-border)' }}>
             <h3 style={{ marginTop:0 }}>Case Info</h3>
             <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:'8px 16px', fontSize:'0.9rem', alignItems: 'center' }}>

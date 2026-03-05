@@ -232,12 +232,12 @@ function SkinDetailPage() {
   })();
 
   return (
-    <div className="dashboard-container">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+    <div className="dashboard-container skin-detail-page">
+      <div className="skin-detail-topbar" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1
         }}>←</button>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: '0.95rem' }}>
+        <div className="skin-detail-breadcrumb" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: '0.95rem' }}>
           {sectionPath && navCtx?.sectionLabel && (
             <>
               <button
@@ -293,11 +293,11 @@ function SkinDetailPage() {
         </button>
       </div>
 
-      <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:8 }}>
+      <div className="skin-detail-title-row" style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:8 }}>
         <h2 style={{ margin:0, flex:1 }}>{item.name}</h2>
       </div>
 
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8, marginBottom: 16 }}>
+      <div className="skin-detail-actions" style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8, marginBottom: 16 }}>
         <a
           href={item.inspect ? `steam://rungame/730/76561202255233023/+csgo_econ_action_preview%${item.inspect}` : '#'}
           className="badge"
@@ -316,12 +316,12 @@ function SkinDetailPage() {
         <span className={`badge ${rarityClass(item.rarity)}`}>{item.rarity || '—'}</span>
       </div>
       
-      <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+      <div className="stat-card skin-detail-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', marginBottom: 20 }}>
+        <div className="skin-detail-main" style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             {img && (
-            <img src={img} alt={item.name} style={{ width:200, height:200, objectFit:'contain', borderRadius:12 }} />
+            <img className="skin-detail-image" src={img} alt={item.name} style={{ width:200, height:200, objectFit:'contain', borderRadius:12 }} />
             )}
-            <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+            <div className="skin-detail-info" style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                 {cases.length > 0 && (
                     <div style={{ marginTop: 0 }}>
                         <strong style={{ display: 'block', marginBottom: 10 }}>Found in cases:</strong>
@@ -331,7 +331,7 @@ function SkinDetailPage() {
                                 return (
                                     <Link to={`/case/${c.slug}`} key={c.item_id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 80, textDecoration: 'none', color: 'inherit' }} title={c.name}>
                                         {cImg ? (
-                                            <img src={cImg} alt={c.name} style={{ width: 60, height: 60, objectFit: 'contain' }} />
+                                          <img src={cImg} alt={c.name} style={{ width: 60, height: 60, objectFit: 'contain', display: 'block', margin: '0 auto' }} />
                                         ) : (
                                             <div style={{ width: 60, height: 60, background: '#333', borderRadius: 8 }}></div>
                                         )}
@@ -346,10 +346,10 @@ function SkinDetailPage() {
                 {collection && (
                     <div style={{ marginTop: cases.length > 0 ? 20 : 0 }}>
                         <strong style={{ display: 'block', marginBottom: 10 }}>Found in collection:</strong>
-                        <div style={{ marginTop: 10, display: 'flex', justifySelf: 'center' }}>
+                        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center' }}>
                             <Link to={`/collection/${collection.slug}`} style={{ display: 'inline-block', textAlign: 'center', width: 80, textDecoration: 'none', color: 'inherit' }} title={collection.name}>
                                 {getCollectionImage(collection.slug || '') ? (
-                                    <img src={getCollectionImage(collection.slug || '')} alt={collection.name} style={{ width: 60, height: 60, objectFit: 'contain' }} />
+                                  <img src={getCollectionImage(collection.slug || '')} alt={collection.name} style={{ width: 60, height: 60, objectFit: 'contain', display: 'block', margin: '0 auto' }} />
                                 ) : (
                                     <div style={{ width: 60, height: 60, background: '#333', borderRadius: 8, margin: '0 auto' }}></div>
                                 )}
