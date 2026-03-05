@@ -272,40 +272,44 @@ function OverviewPage() {
                 <PortfolioChart history={filteredHistory} currentTotals={totals} />
             </div>
             
-            <h2 className="mpi-header">
-                Most profitable items
-                <button
-                    className={`arrow-toggle ${sortAsc ? 'rotated' : ''}`}
-                    onClick={() => setSortAsc(!sortAsc)}
-                    aria-label="Toggle sort order"
-                >
-                    ↓
-                </button>
-            </h2>
-                        <table>
-                <thead>
-                    <tr>
-                        <th>Amount</th>
-                        <th>Name</th>
-                        <th>Buy Price</th>
-                        <th>Current Price</th>
-                        <th>Profit</th>
-                        <th>Profit %</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedPortfolio.map(item => (
-                        <tr key={item.user_item_id}>
-                            <td>{typeof item.amount === 'number' ? item.amount : 1}</td>
-                            <td>{item.item?.name || '—'}</td>
-                            <td>{formatPrice(item.buy_price)}</td>
-                            <td>{formatPrice(item.current_price)}</td>
-                            <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{formatPrice(item.profit)}</td>
-                            <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{((item.profit / ((item.buy_price * (typeof item.amount === 'number' ? item.amount : 1)) || 1)) * 100).toFixed(2)}%</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {sortedPortfolio.length > 0 && (
+                <>
+                    <h2 className="mpi-header">
+                        Most profitable items
+                        <button
+                            className={`arrow-toggle ${sortAsc ? 'rotated' : ''}`}
+                            onClick={() => setSortAsc(!sortAsc)}
+                            aria-label="Toggle sort order"
+                        >
+                            ↓
+                        </button>
+                    </h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Amount</th>
+                                <th>Name</th>
+                                <th>Buy Price</th>
+                                <th>Current Price</th>
+                                <th>Profit</th>
+                                <th>Profit %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sortedPortfolio.map(item => (
+                                <tr key={item.user_item_id}>
+                                    <td>{typeof item.amount === 'number' ? item.amount : 1}</td>
+                                    <td>{item.item?.name || '—'}</td>
+                                    <td>{formatPrice(item.buy_price)}</td>
+                                    <td>{formatPrice(item.current_price)}</td>
+                                    <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{formatPrice(item.profit)}</td>
+                                    <td className={item.profit >= 0 ? 'profit-text' : 'loss-text'}>{((item.profit / ((item.buy_price * (typeof item.amount === 'number' ? item.amount : 1)) || 1)) * 100).toFixed(2)}%</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </>
+            )}
         </div>
     );
 }
