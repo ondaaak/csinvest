@@ -335,7 +335,7 @@ function App() {
             <div className="header">
                 <div className="header-left">
                     <NavLink to="/" style={{ textDecoration: 'none' }}>
-                        <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--accent-color)' }}>CSInvest</h1>
+                        <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--accent-color)' }}>CS2Invests</h1>
                     </NavLink>
                 </div>
                 <div className="header-center nav">
