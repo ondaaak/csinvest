@@ -267,12 +267,12 @@ export default function WeaponsPage() {
   };
 
   return (
-    <div className="dashboard-container">
-      <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
+    <div className="dashboard-container search-page">
+      <div className="search-page-toolbar">
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <div style={{ margin: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+        <div className="search-page-title" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
           <button
             type="button"
             onClick={() => navigate('/search/weapons')}
@@ -287,7 +287,7 @@ export default function WeaponsPage() {
             </>
           )}
         </div>
-        <div ref={boxRef} style={{ position: 'relative', width: 320, maxWidth: '100%' }}>
+        <div ref={boxRef} className="search-page-search-wrap">
           <input
             className="search-input"
             type="text"
@@ -358,7 +358,7 @@ export default function WeaponsPage() {
             </div>
           )}
         </div>
-        <select value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
+        <select className="search-page-sort" value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
           background:'var(--surface-bg)', color:'var(--text-color)', border:'1px solid var(--border-color)', borderRadius:8, padding:'6px 8px'
         }}>
           <option value="price_desc">Price ↓</option>
@@ -370,7 +370,7 @@ export default function WeaponsPage() {
       {loading && <div className="loading">Loading weapons…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
       {!q ? (
-        <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="categories-grid search-page-grid">
           {WEAPON_CATEGORIES.map(cat => (
             <div
               key={cat.name}
@@ -393,7 +393,7 @@ export default function WeaponsPage() {
           ))}
         </div>
       ) : (
-        <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="categories-grid search-page-grid">
           {sortedItems.map(it => (
             <div
               key={it.slug}

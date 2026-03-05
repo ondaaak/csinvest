@@ -97,13 +97,13 @@ function CollectionsPage() {
   }
 
   return (
-    <div className="dashboard-container">
-      <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:12 }}>
+    <div className="dashboard-container search-page">
+      <div className="search-page-toolbar">
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <h2 style={{ margin:0, flex:1, paddingLeft:'14%' }}>Collections</h2>
-        <div style={{ position: 'relative', width: 320, maxWidth: '100%' }}>
+        <h2 className="search-page-title">Collections</h2>
+        <div className="search-page-search-wrap">
           <input
             className="search-input"
             type="text"
@@ -134,7 +134,7 @@ function CollectionsPage() {
             </button>
           )}
         </div>
-        <select value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
+        <select className="search-page-sort" value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
           background:'var(--surface-bg)', color:'var(--text-color)', border:'1px solid var(--border-color)', borderRadius:8, padding:'6px 8px'
         }}>
           <option value="release_new">Newest</option>
@@ -142,7 +142,7 @@ function CollectionsPage() {
         </select>
       </div>
 
-      <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+      <div className="categories-grid search-page-grid">
         {sortedCollections.map(c => {
           const badge = badgeColors(c.drop_type);
           return (

@@ -161,13 +161,13 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="dashboard-container">
-      <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:12 }}>
+    <div className="dashboard-container search-page">
+      <div className="search-page-toolbar">
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <h2 style={{ margin:0, flex:1, paddingLeft:'14%' }}>Agents</h2>
-        <div style={{ position: 'relative', width: 320, maxWidth: '100%' }}>
+        <h2 className="search-page-title">Agents</h2>
+        <div className="search-page-search-wrap">
           <input
             className="search-input"
             type="text"
@@ -198,7 +198,7 @@ export default function AgentsPage() {
             </button>
           )}
         </div>
-        <select value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
+        <select className="search-page-sort" value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
           background:'var(--surface-bg)', color:'var(--text-color)', border:'1px solid var(--border-color)', borderRadius:8, padding:'6px 8px'
         }}>
           <option value="price_desc">Price ↓</option>
@@ -223,7 +223,7 @@ export default function AgentsPage() {
       </div>
       {loading && <div className="loading">Loading agents…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
-      <div className="categories-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      <div className="categories-grid search-page-grid">
         {sortedItems.map(it => (
           <div
             key={it.slug}
