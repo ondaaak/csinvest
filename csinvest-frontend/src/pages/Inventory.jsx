@@ -579,7 +579,7 @@ function InventoryPage() {
 
       <div className="inventory-actions">
         {userId && items.length > 0 && (
-          <div ref={actionsRef} style={{ display: 'inline-flex', alignItems: 'center', gap: 18 }}>
+          <div ref={actionsRef} className="inventory-actions-group">
             <button
               className="account-button inventory-main-action"
               onClick={() => setShowAddModal(true)}
@@ -599,6 +599,7 @@ function InventoryPage() {
       <div className={userId && items.length > 0 ? "blur-container" : ""}>
         {userId ? (
           items.length > 0 ? (
+        <div className="inventory-table-wrap">
         <table>
         <thead>
           <tr>
@@ -867,6 +868,7 @@ function InventoryPage() {
           )}
         </tbody>
         </table>
+        </div>
           ) : (
             !loading ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
@@ -930,8 +932,8 @@ function InventoryPage() {
             return (
               <div>
                 <div className="stat-card summary-card">
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', alignItems:'center', gap: 4 }}>
-                    <div style={{ fontWeight: 600 }}>Market price</div>
+                  <div className="inventory-summary-grid" style={{ display:'grid', alignItems:'center', gap: 4 }}>
+                    <div className="inventory-summary-title" style={{ fontWeight: 600 }}>Market price</div>
                     <div>{/* spacer to align with fee input in other rows */}</div>
                     <div>
                       <div style={{ opacity:0.7 }}>Deposit</div>
@@ -952,9 +954,9 @@ function InventoryPage() {
                   </div>
                 </div>
                   <div className="stat-card summary-card">
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', alignItems:'center', gap: 4 }}>
-                      <div style={{ fontWeight: 600 }}>After sell fee</div>
-                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <div className="inventory-summary-grid" style={{ display:'grid', alignItems:'center', gap: 4 }}>
+                      <div className="inventory-summary-title" style={{ fontWeight: 600 }}>After sell fee</div>
+                      <div className="inventory-fee-input" style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ opacity:0.7 }}>%</span>
                         <input
                           className="form-input no-spin"
@@ -996,9 +998,9 @@ function InventoryPage() {
                     </div>
                   </div>
                   <div className="stat-card summary-card">
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', alignItems:'center', gap: 4 }}>
-                      <div style={{ fontWeight: 600 }}>After withdraw fee</div>
-                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <div className="inventory-summary-grid" style={{ display:'grid', alignItems:'center', gap: 4 }}>
+                      <div className="inventory-summary-title" style={{ fontWeight: 600 }}>After withdraw fee</div>
+                      <div className="inventory-fee-input" style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ opacity:0.7 }}>%</span>
                         <input
                           className="form-input no-spin"

@@ -345,7 +345,7 @@ function App() {
                 </div>
                 <div className="header-right">
                     
-                    <div style={{ display:'flex', gap:6 }} title={lastUpdated ? `Rates updated: ${new Date(lastUpdated).toLocaleString('cs-CZ')}` : 'Rates not updated'}>
+                    <div className="header-tools" title={lastUpdated ? `Rates updated: ${new Date(lastUpdated).toLocaleString('cs-CZ')}` : 'Rates not updated'}>
                       <button aria-label="Toggle currency" onClick={cycleCurrency} style={{
                           background:'var(--button-bg)',
                           color:'var(--button-text)',
@@ -406,9 +406,10 @@ function App() {
                 </Routes>
             </div>
             <footer className="footer">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                    <span>2026 CSInvest (beta) | ondaaak@gmail.com |</span>
-                    <img src={discordIcon} alt="Discord" style={{ height: '16px', width: '16px' }} />
+                <div className="footer-line">2026 CSInvest (beta) |</div>
+                <div className="footer-line">ondaaak@gmail.com |</div>
+                <div className="footer-line" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <img src={discordIcon} alt="Discord" style={{ height: '14px', width: '14px' }} />
                     <span>ondaaak</span>
                 </div>
             </footer>
