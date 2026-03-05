@@ -552,15 +552,23 @@ function InventoryPage() {
       <div className="inventory-actions">
         {userId && (
           <>
-            <button className="account-button" onClick={() => setShowAddModal(true)}>
-              Add new item +
+            <button
+              className="account-button"
+              onClick={() => setShowAddModal(true)}
+              style={items.length === 0 ? { fontSize: '1.0rem', padding: '14px 24px'} : undefined}
+            >
+              Add New Item
             </button>
-            <button className="account-button" onClick={reloadPrices} disabled={loading}>
-              {loading ? 'Loading…' : 'Reload Prices ↻'}
-            </button>
-            <button className="account-button" onClick={() => setShowPortfolioModal(true)} style={{ marginLeft: 8 }} title="Portfolio-wide notifications">
-              Portfolio Updates 🔔
-            </button>
+            {items.length > 0 && (
+              <>
+                <button className="account-button" onClick={reloadPrices} disabled={loading}>
+                  {loading ? 'Loading…' : 'Reload Prices ↻'}
+                </button>
+                <button className="account-button" onClick={() => setShowPortfolioModal(true)} style={{ marginLeft: 8 }} title="Portfolio-wide notifications">
+                  Portfolio Updates 🔔
+                </button>
+              </>
+            )}
           </>
         )}
       </div>

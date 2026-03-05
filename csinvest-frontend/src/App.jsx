@@ -17,19 +17,12 @@ const USER_ID = 1;
 const BASE_URL = 'http://127.0.0.1:8000'; 
 
 
-const PortfolioChart = ({ history }) => {
+const PortfolioChart = ({ history, currentTotals }) => {
     const { formatPrice } = useCurrency();
     const [showTotal, setShowTotal] = useState(true);
     const [showProfit, setShowProfit] = useState(true);
 
-    if (!history || history.length === 0) {
-        return (
-            <div style={{ height: 350, backgroundColor: 'var(--card-bg)', padding: '15px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', color:'var(--card-text-color)' }}>
-                No history data.
-            </div>
-        );
-    }
-    const dataForChartBase = history.map(record => {
+    const dataForChartBase = (history || []).map(record => {
         const t = new Date(record.timestamp);
         const val = Number(record.total_value ?? 0);
         const prof = Number(record.total_profit ?? 0);
@@ -44,23 +37,43 @@ const PortfolioChart = ({ history }) => {
         };
     });
     const nowMs = Date.now();
+    const liveValue = Number(currentTotals?.value ?? 0);
+    const liveProfit = Number(currentTotals?.profit ?? 0);
+    const liveInvested = Number(currentTotals?.invested ?? (liveValue - liveProfit));
+    const liveProfitPct = liveInvested > 0 ? (liveProfit / liveInvested) * 100 : 0;
+    const livePoint = {
+        name: new Date(nowMs).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
+        ts: nowMs,
+        value: liveValue,
+        profit: liveProfit,
+        profitPct: liveProfitPct,
+    };
+
     const dataForChart = (() => {
-        if (dataForChartBase.length === 0) return dataForChartBase;
+        if (dataForChartBase.length === 0) {
+            return [livePoint];
+        }
+
         const last = dataForChartBase[dataForChartBase.length - 1];
         if (last.ts < nowMs) {
             return [
                 ...dataForChartBase,
-                {
-                    name: new Date(nowMs).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
-                    ts: nowMs,
-                    value: last.value,
-                    profit: last.profit,
-                    profitPct: last.profitPct,
-                },
+                livePoint,
             ];
         }
-        return dataForChartBase;
+        return [
+            ...dataForChartBase.slice(0, -1),
+            { ...dataForChartBase[dataForChartBase.length - 1], ...livePoint },
+        ];
     })();
+
+    if (dataForChart.length === 0) {
+        return (
+            <div style={{ height: 350, backgroundColor: 'var(--card-bg)', padding: '15px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', color:'var(--card-text-color)' }}>
+                No history data.
+            </div>
+        );
+    }
 
     const CustomTooltip = ({ active, payload }) => {
         if (!active || !payload || payload.length === 0) return null;
@@ -172,16 +185,22 @@ function OverviewPage() {
             setPortfolio(portfolioData);
             setHistory(historyArray);
 
-            if (historyArray.length > 0) {
-                const latest = historyArray[historyArray.length - 1];
-                setTotals({
-                    invested: parseFloat(latest.total_invested),
-                    value: parseFloat(latest.total_value),
-                    profit: parseFloat(latest.total_profit)
-                });
-            } else {
-                setTotals({ invested: 0, value: 0, profit: 0 });
-            }
+            // Keep header totals based on currently fetched portfolio prices,
+            // not on historical snapshots that can lag behind.
+            const liveTotals = portfolioData.reduce((acc, item) => {
+                const amt = typeof item.amount === 'number' ? item.amount : 1;
+                const buyUnit = Number(item.buy_price) || 0;
+                const currentUnit = Number(item.current_price) || 0;
+                acc.invested += buyUnit * amt;
+                acc.value += currentUnit * amt;
+                return acc;
+            }, { invested: 0, value: 0 });
+
+            setTotals({
+                invested: liveTotals.invested,
+                value: liveTotals.value,
+                profit: liveTotals.value - liveTotals.invested,
+            });
         } catch (err) {
             console.error("Chyba při načítání dat z API:", err);
             setError("Nepodařilo se načíst data z backendu.");
@@ -250,7 +269,7 @@ function OverviewPage() {
                         ))}
                     </div>
                 </div>
-                <PortfolioChart history={filteredHistory} />
+                <PortfolioChart history={filteredHistory} currentTotals={totals} />
             </div>
             
             <h2 className="mpi-header">
