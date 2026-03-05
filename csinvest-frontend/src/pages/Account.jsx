@@ -191,14 +191,14 @@ export default function AccountPage() {
 
           <div style={{ marginTop: 40, textAlign: 'left' }}>
             <h3 style={{ textAlign: 'center' }}>CSFloat Integration</h3>
-            <div style={{ background: '#1c1c1c', padding: 20, borderRadius: 8, marginBottom: 30, border: '1px solid #333' }}>
+            <div className="account-csfloat-card" style={{ background: '#1c1c1c', padding: 20, borderRadius: 8, marginBottom: 30, border: '1px solid #333' }}>
                 <p style={{ margin: '0 0 15px 0', fontSize: '0.9rem', color: '#888', lineHeight: 1.5 }}>
                   By default we are using our own CSFloat API Keys, but there are limitations to the requests. To avoid problems, please add your CSFloat API key from Developers tab. 
                   Your API Key is encrypted using <strong>AES-256-GCM</strong> before storage.
                 </p>
 
                 {csfloatKeySet ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(76, 175, 80, 0.1)', padding: 15, borderRadius: 6, border: '1px solid rgba(76, 175, 80, 0.3)' }}>
+                  <div className="account-csfloat-active-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(76, 175, 80, 0.1)', padding: 15, borderRadius: 6, border: '1px solid rgba(76, 175, 80, 0.3)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ background: '#4caf50', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'black', fontWeight: 'bold' }}>✓</div>
                       <div>
@@ -228,8 +228,9 @@ export default function AccountPage() {
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ display: 'flex', gap: 10 }}>
+                        <div className="account-csfloat-input-row" style={{ display: 'flex', gap: 10 }}>
                           <input 
+                            className="account-csfloat-input"
                             type="password" 
                             placeholder="Paste your API Key (e.g. HfcuMg...)"
                             value={csfloatKeyInput}
@@ -238,7 +239,7 @@ export default function AccountPage() {
                             autoFocus
                           />
                           <button 
-                            className="account-button"
+                            className="account-button account-csfloat-action"
                             onClick={saveCsfloatKey}
                             style={{ background: '#238636', color: 'white', border: '1px solid #3a3a3a', padding: '10px 20px' }}
                             disabled={!csfloatKeyInput}
@@ -246,7 +247,7 @@ export default function AccountPage() {
                             Encrypt & Save
                           </button>
                           <button 
-                            className="account-button"
+                            className="account-button account-csfloat-action"
                             onClick={() => { setShowKeyInput(false); setCsfloatKeyInput(''); }}
                             style={{ background: '#333', color: '#ccc', border: '1px solid #3a3a3a', padding: '10px 15px' }}
                           >

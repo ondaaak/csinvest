@@ -406,7 +406,7 @@ function App() {
                 </Routes>
             </div>
             <footer className="footer">
-                <div className="footer-line">2026 CSInvest (beta) |</div>
+                <div className="footer-line">2026 CS2Invests (beta) |</div>
                 <div className="footer-line">ondaaak@gmail.com |</div>
                 <div className="footer-line" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     <img src={discordIcon} alt="Discord" style={{ height: '14px', width: '14px' }} />
