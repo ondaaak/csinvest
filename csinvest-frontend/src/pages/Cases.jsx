@@ -3,11 +3,13 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext';
+import { useAppModal } from '../components/AppModalProvider.jsx';
 
 const BASE_URL = 'http://127.0.0.1:8000';
 
 function CasesPage() {
   const { user } = useAuth();
+  const { showAlert } = useAppModal();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,7 +58,7 @@ function CasesPage() {
     });
 
     if (!anyOutdated && cases.length > 0) {
-       alert('Prices are up to date (updated less than 1 hour ago).');
+       await showAlert('Prices are up to date (updated less than 1 hour ago).', { title: 'Price refresh' });
        return;
     }
 

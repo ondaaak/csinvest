@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { useAppModal } from '../components/AppModalProvider.jsx';
 
 const USER_ID = 1;
 const BASE_URL = 'http://127.0.0.1:8000';
@@ -13,6 +14,7 @@ const isDoppler = (nm) => nm && nm.includes('Doppler');
 function InventoryPage() {
   const { userId, logout } = useAuth();
   const { formatPrice, currency, rates } = useCurrency();
+  const { showAlert, showConfirm } = useAppModal();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,7 @@ function InventoryPage() {
       );
       setShowPortfolioModal(false);
     } catch (err) {
-      alert('Failed to save portfolio webhook');
+      await showAlert('Failed to save portfolio webhook');
       console.error(err);
     }
   };
@@ -217,19 +219,19 @@ function InventoryPage() {
           const text = await resp.text();
           console.error('Save failed:', text);
           if (resp.status === 401 || resp.status === 403) {
-            alert('Session expired. Please login again.');
+            await showAlert('Session expired. Please login again.');
             logout();
             navigate('/login');
             return;
           }
-          alert(`Saving failed: ${text}`);
+          await showAlert(`Saving failed: ${text}`);
           return;
         }
 
         await fetchItems();
       } catch (e) {
         console.error('Save failed', e);
-        alert(`Saving failed: ${e.message || e}`);
+        await showAlert(`Saving failed: ${e.message || e}`);
       } finally {
         setSavingIds(prev => {
           const next = new Set(prev);
@@ -459,7 +461,7 @@ function InventoryPage() {
       await fetchItems();
       setInfoItem(null); // Close modal
     } catch (err) {
-      alert(err.message);
+      await showAlert(err.message || 'Failed to update details');
     }
   };
 
@@ -486,7 +488,7 @@ function InventoryPage() {
       await fetchItems();
       setNotificationItem(null);
     } catch (err) {
-      alert(err.message);
+      await showAlert(err.message || 'Failed to update notification settings');
     }
   };
 
@@ -508,7 +510,7 @@ function InventoryPage() {
       await fetchItems();
     } catch (e) {
       console.error(e);
-      alert('Price refresh failed');
+      await showAlert('Price refresh failed');
     } finally {
       setUpdatingIds(prev => {
         const next = new Set(prev);
@@ -696,7 +698,7 @@ function InventoryPage() {
                     </button>
 
                     <button className="icon-btn" title="Delete" disabled={savingIds.has(item.user_item_id)} onClick={async () => {
-                      if (!window.confirm('Delete this item?')) return;
+                      if (!(await showConfirm('Are you sure you want to delete this item?', { title: 'Delete item',  }))) return;
                       try {
                         const token = localStorage.getItem('csinvest:token');
                         await fetch(`${BASE_URL}/useritems/${item.user_item_id}`, {
@@ -823,7 +825,7 @@ function InventoryPage() {
                           setBuyMode((prev) => ({ ...prev, [cashItem.user_item_id]: 'total' })); // doesn't matter for qty 1
                     }} disabled={savingIds.has(cashItem.user_item_id)}><PencilIcon /></button>
                     <button className="icon-btn" title="Delete Cash" disabled={savingIds.has(cashItem.user_item_id)} onClick={async () => {
-                      if (!window.confirm('Delete cash item?')) return;
+                      if (!(await showConfirm('Delete cash item?', { title: 'Delete cash', confirmText: 'Delete' }))) return;
                       try {
                         const token = localStorage.getItem('csinvest:token');
                         for (const c of cashItems) {

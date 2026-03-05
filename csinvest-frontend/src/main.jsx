@@ -6,13 +6,16 @@ import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import { CurrencyProvider } from './currency/CurrencyContext.jsx'
+import { AppModalProvider } from './components/AppModalProvider.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
         <CurrencyProvider>
-          <App />
+          <AppModalProvider>
+            <App />
+          </AppModalProvider>
         </CurrencyProvider>
       </AuthProvider>
     </BrowserRouter>

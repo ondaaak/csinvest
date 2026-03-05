@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import axios from 'axios';
+import { useAppModal } from '../components/AppModalProvider.jsx';
 
 const BASE_URL = 'http://127.0.0.1:8000';
 
 export default function AccountPage() {
   const { user, userId, logout, setUser } = useAuth(); // Assuming setUser is exposed in AuthContext, if not we might need to fetch /auth/me locally or update context
+  const { showAlert, showConfirm } = useAppModal();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   // Local state for portfolio webhook to ensure we have latest even if context is stale
@@ -40,20 +42,20 @@ export default function AccountPage() {
           // alert("CSFloat API Key saved safely!");
       } catch (e) {
           console.error(e);
-          alert("Failed to save key");
+          await showAlert('Failed to save key', { title: 'CSFloat API Key' });
       }
   };
 
   const deleteCsfloatKey = async () => {
       const token = localStorage.getItem('csinvest:token');
-      if(!window.confirm("Are you sure you want to remove your CSFloat API Key?")) return;
+      if (!(await showConfirm('Are you sure you want to remove your CSFloat API Key?', { title: 'Remove API Key', confirmText: 'Confirm' }))) return;
       try {
           await axios.delete(`${BASE_URL}/user/csfloat`, { headers: { Authorization: `Bearer ${token}` } });
           setCsfloatKeySet(false);
           // alert("CSFloat API Key removed!");
       } catch (e) {
           console.error(e);
-          alert("Failed to remove key");
+        await showAlert('Failed to remove key', { title: 'CSFloat API Key' });
       }
   };
 
@@ -143,7 +145,7 @@ export default function AccountPage() {
   }, [userId, user]);
 
   const removePortfolioWebhook = async () => {
-    if (!window.confirm("Stop portfolio-wide notifications?")) return;
+    if (!(await showConfirm('Stop portfolio-wide notifications?', { title: 'Disable notifications', confirmText: 'Stop' }))) return;
     try {
         const token = localStorage.getItem('csinvest:token');
         await axios.patch(`${BASE_URL}/users/me`, 
@@ -152,12 +154,12 @@ export default function AccountPage() {
         );
         setPortfolioWebhook(null);
     } catch (e) {
-        alert(e.message);
+        await showAlert(e.message || 'Failed to disable notifications');
     }
   };
 
   const removeWebhook = async (item) => {
-    if (!window.confirm(`Stop notifications for ${item.item?.name}?`)) return;
+    if (!(await showConfirm(`Stop notifications for ${item.item?.name}?`, { title: 'Disable item notification', confirmText: 'Stop' }))) return;
     try {
       const token = localStorage.getItem('csinvest:token');
       // Use helper if axios has issues with null body field or config order
@@ -171,7 +173,7 @@ export default function AccountPage() {
       // Update state
       setItems(prev => prev.map(i => i.user_item_id === item.user_item_id ? { ...i, discord_webhook_url: null } : i));
     } catch (e) {
-      alert(e.message);
+      await showAlert(e.message || 'Failed to remove webhook');
     }
   };
 
