@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -9,6 +9,7 @@ const BASE_URL = 'http://127.0.0.1:8000';
 function SkinDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { formatPrice } = useCurrency();
   const [item, setItem] = useState(null);
   const [cases, setCases] = useState([]);
@@ -219,13 +220,55 @@ function SkinDetailPage() {
       price: h.price
   }));
 
+  const navCtx = location.state?.fromSearchHierarchy || null;
+  const sectionPath = navCtx?.section ? `/search/${navCtx.section}` : null;
+  const typePath = navCtx?.type && sectionPath
+    ? `${sectionPath}?q=${encodeURIComponent(`${navCtx.type} | `)}`
+    : null;
+  const skinOnlyName = (() => {
+    const raw = item?.name || '';
+    if (!raw.includes('|')) return raw;
+    return raw.split('|').slice(1).join('|').trim();
+  })();
+
   return (
     <div className="dashboard-container">
       <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', marginBottom:12 }}>
+        <h2 style={{ margin:0, flex:1 }}>{item.name}</h2>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12, fontSize: '0.9rem' }}>
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <h2 style={{ margin:0, flex:1 }}>{item.name}</h2>
+        {sectionPath && navCtx?.sectionLabel && (
+          <>
+            <button
+              type="button"
+              onClick={() => navigate(sectionPath)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', cursor: 'pointer', padding: 0, fontSize: '0.9rem' }}
+            >
+              {navCtx.sectionLabel}
+            </button>
+            {typePath && navCtx?.type && (
+              <>
+                <span style={{ opacity: 0.7 }}>|</span>
+                <button
+                  type="button"
+                  onClick={() => navigate(typePath)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', cursor: 'pointer', padding: 0, fontSize: '0.9rem' }}
+                >
+                  {navCtx.type}
+                </button>
+              </>
+            )}
+          </>
+        )}
+        <span style={{ opacity: 0.7 }}>|</span>
+        <span style={{ fontSize: '0.9rem', opacity: 0.9 }} title={skinOnlyName || item.name}>
+          {skinOnlyName || item.name}
+        </span>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <a
             href={item.inspect ? `steam://rungame/730/76561202255233023/+csgo_econ_action_preview%${item.inspect}` : '#'}
             className="badge"
@@ -235,14 +278,14 @@ function SkinDetailPage() {
               color: 'var(--button-text)',
               border: '1px solid var(--border-color)',
               cursor: 'pointer',
-              marginLeft: 8,
               opacity: item.inspect ? 1 : 0.5,
               pointerEvents: item.inspect ? 'auto' : 'none'
             }}
           >
-          Inspect in-game
+            Inspect in-game
           </a>
-        <span className={`badge ${rarityClass(item.rarity)}`}>{item.rarity || '—'}</span>
+          <span className={`badge ${rarityClass(item.rarity)}`}>{item.rarity || '—'}</span>
+        </div>
       </div>
       
       <div className="stat-card" style={{ background:'var(--surface-bg)', color:'var(--text-color)', marginBottom: 20 }}>

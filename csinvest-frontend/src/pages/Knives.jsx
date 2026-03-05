@@ -41,6 +41,23 @@ export default function KnivesPage() {
   ], []);
 
   const q = new URLSearchParams(location.search).get('q') || '';
+  const activeKnifeType = useMemo(() => {
+    const ql = (q || '').toLowerCase().trim();
+    const match = KNIFE_TYPES.find(k => ql.startsWith(`${k.name.toLowerCase()} |`));
+    return match ? match.name : null;
+  }, [q, KNIFE_TYPES]);
+
+  const openSkinDetail = (itemSlug) => {
+    navigate(`/skin/${itemSlug}`, {
+      state: {
+        fromSearchHierarchy: {
+          section: 'knives',
+          sectionLabel: 'Knives',
+          type: activeKnifeType,
+        },
+      },
+    });
+  };
 
   const skinImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
@@ -201,7 +218,21 @@ export default function KnivesPage() {
         <button onClick={() => navigate(-1)} aria-label="Back" style={{
           background:'var(--button-bg)', color:'var(--button-text)', border:'1px solid var(--border-color)', borderRadius:10, padding:'6px 10px', cursor:'pointer'
         }}>←</button>
-        <h2 style={{ margin:0, flex:1, paddingLeft:'14%' }}>Knives</h2>
+        <div style={{ margin: 0, flex: 1, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+          <button
+            type="button"
+            onClick={() => navigate('/search/knives')}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', padding: 0, cursor: 'pointer', fontSize: '0.95rem' }}
+          >
+            Knives
+          </button>
+          {activeKnifeType && (
+            <>
+              <span style={{ opacity: 0.7 }}>|</span>
+              <span style={{ fontSize: '0.95rem', opacity: 0.9 }}>{activeKnifeType}</span>
+            </>
+          )}
+        </div>
         <div ref={boxRef} style={{ position: 'relative', width: 320, maxWidth: '100%' }}>
           <input
             className="search-input"
@@ -250,7 +281,7 @@ export default function KnivesPage() {
                 <button
                   key={s.slug}
                   onClick={() => {
-                    navigate(`/skin/${s.slug}`);
+                    openSkinDetail(s.slug);
                     setOpen(false);
                   }}
                   className="search-suggestion-row"
@@ -311,7 +342,7 @@ export default function KnivesPage() {
             <div
               key={it.slug}
               className="category-card item-card"
-              onClick={() => navigate(`/skin/${it.slug}`)}
+              onClick={() => openSkinDetail(it.slug)}
               style={{ cursor: 'pointer' }}
             >
               {getSkinImage(it.slug) ? (
