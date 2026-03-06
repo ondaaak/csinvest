@@ -14,7 +14,7 @@ import { useCurrency } from './currency/CurrencyContext.jsx';
 import discordIcon from './assets/site/discord.png';
 
 const USER_ID = 1;
-const BASE_URL = 'http://127.0.0.1:8000'; 
+const BASE_URL = '/api'; 
 
 
 const PortfolioChart = ({ history, currentTotals }) => {

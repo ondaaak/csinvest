@@ -4,7 +4,7 @@ import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useAppModal } from '../components/AppModalProvider.jsx';
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = '/api';
 
 export default function AgentsPage() {
   const { user } = useAuth();

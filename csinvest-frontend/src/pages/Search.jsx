@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = '/api';
 
 const CATEGORIES = [
   { key: 'cases', label: 'Cases' },

@@ -5,7 +5,7 @@ import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext';
 import { useAppModal } from '../components/AppModalProvider.jsx';
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = '/api';
 
 function CasesPage() {
   const { user } = useAuth();

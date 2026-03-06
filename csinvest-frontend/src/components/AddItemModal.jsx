@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = '/api';
 
 function AddItemModal({ onClose, onAdded }) {
   const { userId } = useAuth();

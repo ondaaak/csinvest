@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = '/api';
 
 function SkinDetailPage() {
   const { slug } = useParams();

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = '/api';
 
 export default function WeaponsPage() {
   const [items, setItems] = useState([]);

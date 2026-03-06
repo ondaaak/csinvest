@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppModal } from '../components/AppModalProvider.jsx';
 
 const USER_ID = 1;
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = '/api';
 
 const isDoppler = (nm) => nm && nm.includes('Doppler');
 

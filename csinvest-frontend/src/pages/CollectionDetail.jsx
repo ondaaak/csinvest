@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = '/api';
 
 function CollectionDetailPage() {
   const { slug } = useParams();

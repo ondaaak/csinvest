@@ -3,7 +3,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import axios from 'axios';
 import { useAppModal } from '../components/AppModalProvider.jsx';
 
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = '/api';
 
 export default function AccountPage() {
   const { user, userId, logout, setUser } = useAuth(); // Assuming setUser is exposed in AuthContext, if not we might need to fetch /auth/me locally or update context
