@@ -4,7 +4,6 @@ import json
 import base64
 import hmac
 import hashlib
-import re
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -18,20 +17,9 @@ SECRET_KEY = cfg.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_SECONDS = cfg.ACCESS_TOKEN_EXPIRE_SECONDS
 
-SALT = cfg.PASSWORD_SALT
 security = HTTPBearer()
 # bcrypt has a 72-byte input limit; bcrypt_sha256 pre-hashes safely and avoids this.
 pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
-
-_SHA256_HEX_RE = re.compile(r"^[a-f0-9]{64}$")
-
-
-def _hash_password_legacy_sha256(password: str) -> str:
-    return hashlib.sha256(f"{SALT}:{password}".encode()).hexdigest()
-
-
-def _is_legacy_sha256_hash(password_hash: str) -> bool:
-    return bool(password_hash and _SHA256_HEX_RE.fullmatch(password_hash))
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -40,29 +28,8 @@ def verify_password(password: str, password_hash: str) -> bool:
     if not password_hash:
         return False
 
-    # Legacy compatibility for old accounts (salted SHA256) until all users migrate.
-    if _is_legacy_sha256_hash(password_hash):
-        legacy_hash = _hash_password_legacy_sha256(password)
-        return hmac.compare_digest(legacy_hash, password_hash)
-
     try:
         return pwd_context.verify(password, password_hash)
-    except Exception:
-        return False
-
-
-def should_rehash_password(password_hash: str) -> bool:
-    """
-    Returns True if stored hash should be upgraded to current algorithm settings.
-    """
-    if not password_hash:
-        return False
-
-    if _is_legacy_sha256_hash(password_hash):
-        return True
-
-    try:
-        return pwd_context.needs_update(password_hash)
     except Exception:
         return False
 
