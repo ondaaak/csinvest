@@ -11,5 +11,7 @@ Not needed:
     Doppler Phases work weirdly.
     Refreshes every hour = VIP ? xd , roles
     Set individual currency for each user
+    Change .env
+    fix DB
     
 
