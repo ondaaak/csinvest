@@ -27,6 +27,7 @@ Vytvořte `csinvest-backend/.env` podle vzoru `.env.example`:
 ```
 DATABASE_URL=sqlite:///./csinvest.db
 SECRET_KEY=dlouhy_nahodny_retezec
+# PASSWORD_SALT ponechte pouze kvuli overeni starsich SHA256 hashu pri migraci
 PASSWORD_SALT=vlastni_salt
 CSFLOAT_API_KEY=volitelne
 ```
@@ -35,7 +36,7 @@ CSFLOAT_API_KEY=volitelne
 React + Vite. Token a uživatel se ukládají do `localStorage` (`csinvest:token`, `csinvest:user`).
 
 ### Bezpečnostní poznámka
-Hesla jsou zatím hashována pouze salted SHA256 (nevhodné pro produkci). Doporučeno nahradit za bcrypt / argon2.
+Hesla se hashují pomocí bcrypt (passlib). Staré salted SHA256 hashe jsou podporované pouze pro kompatibilitu a po úspěšném přihlášení se automaticky migrují na bcrypt.
 
 ### Rychlý start
 ```

@@ -8,7 +8,7 @@ from strategy import CSFloatStrategy
 from models import PortfolioHistory, User, Item, MarketPrice
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
-from auth import hash_password, verify_password, create_access_token, get_current_user
+from auth import hash_password, verify_password, should_rehash_password, create_access_token, get_current_user
 from config import Config
 from sqlalchemy import func
 from scheduler import start_scheduler
@@ -97,6 +97,11 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == data.username).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Neplatné přihlašovací údaje")
+
+    if should_rehash_password(user.password_hash):
+        user.password_hash = hash_password(data.password)
+        db.commit()
+
     token = create_access_token(str(user.user_id))
     return {"access_token": token, "token_type": "bearer", "user": user_to_schema(user)}
 
