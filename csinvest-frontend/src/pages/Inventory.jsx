@@ -207,7 +207,7 @@ function InventoryPage() {
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [userId]);
 
     const saveEdit = async (id) => {
       const token = localStorage.getItem('csinvest:token');

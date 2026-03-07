@@ -20,10 +20,15 @@ export function AuthProvider({ children }) {
     const init = async () => {
       const token = localStorage.getItem('csinvest:token');
       const rawUser = localStorage.getItem('csinvest:user');
+      let hasCachedUser = false;
+
       if (rawUser) {
         try {
           const parsed = JSON.parse(rawUser);
-          if (parsed && parsed.user_id) setUser(parsed);
+          if (parsed && parsed.user_id) {
+            setUser(parsed);
+            hasCachedUser = true;
+          }
         } catch {}
 
       }
@@ -37,12 +42,16 @@ export function AuthProvider({ children }) {
             const u = await res.json();
             setUser(u);
           } else {
+            if (!hasCachedUser) {
+              localStorage.removeItem('csinvest:token');
+              localStorage.removeItem('csinvest:user');
+            }
+          }
+        } catch {
+          if (!hasCachedUser) {
             localStorage.removeItem('csinvest:token');
             localStorage.removeItem('csinvest:user');
           }
-        } catch {
-          localStorage.removeItem('csinvest:token');
-          localStorage.removeItem('csinvest:user');
         }
       }
     };
