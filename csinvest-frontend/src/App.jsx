@@ -329,7 +329,7 @@ function App() {
     const isSearch = path.startsWith('/search');
     const isAuthPage = path === '/login' || path === '/register' || path === '/account';
     
-    const blurPaths = ['/', '/inventory'];
+    const blurPaths = ['/overview', '/inventory'];
     const shouldBlur = !user && blurPaths.includes(path) && !isAuthPage;
 
     return (
@@ -341,7 +341,7 @@ function App() {
                     </NavLink>
                 </div>
                 <div className="header-center nav">
-                    <NavLink to="/" end className={({isActive}) => isActive ? 'active' : undefined}>Overview</NavLink>
+                    <NavLink to="/overview" className={({isActive}) => isActive ? 'active' : undefined}>Overview</NavLink>
                     <NavLink to="/inventory" className={({isActive}) => isActive ? 'active' : undefined}>Inventory</NavLink>
                     <NavLink to="/search" className={({isActive}) => isActive ? 'active' : undefined}>Search</NavLink>
                 </div>
@@ -386,7 +386,8 @@ function App() {
                     </div>
                 )}
                 <Routes>
-                    <Route path="/" element={<OverviewPage />} />
+                    <Route path="/" element={<SearchPage />} />
+                    <Route path="/overview" element={<OverviewPage />} />
                     <Route path="/inventory" element={<InventoryPage />} />
                     {/** Add route removed; Add Item is now handled via modal in Inventory */}
                     <Route path="/search" element={<SearchPage />} />
@@ -404,7 +405,7 @@ function App() {
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/account" element={<AccountPage />} />
-                    <Route path="*" element={<OverviewPage />} />
+                    <Route path="*" element={<SearchPage />} />
                 </Routes>
             </div>
             <footer className="footer">

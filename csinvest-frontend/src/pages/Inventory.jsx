@@ -565,6 +565,22 @@ function InventoryPage() {
   return (
     <div className="dashboard-container inventory-page" style={{ maxWidth: '1400px' }}>
       <h2 style={{ textAlign: 'center' }}>Items</h2>
+      <div
+        role="status"
+        style={{
+          margin: '0 auto 16px auto',
+          maxWidth: '900px',
+          padding: '10px 14px',
+          borderRadius: 10,
+          border: '1px solid #5a4700',
+          background: 'rgba(255, 193, 7, 0.12)',
+          color: '#f8e7a1',
+          textAlign: 'center',
+          fontSize: '0.95rem'
+        }}
+      >
+        The price reload function is currently unavailable.
+      </div>
 
       {items.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'center' }}>

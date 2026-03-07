@@ -1,11 +1,20 @@
-import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
 
 const API_BASE = '/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUserState] = useState(null);
+
+  const setUser = useCallback((nextUser) => {
+    setUserState(nextUser);
+    if (nextUser) {
+      localStorage.setItem('csinvest:user', JSON.stringify(nextUser));
+    } else {
+      localStorage.removeItem('csinvest:user');
+    }
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -16,7 +25,10 @@ export function AuthProvider({ children }) {
           const parsed = JSON.parse(rawUser);
           if (parsed && parsed.user_id) setUser(parsed);
         } catch {}
-      } else if (token) {
+
+      }
+
+      if (token) {
         try {
           const res = await fetch(`${API_BASE}/auth/me`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -24,12 +36,13 @@ export function AuthProvider({ children }) {
           if (res.ok) {
             const u = await res.json();
             setUser(u);
-            localStorage.setItem('csinvest:user', JSON.stringify(u));
           } else {
             localStorage.removeItem('csinvest:token');
+            localStorage.removeItem('csinvest:user');
           }
         } catch {
           localStorage.removeItem('csinvest:token');
+          localStorage.removeItem('csinvest:user');
         }
       }
     };
@@ -46,7 +59,6 @@ export function AuthProvider({ children }) {
       if (!res.ok) return false;
       const data = await res.json();
       localStorage.setItem('csinvest:token', data.access_token);
-      localStorage.setItem('csinvest:user', JSON.stringify(data.user));
       setUser(data.user);
       return true;
     } catch {
@@ -73,7 +85,6 @@ export function AuthProvider({ children }) {
       }
       const data = await res.json();
       localStorage.setItem('csinvest:token', data.access_token);
-      localStorage.setItem('csinvest:user', JSON.stringify(data.user));
       setUser(data.user);
       return true;
     } catch (e) {
@@ -84,11 +95,10 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('csinvest:user');
     localStorage.removeItem('csinvest:token');
   };
 
-  const value = useMemo(() => ({ user, userId: user?.user_id ?? null, login, register, logout }), [user]);
+  const value = useMemo(() => ({ user, userId: user?.user_id ?? null, login, register, logout, setUser }), [user, setUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -49,6 +49,7 @@ class AuthUser(BaseModel):
     email: EmailStr
     discord_portfolio_webhook_url: str | None = None
     discord_portfolio_notification_time: str | None = None
+    currency: str | None = None
 
 def user_to_schema(u: User) -> AuthUser:
     return AuthUser(
@@ -56,7 +57,8 @@ def user_to_schema(u: User) -> AuthUser:
         username=u.username, 
         email=u.email,
         discord_portfolio_webhook_url=u.discord_portfolio_webhook_url,
-        discord_portfolio_notification_time=u.discord_portfolio_notification_time
+        discord_portfolio_notification_time=u.discord_portfolio_notification_time,
+        currency=u.currency or 'USD'
     )
 
 @app.post("/auth/register")
@@ -67,27 +69,10 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter((User.username == data.username) | (User.email == data.email)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username nebo email již existuje")
-    user = User(username=data.username, email=data.email, password_hash=hash_password(data.password))
+    user = User(username=data.username, email=data.email, password_hash=hash_password(data.password), currency='USD')
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    # Automatically add default 'cash' item to new user
-    cash_item = db.query(Item).filter(Item.slug == 'cash').first()
-    if cash_item:
-        from models import UserItem
-        import datetime
-        default_cash = UserItem(
-            user_id=user.user_id,
-            item_id=cash_item.item_id,
-            amount=1,
-            buy_price=0,
-            current_price=0,
-            buy_date=datetime.date.today(),
-            last_update=datetime.datetime.now()
-        )
-        db.add(default_cash)
-        db.commit()
 
     token = create_access_token(str(user.user_id))
     return {"access_token": token, "token_type": "bearer", "user": user_to_schema(user)}
@@ -108,10 +93,18 @@ def auth_me(current: User = Depends(get_current_user)):
 class UpdateUserRequest(BaseModel):
     discord_portfolio_webhook_url: str | None = None
     discord_portfolio_notification_time: str | None = None
+    currency: str | None = None
 
 @app.patch("/users/me")
 def update_user_me(payload: UpdateUserRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     update_data = payload.dict(exclude_unset=True)
+    if 'currency' in update_data and update_data['currency'] is not None:
+        allowed_currencies = {'USD', 'EUR', 'GBP', 'CZK', 'RUB'}
+        normalized = str(update_data['currency']).upper()
+        if normalized not in allowed_currencies:
+            raise HTTPException(status_code=400, detail='Unsupported currency')
+        update_data['currency'] = normalized
+
     for key, value in update_data.items():
         setattr(current, key, value)
     db.commit()

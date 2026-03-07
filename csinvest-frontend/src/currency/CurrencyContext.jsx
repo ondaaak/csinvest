@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useAuth } from '../auth/AuthContext.jsx';
+
+const API_BASE = '/api';
 
 const FALLBACK_RATES = {
   USD: 1,
@@ -16,6 +19,13 @@ const SYMBOLS = {
   RUB: '₽',
 };
 
+const ORDER = ['USD','EUR','GBP','CZK','RUB'];
+
+const normalizeCurrency = (value) => {
+  const next = String(value || '').toUpperCase();
+  return ORDER.includes(next) ? next : 'USD';
+};
+
 const CurrencyContext = createContext({
   currency: 'USD',
   setCurrency: () => {},
@@ -28,6 +38,7 @@ const CurrencyContext = createContext({
 });
 
 export const CurrencyProvider = ({ children }) => {
+  const { user, setUser } = useAuth();
   const [currency, setCurrency] = useState('USD');
   const [rates, setRates] = useState(FALLBACK_RATES);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -35,6 +46,15 @@ export const CurrencyProvider = ({ children }) => {
 
 
   useEffect(() => {
+    try {
+      const cachedCurrency = localStorage.getItem('csinvest:currency');
+      if (cachedCurrency) {
+        setCurrency(normalizeCurrency(cachedCurrency));
+      }
+    } catch (e) {
+      // Ignore localStorage access errors.
+    }
+
     try {
       const cached = localStorage.getItem('csinvest:fx');
       if (cached) {
@@ -51,6 +71,20 @@ export const CurrencyProvider = ({ children }) => {
     
     fetchRates();
   }, []);
+
+  useEffect(() => {
+    if (user?.currency) {
+      setCurrency(normalizeCurrency(user.currency));
+    }
+  }, [user?.currency]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('csinvest:currency', currency);
+    } catch (e) {
+      // Ignore localStorage access errors.
+    }
+  }, [currency]);
 
   const fetchRates = async () => {
     setLoadingRates(true);
@@ -103,14 +137,41 @@ export const CurrencyProvider = ({ children }) => {
     return SYMBOLS[currency] + converted.toFixed(2);
   }, [currency, rates]);
 
-  const ORDER = ['USD','EUR','GBP','CZK','RUB'];
-  const cycleCurrency = () => {
+  const persistCurrency = useCallback(async (nextCurrency) => {
+    if (!user?.user_id) return;
+
+    const token = localStorage.getItem('csinvest:token');
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/users/me`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currency: nextCurrency }),
+      });
+
+      if (!res.ok) return;
+
+      const updatedUser = await res.json();
+      if (updatedUser?.user_id) {
+        setUser(updatedUser);
+      }
+    } catch (e) {
+      // Keep UI responsive even if persisting fails.
+    }
+  }, [user?.user_id, setUser]);
+
+  const cycleCurrency = useCallback(() => {
     setCurrency(prev => {
       const idx = ORDER.indexOf(prev);
       const next = ORDER[(idx + 1) % ORDER.length];
+      void persistCurrency(next);
       return next;
     });
-  };
+  }, [persistCurrency]);
 
   const refreshRates = () => fetchRates();
 
