@@ -138,10 +138,20 @@ function AddItemModal({ onClose, onAdded }) {
     e.preventDefault();
     if (!userId) { setError('Please login first.'); return; }
     if (!selected?.item_id) { setError('Select an item.'); return; }
+
+    let parsedFloat = null;
+    if (String(floatValue).trim() !== '') {
+      parsedFloat = Number(String(floatValue).replace(',', '.'));
+      if (Number.isNaN(parsedFloat) || parsedFloat < 0 || parsedFloat > 1) {
+        setError('Float must be a number between 0 and 1.');
+        return;
+      }
+    }
+
     const payload = {
       item_id: selected.item_id,
       amount: Number(amount) || 1,
-      float_value: floatValue ? Number(String(floatValue).replace(',', '.')) : null,
+      float_value: parsedFloat,
       buy_price: parsePrice(buyPrice) / (rates[inputCurrency] || 1),
       variant: selectedVariant || null,
       phase: selectedPhase || null,

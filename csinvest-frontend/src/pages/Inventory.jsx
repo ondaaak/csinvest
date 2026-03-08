@@ -459,6 +459,15 @@ function InventoryPage() {
   const handleInfoSave = async (e) => {
     e.preventDefault();
     if (!infoItem) return;
+
+    let parsedFloat = null;
+    if (String(infoItem.float_value ?? '').trim() !== '') {
+      parsedFloat = Number(String(infoItem.float_value).replace(',', '.'));
+      if (Number.isNaN(parsedFloat) || parsedFloat < 0 || parsedFloat > 1) {
+        await showAlert('Float must be a number between 0 and 1.');
+        return;
+      }
+    }
     
     // Construct payload for update
     // We only update float for now, description is placeholder
@@ -470,7 +479,7 @@ function InventoryPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-           float_value: infoItem.float_value === '' ? null : Number(infoItem.float_value),
+            float_value: parsedFloat,
            description: infoItem.description || null,
            variant: infoItem.variant || null,
            phase: infoItem.phase || null 
@@ -579,7 +588,7 @@ function InventoryPage() {
           fontSize: '0.95rem'
         }}
       >
-        The price reload function is currently unavailable.
+        The price reload function may not work properly.
       </div>
 
       {items.length > 0 && (
