@@ -22,12 +22,18 @@ class Config(metaclass=_Singleton):
         self.CSFLOAT_API_KEY: str = self.CSFLOAT_API_KEYS[0] if self.CSFLOAT_API_KEYS else ""
         
         self.CSFLOAT_ENCRYPTION_KEY: str = os.getenv("CSFLOAT_ENCRYPTION_KEY", "")
+        self.CSFLOAT_ENCRYPTION_LEGACY_KEYS: List[str] = [
+            key.strip()
+            for key in os.getenv("CSFLOAT_ENCRYPTION_LEGACY_KEYS", "").split(',')
+            if key.strip() and key.strip() != self.CSFLOAT_ENCRYPTION_KEY
+        ]
 
         self.SECRET_KEY: str = os.getenv("SECRET_KEY", "")
         if not self.SECRET_KEY:
             raise ValueError("SECRET_KEY is missing in environment (.env)")
         self.PASSWORD_SALT: str = os.getenv("PASSWORD_SALT", "csinvest_static_salt")
-        self.ACCESS_TOKEN_EXPIRE_SECONDS: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS", "3600"))
+        expire_raw = (os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS", "3600") or "").strip()
+        self.ACCESS_TOKEN_EXPIRE_SECONDS: int = int(expire_raw) if expire_raw else 0
 
         self.INVITE_CODE: str = os.getenv("INVITE_CODE", "SECRET_BETA")
 

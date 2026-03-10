@@ -24,7 +24,6 @@ function SearchPage() {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const boxRef = useRef(null);
   const navigate = useNavigate();
 
@@ -71,7 +70,6 @@ function SearchPage() {
   useEffect(() => {
     const q = query.trim();
     if (!q) { setSuggestions([]); return; }
-    setLoading(true);
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&limit=8`);
@@ -89,8 +87,6 @@ function SearchPage() {
       } catch {
         setSuggestions([]);
         setOpen(false);
-      } finally {
-        setLoading(false);
       }
     }, 200);
     return () => clearTimeout(t);

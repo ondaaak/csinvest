@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useCurrency } from '../currency/CurrencyContext.jsx';
 
 const API_BASE = '/api';
 
@@ -15,7 +14,6 @@ export default function KnivesPage() {
   const boxRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { formatPrice } = useCurrency();
 
   const KNIFE_TYPES = React.useMemo(() => [
     { name: 'Karambit', imgSlug: 'karambit-vanilla' },
@@ -100,7 +98,7 @@ export default function KnivesPage() {
 
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`${API_BASE}/search/knives?q=${encodeURIComponent(qTrim)}&limit=5`);
+        const res = await fetch(`${API_BASE}/knives?q=${encodeURIComponent(qTrim)}&limit=5`);
         if (res.ok) {
           const data = await res.json();
           const arr = Array.isArray(data) ? data : [];
@@ -149,7 +147,7 @@ export default function KnivesPage() {
       setLoading(true);
       setError(null);
       try {
-        const url = `${API_BASE}/search/knives?q=${encodeURIComponent(q)}`;
+        const url = `${API_BASE}/knives?q=${encodeURIComponent(q)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to load knives');
         const data = await res.json();

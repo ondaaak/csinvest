@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useCurrency } from '../currency/CurrencyContext.jsx';
 
 const BASE_URL = '/api';
 
@@ -12,7 +11,6 @@ function CollectionsPage() {
   const [sortMode, setSortMode] = useState('release_new');
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const { formatPrice } = useCurrency();
 
   // We can try to load images if they exist, or just use placeholders
   const collectionImgMap = useMemo(() => {

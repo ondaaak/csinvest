@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { InventoryPage, SearchPage, SearchCategory, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage, WeaponsPage, CollectionsPage, CollectionDetailPage } from './pages';
+import { InventoryPage, SearchPage, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage, WeaponsPage, CollectionsPage, CollectionDetailPage } from './pages';
 import LoginPage from './pages/Login.jsx';
 import RegisterPage from './pages/Register.jsx';
 import AccountPage from './pages/Account.jsx';
@@ -13,7 +13,6 @@ import './App.css';
 import { useCurrency } from './currency/CurrencyContext.jsx';
 import discordIcon from './assets/site/discord.png';
 
-const USER_ID = 1;
 const BASE_URL = '/api'; 
 
 
@@ -21,6 +20,31 @@ const PortfolioChart = ({ history, currentTotals }) => {
     const { formatPrice } = useCurrency();
     const [showTotal, setShowTotal] = useState(true);
     const [showProfit, setShowProfit] = useState(true);
+    const chartHostRef = useRef(null);
+    const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+
+    useEffect(() => {
+        if (!chartHostRef.current) {
+            return;
+        }
+
+        const measure = () => {
+            const rect = chartHostRef.current.getBoundingClientRect();
+            const nextWidth = Math.max(0, Math.floor(rect.width));
+            const nextHeight = Math.max(0, Math.floor(rect.height));
+            setChartSize({ width: nextWidth, height: nextHeight });
+        };
+
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(chartHostRef.current);
+        window.addEventListener('resize', measure);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener('resize', measure);
+        };
+    }, []);
 
     const dataForChartBase = (history || []).map(record => {
         const t = new Date(record.timestamp);
@@ -116,28 +140,30 @@ const PortfolioChart = ({ history, currentTotals }) => {
                     <span style={{ color: '#4caf50' }}>Profit</span>
                 </label>
             </div>
-            <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dataForChart} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" />
-                    <XAxis
-                        dataKey="ts"
-                        type="number"
-                        domain={[ 'dataMin', nowMs ]}
-                        tickFormatter={(v) => new Date(v).toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
-                        stroke="var(--card-text-color)"
-                        tick={{ fontSize: 12 }}
-                        tickMargin={10}
-                    />
-                    <YAxis stroke="var(--card-text-color)" domain={['auto', 'auto']} tickFormatter={(value) => `$${value}`} width={60} />
-                    <Tooltip content={<CustomTooltip />} />
-                    {showTotal && (
-                        <Line type="monotone" dataKey="value" name="Total Value" stroke="#ffffff" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-                    )}
-                    {showProfit && (
-                        <Line type="monotone" dataKey="profit" name="Profit" stroke="#4caf50" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-                    )}
-                </LineChart>
-            </ResponsiveContainer>
+            <div ref={chartHostRef} style={{ width: '100%', height: 'calc(100% - 36px)', minWidth: 220, minHeight: 220 }}>
+                {chartSize.width > 0 && chartSize.height > 0 && (
+                    <LineChart width={chartSize.width} height={chartSize.height} data={dataForChart} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" />
+                        <XAxis
+                            dataKey="ts"
+                            type="number"
+                            domain={[ 'dataMin', nowMs ]}
+                            tickFormatter={(v) => new Date(v).toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                            stroke="var(--card-text-color)"
+                            tick={{ fontSize: 12 }}
+                            tickMargin={10}
+                        />
+                        <YAxis stroke="var(--card-text-color)" domain={['auto', 'auto']} tickFormatter={(value) => `$${value}`} width={60} />
+                        <Tooltip content={<CustomTooltip />} />
+                        {showTotal && (
+                            <Line type="monotone" dataKey="value" name="Total Value" stroke="#ffffff" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                        )}
+                        {showProfit && (
+                            <Line type="monotone" dataKey="profit" name="Profit" stroke="#4caf50" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                        )}
+                    </LineChart>
+                )}
+            </div>
         </div>
     );
 };
@@ -149,20 +175,14 @@ function OverviewPage() {
     const [portfolio, setPortfolio] = useState([]);
     const [history, setHistory] = useState([]);
     const [totals, setTotals] = useState({ invested: 0, value: 0, profit: 0 });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [timeframe, setTimeframe] = useState('all');
     const [sortAsc, setSortAsc] = useState(false);
 
     const fetchData = async () => {
-        setLoading(true);
-        setError(null);
-
         if (!userId) {
             setPortfolio([]);
             setHistory([]);
             setTotals({ invested: 0, value: 0, profit: 0 });
-            setLoading(false);
             return;
         }
         try {
@@ -203,9 +223,6 @@ function OverviewPage() {
             });
         } catch (err) {
             console.error("Chyba při načítání dat z API:", err);
-            setError("Nepodařilo se načíst data z backendu.");
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -326,7 +343,6 @@ function App() {
         window.scrollTo(0, 0);
     }, [path]);
 
-    const isSearch = path.startsWith('/search');
     const isAuthPage = path === '/login' || path === '/register' || path === '/account';
     
     const blurPaths = ['/overview', '/inventory'];
@@ -401,7 +417,6 @@ function App() {
                     <Route path="/case/:slug" element={<CaseDetailPage />} />
                     <Route path="/collection/:slug" element={<CollectionDetailPage />} />
                     <Route path="/skin/:slug" element={<SkinDetailPage />} />
-                    <Route path="/search/:category" element={<SearchCategory />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/account" element={<AccountPage />} />

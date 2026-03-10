@@ -51,7 +51,7 @@ export const CurrencyProvider = ({ children }) => {
       if (cachedCurrency) {
         setCurrency(normalizeCurrency(cachedCurrency));
       }
-    } catch (e) {
+    } catch {
       // Ignore localStorage access errors.
     }
 
@@ -65,8 +65,8 @@ export const CurrencyProvider = ({ children }) => {
           return;
         }
       }
-    } catch (e) {
-      
+    } catch {
+      // Ignore invalid cached exchange-rate payloads.
     }
     
     fetchRates();
@@ -81,7 +81,7 @@ export const CurrencyProvider = ({ children }) => {
   useEffect(() => {
     try {
       localStorage.setItem('csinvest:currency', currency);
-    } catch (e) {
+    } catch {
       // Ignore localStorage access errors.
     }
   }, [currency]);
@@ -113,7 +113,7 @@ export const CurrencyProvider = ({ children }) => {
           if (Object.keys(picked).length) { store(picked); return; }
         }
         throw new Error('Malformed rate response');
-      } catch (e1) {
+      } catch {
         
         const data2 = await fetchJson('https://open.er-api.com/v6/latest/USD');
         const r2 = data2?.rates || data2?.conversion_rates || null;
@@ -159,7 +159,7 @@ export const CurrencyProvider = ({ children }) => {
       if (updatedUser?.user_id) {
         setUser(updatedUser);
       }
-    } catch (e) {
+    } catch {
       // Keep UI responsive even if persisting fails.
     }
   }, [user?.user_id, setUser]);

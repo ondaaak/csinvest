@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useCurrency } from '../currency/CurrencyContext.jsx';
 
 const API_BASE = '/api';
 
@@ -15,7 +14,6 @@ export default function WeaponsPage() {
   const boxRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { formatPrice } = useCurrency();
 
   // Define weapon categories
   const WEAPON_CATEGORIES = React.useMemo(() => [
@@ -125,7 +123,7 @@ export default function WeaponsPage() {
 
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`${API_BASE}/search/weapons?q=${encodeURIComponent(qTrim)}&limit=5`);
+        const res = await fetch(`${API_BASE}/weapons?q=${encodeURIComponent(qTrim)}&limit=5`);
         if (res.ok) {
           const data = await res.json();
           const arr = Array.isArray(data) ? data : [];
@@ -174,7 +172,7 @@ export default function WeaponsPage() {
       setLoading(true);
       setError(null);
       try {
-        const url = `${API_BASE}/search/weapons?q=${encodeURIComponent(q)}`;
+        const url = `${API_BASE}/weapons?q=${encodeURIComponent(q)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to load weapons');
         const data = await res.json();

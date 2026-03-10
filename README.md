@@ -1,56 +1,47 @@
-## CSInvest
+# CSInvest
 
-Portfolio a cenové sledování CS2 skinů / case položek.
+CSInvest is a CS2 portfolio and price-tracking app with a FastAPI backend and a React + Vite frontend.
 
-### Backend
-FastAPI + SQLAlchemy. Ceny se aktualizují přes strategii `CSFloatStrategy`.
+## Stack
 
-### Auth (Nově přidáno)
-Jednoduché JWT (ruční HS256 implementace) pro registraci / přihlášení.
+- Backend: FastAPI, SQLAlchemy, APScheduler
+- Frontend: React, Vite
+- Auth: JWT bearer tokens
 
-Endpointy:
-- `POST /auth/register` body: `{ "username": "nick", "email": "mail@example.com", "password": "heslo" }`
-- `POST /auth/login` body: `{ "username": "nick", "password": "heslo" }`
-- `GET /auth/me` hlavička: `Authorization: Bearer <token>`
+## Quick Start
 
-Odpověď login/register:
-```json
-{
-	"access_token": "<JWT>",
-	"token_type": "bearer",
-	"user": { "user_id": 1, "username": "nick", "email": "mail@example.com" }
-}
-```
+1. Create a backend env file at `csinvest-backend/.env`:
 
-### .env konfigurace
-Vytvořte `csinvest-backend/.env` podle vzoru `.env.example`:
-```
+```env
 DATABASE_URL=sqlite:///./csinvest.db
-SECRET_KEY=dlouhy_nahodny_retezec
-PASSWORD_SALT=vlastni_salt
-CSFLOAT_API_KEY=volitelne
+SECRET_KEY=your_long_random_secret
+PASSWORD_SALT=your_custom_salt
+INVITE_CODE=your_invite_code
+CSFLOAT_API_KEY=
+CSFLOAT_ENCRYPTION_KEY=
+CSFLOAT_ENCRYPTION_LEGACY_KEYS=
+ACCESS_TOKEN_EXPIRE_SECONDS=
 ```
 
-### Frontend
-React + Vite. Token a uživatel se ukládají do `localStorage` (`csinvest:token`, `csinvest:user`).
+2. Start the backend:
 
-### Bezpečnostní poznámka
-Hesla se hashují pomocí bcrypt (passlib).
-
-### Rychlý start
-```
+```powershell
 cd csinvest-backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
-Frontend:
-```
+
+3. Start the frontend in a second terminal:
+
+```powershell
 cd csinvest-frontend
 npm install
 npm run dev
 ```
 
-### Licence
-Interní projekt / zatím bez licence.
+4. Open the app in your browser:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`

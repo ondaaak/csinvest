@@ -6,7 +6,6 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import { useAppModal } from '../components/AppModalProvider.jsx';
 
-const USER_ID = 1;
 const BASE_URL = '/api';
 
 const isDoppler = (nm) => nm && nm.includes('Doppler');
@@ -18,7 +17,6 @@ function InventoryPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('total'); 
   const [sortAsc, setSortAsc] = useState(false);
@@ -167,7 +165,6 @@ function InventoryPage() {
 
   const fetchItems = async () => {
     setLoading(true);
-    setError(null);
     try {
       if (!userId) {
         setItems([]);
@@ -186,7 +183,6 @@ function InventoryPage() {
       setItems(data);
     } catch (err) {
       console.error('Chyba načítání inventáře:', err);
-      setError('Nepodařilo se načíst položky.');
     } finally {
       setLoading(false);
     }
@@ -199,7 +195,6 @@ function InventoryPage() {
       await fetchItems();
     } catch (err) {
       console.error(err);
-      setError('Aktualizace cen selhala.');
     } finally {
       setLoading(false);
     }
@@ -332,12 +327,6 @@ function InventoryPage() {
     }
   });
 
-  const getFloat = (it) => {
-    const v = it.float_value ?? it.item?.wearValue ?? null;
-    return v === null || v === undefined ? null : Number(v);
-  };
-
-  const getBuyTotal = (it) => (it.buy_price || 0) * getAmount(it);
   const getCurrentTotal = (it) => (it.current_price || 0) * getAmount(it);
 
   const openItem = (itm) => {
@@ -574,23 +563,6 @@ function InventoryPage() {
   return (
     <div className="dashboard-container inventory-page" style={{ maxWidth: '1400px' }}>
       <h2 style={{ textAlign: 'center' }}>Items</h2>
-      <div
-        role="status"
-        style={{
-          margin: '0 auto 16px auto',
-          maxWidth: '900px',
-          padding: '10px 14px',
-          borderRadius: 10,
-          border: '1px solid #5a4700',
-          background: 'rgba(255, 193, 7, 0.12)',
-          color: '#f8e7a1',
-          textAlign: 'center',
-          fontSize: '0.95rem'
-        }}
-      >
-        The price reload function may not work properly.
-      </div>
-
       {items.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <input

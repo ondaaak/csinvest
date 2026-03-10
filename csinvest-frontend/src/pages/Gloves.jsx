@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useCurrency } from '../currency/CurrencyContext.jsx';
 
 const API_BASE = '/api';
 
@@ -15,7 +14,6 @@ export default function GlovesPage() {
   const boxRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { formatPrice } = useCurrency();
 
   const GLOVE_TYPES = React.useMemo(() => [
     { name: 'Bloodhound Gloves', imgSlug: 'bloodhound-gloves-bronzed' },
@@ -87,7 +85,7 @@ export default function GlovesPage() {
 
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`${API_BASE}/search/gloves?q=${encodeURIComponent(qTrim)}&limit=5`);
+        const res = await fetch(`${API_BASE}/gloves?q=${encodeURIComponent(qTrim)}&limit=5`);
         if (res.ok) {
           const data = await res.json();
           const arr = Array.isArray(data) ? data : [];
@@ -136,7 +134,7 @@ export default function GlovesPage() {
       setLoading(true);
       setError(null);
       try {
-        const url = `${API_BASE}/search/gloves?q=${encodeURIComponent(q)}`;
+        const url = `${API_BASE}/gloves?q=${encodeURIComponent(q)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to load gloves');
         const data = await res.json();

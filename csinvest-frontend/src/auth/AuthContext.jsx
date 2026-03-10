@@ -4,8 +4,28 @@ const API_BASE = '/api';
 
 const AuthContext = createContext(null);
 
+function readStoredUser() {
+  const rawUser = localStorage.getItem('csinvest:user');
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawUser);
+    return parsed && parsed.user_id ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUserState] = useState(null);
+
+  const clearStoredAuth = useCallback(() => {
+    setUserState(null);
+    localStorage.removeItem('csinvest:token');
+    localStorage.removeItem('csinvest:user');
+  }, []);
 
   const setUser = useCallback((nextUser) => {
     setUserState(nextUser);
@@ -19,46 +39,37 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const init = async () => {
       const token = localStorage.getItem('csinvest:token');
-      const rawUser = localStorage.getItem('csinvest:user');
-      let hasCachedUser = false;
-
-      if (rawUser) {
-        try {
-          const parsed = JSON.parse(rawUser);
-          if (parsed && parsed.user_id) {
-            setUser(parsed);
-            hasCachedUser = true;
-          }
-        } catch {}
-
+      if (!token) {
+        clearStoredAuth();
+        return;
       }
 
-      if (token) {
-        try {
-          const res = await fetch(`${API_BASE}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (res.ok) {
-            const u = await res.json();
-            setUser(u);
-          } else {
-            if (!hasCachedUser) {
-              localStorage.removeItem('csinvest:token');
-              localStorage.removeItem('csinvest:user');
-            }
-          }
-        } catch {
-          if (!hasCachedUser) {
-            localStorage.removeItem('csinvest:token');
-            localStorage.removeItem('csinvest:user');
-          }
+      const cachedUser = readStoredUser();
+      if (cachedUser) {
+        setUser(cachedUser);
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const u = await res.json();
+          setUser(u);
+          return;
         }
+
+        if (res.status === 401 || res.status === 404) {
+          clearStoredAuth();
+        }
+      } catch {
+        // Ignore transient auth bootstrap failures and keep cached user if available.
       }
     };
     init();
-  }, []);
+  }, [clearStoredAuth, setUser]);
 
-  const login = async ({ username, password }) => {
+  const login = useCallback(async ({ username, password }) => {
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
@@ -73,9 +84,9 @@ export function AuthProvider({ children }) {
     } catch {
       return false;
     }
-  };
+  }, [setUser]);
 
-  const register = async ({ username, email, password, inviteCode }) => {
+  const register = useCallback(async ({ username, email, password, inviteCode }) => {
     try {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
@@ -100,14 +111,13 @@ export function AuthProvider({ children }) {
       console.error(e);
       throw e;
     }
-  };
+  }, [setUser]);
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('csinvest:token');
-  };
+  const logout = useCallback(() => {
+    clearStoredAuth();
+  }, [clearStoredAuth]);
 
-  const value = useMemo(() => ({ user, userId: user?.user_id ?? null, login, register, logout, setUser }), [user, setUser]);
+  const value = useMemo(() => ({ user, userId: user?.user_id ?? null, login, register, logout, setUser }), [user, login, logout, register, setUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

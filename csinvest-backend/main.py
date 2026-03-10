@@ -128,6 +128,22 @@ def to_search_item(itm: Item) -> SearchResponseItem:
         current_price=itm.current_price
     )
 
+def _list_unique_items_by_type(item_type: str, q: str | None, db: Session):
+    repo = ItemRepository(db)
+    if q:
+        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == item_type]
+    else:
+        items = repo.get_items(item_type=item_type, limit=10_000_000)
+
+    seen = set()
+    unique = []
+    for item in items:
+        if item.name not in seen:
+            seen.add(item.name)
+            unique.append(item)
+
+    return [to_search_item(item) for item in unique]
+
 @app.get("/search")
 def search_items(q: str, limit: int = 10, exclude_item_type: Optional[List[str]] = Query(None), db: Session = Depends(get_db)):
     repo = ItemRepository(db)
@@ -137,84 +153,20 @@ def search_items(q: str, limit: int = 10, exclude_item_type: Optional[List[str]]
 # ----------- Knives & Gloves listing/search -----------
 @app.get("/knives")
 def list_knives(q: str | None = None, db: Session = Depends(get_db)):
-    repo = ItemRepository(db)
-    if q:
-        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'knife']
-    else:
-        items = repo.get_items(item_type='knife', limit=10_000_000)
-    
-    seen = set()
-    unique = []
-    for i in items:
-        if i.name not in seen:
-            seen.add(i.name)
-            unique.append(i)
-    return [to_search_item(it) for it in unique]
+    return _list_unique_items_by_type('knife', q, db)
 
 @app.get("/gloves")
 def list_gloves(q: str | None = None, db: Session = Depends(get_db)):
-    repo = ItemRepository(db)
-    if q:
-        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'glove']
-    else:
-        items = repo.get_items(item_type='glove', limit=10_000_000)
-    
-    seen = set()
-    unique = []
-    for i in items:
-        if i.name not in seen:
-            seen.add(i.name)
-            unique.append(i)
-    return [to_search_item(it) for it in unique]
+    return _list_unique_items_by_type('glove', q, db)
 
 # ----------- Agents listing/search -----------
 @app.get("/agents")
 def list_agents(q: str | None = None, db: Session = Depends(get_db)):
-    repo = ItemRepository(db)
-    if q:
-        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'agent']
-    else:
-        items = repo.get_items(item_type='agent', limit=10_000_000)
-    seen = set()
-    unique = []
-    for i in items:
-        if i.name not in seen:
-            seen.add(i.name)
-            unique.append(i)
-    return [to_search_item(it) for it in unique]
-
-# Aliases for Search buttons
-@app.get("/search/knives")
-def search_knives(q: str | None = None, db: Session = Depends(get_db)):
-    return list_knives(q=q, db=db)
-
-@app.get("/search/gloves")
-def search_gloves(q: str | None = None, db: Session = Depends(get_db)):
-    return list_gloves(q=q, db=db)
+    return _list_unique_items_by_type('agent', q, db)
 
 @app.get("/weapons")
 def list_weapons(q: str | None = None, db: Session = Depends(get_db)):
-    repo = ItemRepository(db)
-    if q:
-        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == 'skin']
-    else:
-        items = repo.get_items(item_type='skin', limit=10_000_000)
-    
-    seen = set()
-    unique = []
-    for i in items:
-        if i.name not in seen:
-            seen.add(i.name)
-            unique.append(i)
-    return [to_search_item(it) for it in unique]
-
-@app.get("/search/weapons")
-def search_weapons(q: str | None = None, db: Session = Depends(get_db)):
-    return list_weapons(q=q, db=db)
-
-@app.get("/search/agents")
-def search_agents(q: str | None = None, db: Session = Depends(get_db)):
-    return list_agents(q=q, db=db)
+    return _list_unique_items_by_type('skin', q, db)
 
 @app.get("/")
 def read_root():

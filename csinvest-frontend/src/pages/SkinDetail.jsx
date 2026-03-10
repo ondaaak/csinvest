@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const BASE_URL = '/api';
@@ -10,7 +9,6 @@ function SkinDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { formatPrice } = useCurrency();
   const [item, setItem] = useState(null);
   const [cases, setCases] = useState([]);
   const [collection, setCollection] = useState(null);
@@ -95,7 +93,6 @@ function SkinDetailPage() {
       setError(null);
       try {
         const res = await axios.get(`${BASE_URL}/items/${slug}`);
-        console.log("API Response:", res.data); // Debugging log
         if (res.data.item) {
             setItem(res.data.item);
             setCases(res.data.cases || []);
@@ -213,12 +210,6 @@ function SkinDetailPage() {
         return '';
     }
   };
-
-  const sortedHistory = [...history].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-  const finalChartData = sortedHistory.map(h => ({
-      date: new Date(h.timestamp).toLocaleDateString(),
-      price: h.price
-  }));
 
   const navCtx = location.state?.fromSearchHierarchy || null;
   const sectionPath = navCtx?.section ? `/search/${navCtx.section}` : null;

@@ -6,7 +6,7 @@ import { useAppModal } from '../components/AppModalProvider.jsx';
 const BASE_URL = '/api';
 
 export default function AccountPage() {
-  const { user, userId, logout, setUser } = useAuth(); // Assuming setUser is exposed in AuthContext, if not we might need to fetch /auth/me locally or update context
+  const { user, userId, logout } = useAuth();
   const { showAlert, showConfirm } = useAppModal();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
