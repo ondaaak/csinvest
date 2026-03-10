@@ -1,4 +1,4 @@
-# CSInvest
+# CSInvest - www.cs2invests.com
 
 CSInvest is a CS2 portfolio and price-tracking app with a FastAPI backend and a React + Vite frontend.
 
