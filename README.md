@@ -1,4 +1,4 @@
-# CSInvest - www.cs2invests.com
+# CSInvest - www.cs2invests.com - Invite code: cases
 
 CSInvest is a CS2 portfolio and price-tracking app with a FastAPI backend and a React + Vite frontend.
 
