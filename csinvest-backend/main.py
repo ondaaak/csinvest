@@ -523,9 +523,11 @@ def infer_def_index(item_name: str, item_type: str | None = None) -> int | None:
                 return value
         return 5030
 
-    for key, value in weapon_map.items():
+    # Match the longest aliases first so specific keys (e.g. m4a1s)
+    # are not shadowed by shorter prefixes (e.g. m4a1).
+    for key in sorted(weapon_map.keys(), key=len, reverse=True):
         if normalized.startswith(key):
-            return value
+            return weapon_map[key]
     return None
 
 
@@ -697,10 +699,17 @@ def backfill_inspect_fields(db: Session = Depends(get_db)):
     changed = 0
 
     for itm in items:
+        normalized_name = _normalize_token((itm.name or '').split('|')[0])
         next_def_index = infer_def_index(itm.name, itm.item_type)
         next_rarity_index = infer_rarity_index(itm.rarity, itm.item_type)
 
-        if itm.def_index is None and next_def_index is not None:
+        should_fix_m4a1s_legacy = (
+            normalized_name.startswith('m4a1s')
+            and itm.def_index == 16
+            and next_def_index == 60
+        )
+
+        if (itm.def_index is None and next_def_index is not None) or should_fix_m4a1s_legacy:
             itm.def_index = next_def_index
             changed += 1
         if itm.paint_index is None:
