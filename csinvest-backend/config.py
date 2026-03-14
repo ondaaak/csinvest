@@ -35,8 +35,6 @@ class Config(metaclass=_Singleton):
         expire_raw = (os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS", "3600") or "").strip()
         self.ACCESS_TOKEN_EXPIRE_SECONDS: int = int(expire_raw) if expire_raw else 0
 
-        self.INVITE_CODE: str = os.getenv("INVITE_CODE", "SECRET_BETA")
-
         self.DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
         if not self.DATABASE_URL:
             raise ValueError("Chybí DATABASE_URL v souboru .env!")

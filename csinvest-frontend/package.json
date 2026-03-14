@@ -10,7 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@rollup/plugin-inject": "^5.0.5",
     "axios": "^1.13.2",
+    "buffer": "^6.0.3",
+    "cs2-inspect-create": "^1.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.2",

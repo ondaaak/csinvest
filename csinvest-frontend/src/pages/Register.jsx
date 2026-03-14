@@ -54,7 +54,6 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordRepeat, setPasswordRepeat] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
 
@@ -68,7 +67,7 @@ export default function Register() {
     }
 
     try {
-      await register({ username, email, password, inviteCode });
+      await register({ username, email, password });
       navigate('/');
     } catch (err) {
       setError(err.message || 'Registration failed');
@@ -142,18 +141,6 @@ export default function Register() {
             </button>
           </div>
         </label>
-        <label style={{ display: 'block' }}>
-          Invite Code
-          <input 
-            className="search-input" 
-            value={inviteCode} 
-            onChange={(e) => setInviteCode(e.target.value)} 
-            style={{ marginTop: 6, width: '100%' }} 
-            required 
-            
-          />
-        </label>
-
         {error && <div style={{ color: 'var(--loss-color)', marginTop: 8 }}>{error}</div>}
         
         <div style={{ marginTop: 12, textAlign: 'center' }}>

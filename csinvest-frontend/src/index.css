@@ -320,6 +320,139 @@ th.sortable { cursor: pointer; user-select: none; }
 .search-name { font-weight: 600; color: var(--text-color); }
 .search-type { font-size: 0.8rem; opacity: 0.7; color: var(--text-color); }
 
+.skin-float-range {
+    width: min(420px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+.float-range-track-wrap {
+    position: relative;
+    height: 28px;
+    margin-top: 18px;
+    margin-bottom: 6px;
+    cursor: ew-resize;
+    user-select: none;
+}
+
+.float-range-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 10px;
+    height: 8px;
+    z-index: 2;
+    border-radius: 999px;
+    border: 1px solid #000000;
+        background: linear-gradient(
+            90deg,
+            #2dd4bf 0%,
+            #84cc16 20%,
+            #facc15 45%,
+            #fb923c 70%,
+            #ef4444 100%
+        );
+}
+
+.float-range-mask {
+    position: absolute;
+    top: 10px;
+    height: 8px;
+    z-index: 3;
+    background: #0b0b0c;
+}
+
+.float-range-cap {
+    position: absolute;
+    top: 10px;
+    height: 8px;
+    z-index: 4;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.8);
+    background: transparent;
+}
+
+.float-range-pin {
+    position: absolute;
+    top: 1px;
+    width: 2px;
+    height: 20px;
+    z-index: 5;
+    background: #f8fafc;
+    transform: translateX(-1px);
+}
+
+.float-range-pin-current {
+    background: transparent;
+    width: 0;
+}
+
+.float-range-current-dot {
+    position: absolute;
+    left: 50%;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+    background: #f8fafc;
+    box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.7);
+    cursor: grab;
+}
+
+.float-range-pin-label {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    letter-spacing: 0.3px;
+    opacity: 0.95;
+}
+
+.float-range-pin-max .float-range-pin-label {
+    color: #fecaca;
+}
+
+.float-range-pin-min .float-range-pin-label {
+    color: #99f6e4;
+}
+
+.float-range-tiers {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    font-size: 0.68rem;
+    opacity: 0.78;
+    letter-spacing: 0.2px;
+}
+
+.float-range-tiers span:nth-child(1) { text-align: left; }
+.float-range-tiers span:nth-child(2),
+.float-range-tiers span:nth-child(3),
+.float-range-tiers span:nth-child(4) { text-align: center; }
+.float-range-tiers span:nth-child(5) { text-align: right; }
+
+.float-inspect-controls {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.float-input {
+    width: 150px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-bg);
+    color: var(--text-color);
+    padding: 0 8px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 768px) {
     .header {
         grid-template-columns: 1fr;
@@ -564,6 +697,11 @@ th.sortable { cursor: pointer; user-select: none; }
         width: 100%;
         text-align: center;
         font-size: 1.2rem;
+    }
+
+    .skin-float-range {
+        width: 100%;
+        max-width: 360px;
     }
 
     .skin-detail-image {

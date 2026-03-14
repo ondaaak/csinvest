@@ -37,7 +37,6 @@ class RegisterRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
-    invite_code: str
 
 class LoginRequest(BaseModel):
     username: str
@@ -63,9 +62,6 @@ def user_to_schema(u: User) -> AuthUser:
 
 @app.post("/auth/register")
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
-    if data.invite_code != cfg.INVITE_CODE:
-        raise HTTPException(status_code=403, detail="Neplatný Invite Code - přístup odepřen")
-
     existing = db.query(User).filter((User.username == data.username) | (User.email == data.email)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username nebo email již existuje")
@@ -415,6 +411,137 @@ def refresh_single_item(item_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _normalize_token(s: str) -> str:
+    return ''.join(ch for ch in (s or '').lower() if ch.isalnum())
+
+
+def infer_def_index(item_name: str, item_type: str | None = None) -> int | None:
+    base_name = ((item_name or '').split('|')[0]).strip().lower()
+    normalized = _normalize_token(base_name)
+    t = (item_type or '').lower()
+
+    weapon_map = {
+        'deagle': 1,
+        'deserteagle': 1,
+        'dualberettas': 2,
+        'elite': 2,
+        'fiveseven': 3,
+        'glock18': 4,
+        'ak47': 7,
+        'aug': 8,
+        'awp': 9,
+        'famas': 10,
+        'g3sg1': 11,
+        'galilar': 13,
+        'galil': 13,
+        'm249': 14,
+        'm4a4': 16,
+        'm4a1': 16,
+        'mac10': 17,
+        'p90': 19,
+        'mp5sd': 23,
+        'ump45': 24,
+        'xm1014': 25,
+        'ppbizon': 26,
+        'bizon': 26,
+        'mag7': 27,
+        'negev': 28,
+        'sawedoff': 29,
+        'tec9': 30,
+        'zeusx27': 31,
+        'hkp2000': 32,
+        'p2000': 32,
+        'mp7': 33,
+        'mp9': 34,
+        'nova': 35,
+        'p250': 36,
+        'scar20': 38,
+        'sg553': 39,
+        'sg556': 39,
+        'ssg08': 40,
+        'm4a1s': 60,
+        'usps': 61,
+        'cz75auto': 63,
+        'r8revolver': 64,
+        'revolver': 64,
+    }
+
+    knife_map = {
+        'bayonet': 500,
+        'flipknife': 505,
+        'gutknife': 506,
+        'karambit': 507,
+        'm9bayonet': 508,
+        'huntsmanknife': 509,
+        'falchionknife': 512,
+        'bowieknife': 514,
+        'butterflyknife': 515,
+        'shadowdaggers': 516,
+        'paracordknife': 517,
+        'survivalknife': 518,
+        'ursusknife': 519,
+        'navajaknife': 520,
+        'nomadknife': 521,
+        'stilettoknife': 522,
+        'talonknife': 523,
+        'skeletonknife': 525,
+        'kukriknife': 526,
+    }
+
+    glove_map = {
+        'bloodhoundgloves': 5027,
+        'sportgloves': 5030,
+        'drivergloves': 5031,
+        'handwraps': 5032,
+        'motogloves': 5033,
+        'specialistgloves': 5034,
+        'hydragloves': 5035,
+    }
+
+    if t == 'knife':
+        for key, value in knife_map.items():
+            if key in normalized:
+                return value
+        return 42
+
+    if t == 'glove':
+        for key, value in glove_map.items():
+            if key in normalized:
+                return value
+        return 5030
+
+    for key, value in weapon_map.items():
+        if normalized.startswith(key):
+            return value
+    return None
+
+
+def infer_rarity_index(rarity: str | None, item_type: str | None = None) -> int:
+    r = (rarity or '').strip().lower()
+    t = (item_type or '').strip().lower()
+    if t in ('knife', 'glove'):
+        return 6
+
+    mapping = {
+        'consumer': 1,
+        'consumer grade': 1,
+        'industrial': 2,
+        'industrial grade': 2,
+        'milspec': 3,
+        'mil-spec': 3,
+        'mil spec': 3,
+        'milspec grade': 3,
+        'restricted': 4,
+        'classified': 5,
+        'covert': 6,
+        'contraband': 6,
+        'knife': 6,
+        'glove': 6,
+        'knife/glove': 6,
+    }
+    return mapping.get(r, 3)
+
+
 @app.get("/items/{slug}")
 def get_item_detail(slug: str, db: Session = Depends(get_db)):
     repo = ItemRepository(db)
@@ -427,6 +554,17 @@ def get_item_detail(slug: str, db: Session = Depends(get_db)):
     collection = None
     if itm.collection_id:
         collection = db.query(Item).filter(Item.item_id == itm.collection_id).first()
+
+    if itm.def_index is None:
+        itm.def_index = infer_def_index(itm.name, itm.item_type)
+    if itm.rarity_index is None:
+        itm.rarity_index = infer_rarity_index(itm.rarity, itm.item_type)
+    if itm.paint_index is None:
+        itm.paint_index = 1
+    if itm.paint_seed is None:
+        itm.paint_seed = 1
+    if itm.quality is None:
+        itm.quality = 0
 
     return {
         "item": itm,
@@ -539,6 +677,118 @@ def case_links(slug: str, db: Session = Depends(get_db)):
         }
     }
 
+
+@app.post("/admin/backfill-inspect-fields")
+def backfill_inspect_fields(db: Session = Depends(get_db)):
+    items = db.query(Item).all()
+    changed = 0
+
+    for itm in items:
+        next_def_index = infer_def_index(itm.name, itm.item_type)
+        next_rarity_index = infer_rarity_index(itm.rarity, itm.item_type)
+
+        if itm.def_index is None and next_def_index is not None:
+            itm.def_index = next_def_index
+            changed += 1
+        if itm.paint_index is None:
+            itm.paint_index = 1
+            changed += 1
+        if itm.rarity_index is None:
+            itm.rarity_index = next_rarity_index
+            changed += 1
+        if itm.paint_seed is None:
+            itm.paint_seed = 1
+            changed += 1
+        if itm.quality is None:
+            itm.quality = 0
+            changed += 1
+
+    if changed:
+        db.commit()
+
+    unresolved_def_index = db.query(func.count(Item.item_id)).filter(Item.def_index.is_(None)).scalar() or 0
+    return {
+        "message": "Inspect metadata backfilled",
+        "changed": changed,
+        "unresolved_def_index": int(unresolved_def_index),
+    }
+
+
+@app.get("/admin/unresolved-defindex")
+def unresolved_defindex(limit: int = 300, db: Session = Depends(get_db)):
+    def suggest_hint(item_name: str) -> str | None:
+        n = _normalize_token((item_name or '').split('|')[0])
+        hints = [
+            ('hkp2000', 'P2000 / HKP2000'),
+            ('usps', 'USP-S'),
+            ('m4a1s', 'M4A1-S'),
+            ('duals', 'Dual Berettas'),
+            ('berettas', 'Dual Berettas'),
+            ('cz75', 'CZ75-Auto'),
+            ('revolver', 'R8 Revolver'),
+            ('scar20', 'SCAR-20'),
+            ('sg553', 'SG 553'),
+            ('sg556', 'SG 553'),
+            ('ssg08', 'SSG 08'),
+            ('ump45', 'UMP-45'),
+            ('mac10', 'MAC-10'),
+            ('mp5sd', 'MP5-SD'),
+            ('ppbizon', 'PP-Bizon'),
+            ('sawedoff', 'Sawed-Off'),
+            ('five', 'Five-SeveN'),
+            ('fiveseven', 'Five-SeveN'),
+            ('navaja', 'Navaja Knife'),
+            ('butterfly', 'Butterfly Knife'),
+            ('karambit', 'Karambit'),
+            ('bayonet', 'Bayonet / M9 Bayonet'),
+            ('stiletto', 'Stiletto Knife'),
+            ('talon', 'Talon Knife'),
+            ('ursus', 'Ursus Knife'),
+            ('nomad', 'Nomad Knife'),
+            ('skeleton', 'Skeleton Knife'),
+            ('kukri', 'Kukri Knife'),
+            ('sportgloves', 'Sport Gloves'),
+            ('drivergloves', 'Driver Gloves'),
+            ('handwraps', 'Hand Wraps'),
+            ('motogloves', 'Moto Gloves'),
+            ('specialistgloves', 'Specialist Gloves'),
+            ('hydragloves', 'Hydra Gloves'),
+        ]
+        for key, label in hints:
+            if key in n:
+                return label
+        return None
+
+    unresolved = (
+        db.query(Item)
+        .filter(Item.def_index.is_(None))
+        .order_by(Item.item_id.asc())
+        .limit(max(1, min(limit, 2000)))
+        .all()
+    )
+
+    rows = []
+    for itm in unresolved:
+        inferred = infer_def_index(itm.name, itm.item_type)
+        if inferred is not None:
+            # These can be fixed by running backfill endpoint.
+            continue
+        rows.append({
+            "item_id": itm.item_id,
+            "slug": itm.slug,
+            "name": itm.name,
+            "item_type": itm.item_type,
+            "hint": suggest_hint(itm.name),
+        })
+
+    total_unresolved = db.query(func.count(Item.item_id)).filter(Item.def_index.is_(None)).scalar() or 0
+    return {
+        "total_unresolved_def_index": int(total_unresolved),
+        "returned": len(rows),
+        "items": rows,
+        "note": "Items listed here were not auto-mapped by current infer_def_index rules.",
+    }
+
 # ----------- Admin: Attach Shattered Web knife pool to Fracture -----------
 @app.post("/admin/link-fracture-knives")
 def link_fracture_knives(db: Session = Depends(get_db)):
@@ -608,6 +858,14 @@ def link_fracture_knives(db: Session = Depends(get_db)):
 class CSFloatKeyRequest(BaseModel):
     api_key: str
 
+
+class UpdateInspectFieldsRequest(BaseModel):
+    def_index: int | None = None
+    paint_index: int | None = None
+    rarity_index: int | None = None
+    paint_seed: int | None = None
+    quality: int | None = None
+
 @app.get('/user/csfloat/status')
 def get_csfloat_status(current_user: AuthUser = Depends(get_current_user), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.user_id == current_user.user_id).first()
@@ -649,4 +907,29 @@ def delete_csfloat_key(current_user: AuthUser = Depends(get_current_user), db: S
         user.csfloat_api_key_tag = None
         db.commit()
     return {'message': 'API Key removed'}
+
+
+@app.patch('/admin/items/{slug}/inspect-fields')
+def admin_update_inspect_fields(slug: str, payload: UpdateInspectFieldsRequest, db: Session = Depends(get_db)):
+    itm = db.query(Item).filter(Item.slug == slug).first()
+    if not itm:
+        raise HTTPException(status_code=404, detail='Item not found')
+
+    patch = payload.model_dump(exclude_unset=True)
+    allowed = {'def_index', 'paint_index', 'rarity_index', 'paint_seed', 'quality'}
+    for key, value in patch.items():
+        if key in allowed:
+            setattr(itm, key, value)
+
+    db.commit()
+    db.refresh(itm)
+    return {
+        'item_id': itm.item_id,
+        'slug': itm.slug,
+        'def_index': itm.def_index,
+        'paint_index': itm.paint_index,
+        'rarity_index': itm.rarity_index,
+        'paint_seed': itm.paint_seed,
+        'quality': itm.quality,
+    }
 

@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { generateHex } from 'cs2-inspect-create';
 
 const BASE_URL = '/api';
 
@@ -15,6 +16,10 @@ function SkinDetailPage() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedFloat, setSelectedFloat] = useState(null);
+  const [floatInput, setFloatInput] = useState('');
+  const floatTrackRef = useRef(null);
+  const isDraggingFloatRef = useRef(false);
 
   const skinImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
@@ -87,6 +92,13 @@ function SkinDetailPage() {
     return Object.keys(agentImgMap).sort((a, b) => b.length - a.length);
   }, [agentImgMap]);
 
+  const clampToRange = (value, min, max) => {
+    if (!Number.isFinite(value)) return min;
+    return Math.min(max, Math.max(min, value));
+  };
+
+  const formatFloatInput = (value) => Number(value).toFixed(9).replace('.', ',');
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -94,13 +106,23 @@ function SkinDetailPage() {
       try {
         const res = await axios.get(`${BASE_URL}/items/${slug}`);
         if (res.data.item) {
-            setItem(res.data.item);
+          const loadedItem = res.data.item;
+          setItem(loadedItem);
             setCases(res.data.cases || []);
             setCollection(res.data.collection || null);
+          const initialMinFloat = Number(loadedItem?.min_float);
+          const nextFloat = Number.isFinite(initialMinFloat) ? Math.max(0, Math.min(1, initialMinFloat)) : 0;
+          setSelectedFloat(nextFloat);
+          setFloatInput(formatFloatInput(nextFloat));
         } else {
-            setItem(res.data);
+          const loadedItem = res.data;
+          setItem(loadedItem);
             setCases([]);
             setCollection(null);
+          const initialMinFloat = Number(loadedItem?.min_float);
+          const nextFloat = Number.isFinite(initialMinFloat) ? Math.max(0, Math.min(1, initialMinFloat)) : 0;
+          setSelectedFloat(nextFloat);
+          setFloatInput(formatFloatInput(nextFloat));
         }
 
         try {
@@ -123,6 +145,139 @@ function SkinDetailPage() {
   if (loading) return <div className="dashboard-container"><div className="loading">Loading…</div></div>;
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
   if (!item) return null;
+
+  const normalizeInspectHex = (raw) => {
+    if (!raw || typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    const previewMatch = trimmed.match(/csgo_econ_action_preview(?:%20|\s+)([0-9a-f]+)/i);
+    const candidate = previewMatch ? previewMatch[1] : trimmed;
+    const withoutPrefix = candidate
+      .replace(/^csgo_econ_action_preview\s*%?/i, '')
+      .replace(/^0x/i, '')
+      .replace(/\s+/g, '');
+    const hex = withoutPrefix.replace(/[^0-9a-f]/gi, '');
+    if (!hex || hex.length % 2 !== 0) return null;
+    return hex.toUpperCase();
+  };
+
+  const hexToBytes = (hex) => {
+    const out = [];
+    for (let i = 0; i < hex.length; i += 2) {
+      out.push(parseInt(hex.slice(i, i + 2), 16));
+    }
+    return out;
+  };
+
+  const decodeVarint = (bytes, startIndex) => {
+    let value = 0;
+    let shift = 0;
+    let index = startIndex;
+    while (index < bytes.length && shift <= 63) {
+      const byte = bytes[index];
+      value += (byte & 0x7f) * Math.pow(2, shift);
+      index += 1;
+      if ((byte & 0x80) === 0) {
+        return { value, nextIndex: index };
+      }
+      shift += 7;
+    }
+    return null;
+  };
+
+  const extractInspectFields = (rawInspect) => {
+    const hex = normalizeInspectHex(rawInspect);
+    if (!hex || hex.length < 10) return null;
+
+    const fullBytes = hexToBytes(hex);
+    if (fullBytes.length <= 5) return null;
+
+    const payload = fullBytes.slice(0, -4);
+    const bytes = payload[0] === 0x00 ? payload.slice(1) : payload;
+
+    const extracted = {
+      defIndex: null,
+      paintIndex: null,
+      rarityIndex: null,
+      paintSeed: null,
+      quality: null,
+    };
+
+    let index = 0;
+    while (index < bytes.length) {
+      const keyInfo = decodeVarint(bytes, index);
+      if (!keyInfo) return null;
+      const key = keyInfo.value;
+      const fieldNumber = key >>> 3;
+      const wireType = key & 0x07;
+      index = keyInfo.nextIndex;
+
+      if (wireType === 0) {
+        const valueInfo = decodeVarint(bytes, index);
+        if (!valueInfo) return null;
+        const value = valueInfo.value;
+        index = valueInfo.nextIndex;
+
+        if (fieldNumber === 3) extracted.defIndex = value;
+        if (fieldNumber === 4) extracted.paintIndex = value;
+        if (fieldNumber === 5) extracted.rarityIndex = value;
+        if (fieldNumber === 8) extracted.paintSeed = value;
+        if (fieldNumber === 9) extracted.quality = value;
+        continue;
+      }
+
+      if (wireType === 1) {
+        index += 8;
+        continue;
+      }
+
+      if (wireType === 2) {
+        const lengthInfo = decodeVarint(bytes, index);
+        if (!lengthInfo) return null;
+        index = lengthInfo.nextIndex + lengthInfo.value;
+        continue;
+      }
+
+      if (wireType === 5) {
+        index += 4;
+        continue;
+      }
+
+      return null;
+    }
+
+    if (![extracted.defIndex, extracted.paintIndex, extracted.rarityIndex, extracted.paintSeed].every(Number.isFinite)) {
+      return null;
+    }
+
+    return extracted;
+  };
+
+  const buildInspectFromFields = ({ defIndex, paintIndex, rarityIndex, paintSeed, quality }, floatValue) => {
+    const d = Number(defIndex);
+    const p = Number(paintIndex);
+    const r = Number(rarityIndex);
+    const s = Number(paintSeed);
+    const q = Number(quality);
+    if (![d, p, r, s].every(Number.isFinite)) {
+      return null;
+    }
+
+    try {
+      const payload = {
+        defindex: d >>> 0,
+        paintindex: p >>> 0,
+        rarity: r >>> 0,
+        paintseed: s >>> 0,
+        paintwear: floatValue,
+      };
+      if (Number.isFinite(q) && q > 0) {
+        payload.quality = q >>> 0;
+      }
+      return String(generateHex(payload)).toUpperCase();
+    } catch {
+      return null;
+    }
+  };
 
   const getSkinImage = (itemSlug, itemName) => {
     if (!itemSlug) return null;
@@ -172,6 +327,97 @@ function SkinDetailPage() {
   };
 
   const img = getSkinImage(item.slug, item.name);
+  const supportsFloat = ['skin', 'knife', 'glove'].includes((item.item_type || '').toLowerCase());
+  const parsedMinFloat = Number(item.min_float);
+  const parsedMaxFloat = Number(item.max_float);
+  const minFloat = Number.isFinite(parsedMinFloat) ? Math.max(0, Math.min(1, parsedMinFloat)) : 0;
+  const maxFloat = Number.isFinite(parsedMaxFloat) ? Math.max(0, Math.min(1, parsedMaxFloat)) : 1;
+  const normalizedMinFloat = Math.min(minFloat, maxFloat);
+  const normalizedMaxFloat = Math.max(minFloat, maxFloat);
+  const minFloatPercent = normalizedMinFloat * 100;
+  const maxFloatPercent = normalizedMaxFloat * 100;
+  const effectiveSelectedFloat = clampToRange(
+    selectedFloat ?? normalizedMinFloat,
+    normalizedMinFloat,
+    normalizedMaxFloat
+  );
+  const selectedFloatPercent = effectiveSelectedFloat * 100;
+  const parsedInspectFields = extractInspectFields(item.inspect);
+  const generatedInspect = buildInspectFromFields(
+    {
+      defIndex: parsedInspectFields?.defIndex ?? item.def_index,
+      paintIndex: parsedInspectFields?.paintIndex ?? item.paint_index,
+      rarityIndex: parsedInspectFields?.rarityIndex ?? item.rarity_index,
+      paintSeed: parsedInspectFields?.paintSeed ?? item.paint_seed,
+      quality: parsedInspectFields?.quality ?? item.quality,
+    },
+    effectiveSelectedFloat
+  );
+  // Fallback for AWP Redline: use original inspect if generated fails or slug matches
+  let useFallbackInspect = false;
+  if (
+    slug === 'awp-redline' &&
+    (!generatedInspect || generatedInspect.length < 10)
+  ) {
+    useFallbackInspect = true;
+  }
+  const canInspect = Boolean(!useFallbackInspect && generatedInspect || item.inspect);
+  const inspectToken = String(
+    useFallbackInspect ? item.inspect : (generatedInspect || item.inspect || '')
+  )
+    .replace(/^csgo_econ_action_preview\s*/i, '')
+    .replace(/^%20/, '')
+    .trim();
+  const inspectHref =
+    `steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20${inspectToken}`;
+
+  const setFloatFromPointerX = (clientX) => {
+    const el = floatTrackRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width) return;
+    const rawPercent = ((clientX - rect.left) / rect.width) * 100;
+    const normalizedPercent = Math.max(0, Math.min(100, rawPercent));
+    const next = normalizedPercent / 100;
+    const clamped = clampToRange(next, normalizedMinFloat, normalizedMaxFloat);
+    setSelectedFloat(clamped);
+    setFloatInput(formatFloatInput(clamped));
+  };
+
+  const onFloatTrackMouseDown = (e) => {
+    isDraggingFloatRef.current = true;
+    setFloatFromPointerX(e.clientX);
+  };
+
+  const onFloatTrackMouseMove = (e) => {
+    if (!isDraggingFloatRef.current) return;
+    if ((e.buttons & 1) !== 1) {
+      isDraggingFloatRef.current = false;
+      return;
+    }
+    setFloatFromPointerX(e.clientX);
+  };
+
+  const onFloatTrackMouseUp = () => {
+    isDraggingFloatRef.current = false;
+  };
+
+  const onFloatInputChange = (nextRaw) => {
+    const withComma = nextRaw.replace('.', ',');
+    if (!/^\d*(,\d{0,9})?$/.test(withComma)) {
+      return;
+    }
+    setFloatInput(withComma);
+    const normalized = withComma.replace(',', '.');
+    const parsed = Number(normalized);
+    if (Number.isFinite(parsed)) {
+      setSelectedFloat(clampToRange(parsed, normalizedMinFloat, normalizedMaxFloat));
+    }
+  };
+
+  const onFloatInputBlur = () => {
+    setFloatInput(formatFloatInput(effectiveSelectedFloat));
+  };
 
   const rarityClass = (rarity) => {
     switch ((rarity || '').toLowerCase()) {
@@ -289,21 +535,6 @@ function SkinDetailPage() {
       </div>
 
       <div className="skin-detail-actions" style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8, marginBottom: 16 }}>
-        <a
-          href={item.inspect ? `steam://rungame/730/76561202255233023/+csgo_econ_action_preview%${item.inspect}` : '#'}
-          className="badge"
-          style={{
-            textDecoration: 'none',
-            background: 'var(--button-bg)',
-            color: 'var(--button-text)',
-            border: '1px solid var(--border-color)',
-            cursor: 'pointer',
-            opacity: item.inspect ? 1 : 0.5,
-            pointerEvents: item.inspect ? 'auto' : 'none'
-          }}
-        >
-          Inspect in-game
-        </a>
         <span className={`badge ${rarityClass(item.rarity)}`}>{item.rarity || '—'}</span>
       </div>
       
@@ -348,6 +579,64 @@ function SkinDetailPage() {
                             </Link>
                         </div>
                     </div>
+                )}
+
+                {supportsFloat && (
+                  <div className="skin-float-range" style={{ marginTop: (cases.length > 0 || collection) ? 20 : 0 }}>
+                    <strong style={{ display: 'block', marginBottom: 10 }}>Float range:</strong>
+                    <div
+                      className="float-range-track-wrap"
+                      ref={floatTrackRef}
+                      onMouseDown={onFloatTrackMouseDown}
+                      onMouseMove={onFloatTrackMouseMove}
+                      onMouseUp={onFloatTrackMouseUp}
+                      onMouseLeave={onFloatTrackMouseUp}
+                    >
+                      <div className="float-range-track" aria-hidden="true" />
+                      <div className="float-range-mask" style={{ left: '0%', width: `${minFloatPercent}%` }} aria-hidden="true" />
+                      <div className="float-range-mask" style={{ left: `${maxFloatPercent}%`, width: `${Math.max(100 - maxFloatPercent, 0)}%` }} aria-hidden="true" />
+                      <div className="float-range-cap" style={{ left: `${minFloatPercent}%`, width: `${Math.max(maxFloatPercent - minFloatPercent, 1)}%` }} aria-hidden="true" />
+                      <div className="float-range-pin float-range-pin-min" style={{ left: `${minFloatPercent}%` }}>
+                        <span className="float-range-pin-label">MIN {normalizedMinFloat.toFixed(2)}</span>
+                      </div>
+                      <div className="float-range-pin float-range-pin-max" style={{ left: `${maxFloatPercent}%` }}>
+                        <span className="float-range-pin-label">MAX {normalizedMaxFloat.toFixed(2)}</span>
+                      </div>
+                      <div className="float-range-pin float-range-pin-current" style={{ left: `${selectedFloatPercent}%` }}>
+                        <span className="float-range-current-dot" />
+                      </div>
+                    </div>
+                    <div className="float-range-tiers" aria-hidden="true">
+                      <span>FN</span>
+                      <span>MW</span>
+                      <span>FT</span>
+                      <span>WW</span>
+                      <span>BS</span>
+                    </div>
+                    <div className="float-inspect-controls">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="float-input"
+                        value={floatInput}
+                        onChange={(e) => onFloatInputChange(e.target.value)}
+                        onBlur={onFloatInputBlur}
+                        aria-label="Float value"
+                      />
+                      <a
+                        href={inspectHref}
+                        className="account-button header-bordered-button"
+                        style={{
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                          opacity: canInspect ? 1 : 0.5,
+                          pointerEvents: canInspect ? 'auto' : 'none'
+                        }}
+                      >
+                        Inspect in-game
+                      </a>
+                    </div>
+                  </div>
                 )}
             </div>
         </div>

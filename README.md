@@ -1,4 +1,4 @@
-# CSInvest - www.cs2invests.com - Invite code: cases
+# CSInvest - www.cs2invests.com
 
 CSInvest is a CS2 portfolio and price-tracking app with a FastAPI backend and a React + Vite frontend.
 
@@ -16,7 +16,6 @@ CSInvest is a CS2 portfolio and price-tracking app with a FastAPI backend and a 
 DATABASE_URL=sqlite:///./csinvest.db
 SECRET_KEY=your_long_random_secret
 PASSWORD_SALT=your_custom_salt
-INVITE_CODE=your_invite_code
 CSFLOAT_API_KEY=
 CSFLOAT_ENCRYPTION_KEY=
 CSFLOAT_ENCRYPTION_LEGACY_KEYS=
