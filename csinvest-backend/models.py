@@ -13,6 +13,8 @@ class User(Base):
     discord_portfolio_webhook_url = Column(String)
     discord_portfolio_notification_time = Column(String) # Format "HH:MM"
     currency = Column(String)
+    sell_fee_pct = Column(Numeric(5, 2), nullable=False, default=2)
+    withdraw_fee_pct = Column(Numeric(5, 2), nullable=False, default=2)
     
     # CSFloat API Key Encryption
     csfloat_api_key_ciphertext = Column(String, nullable=True)

@@ -31,6 +31,7 @@ function InventoryPage() {
   const [rawSellFee, setRawSellFee] = useState('2');
   const [rawWithdrawFee, setRawWithdrawFee] = useState('2');
   const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+  const clampFeePct = (v) => round2(Math.max(0, Math.min(100, Number(v) || 0)));
 
   // Import images
   const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
@@ -92,13 +93,14 @@ function InventoryPage() {
     const cleaned = String(val).replace(',', '.');
     const num = parseFloat(cleaned);
     if (isNaN(num)) return 0;
-    return round2(num);
+    return clampFeePct(num);
   };
-  const normalizeOnBlur = (rawValue, setRaw, setNumeric) => {
+  const normalizeOnBlur = (rawValue, setRaw, setNumeric, onNormalized) => {
     if (rawValue === '') { setNumeric(0); return; }
     const n = parseFee(rawValue);
     setNumeric(n);
     setRaw(n.toFixed(2));
+    if (onNormalized) onNormalized(n);
   };
   const [showAddModal, setShowAddModal] = useState(false);
   const [infoItem, setInfoItem] = useState(null); // State for the item details modal
@@ -109,6 +111,37 @@ function InventoryPage() {
   const [portfolioNotificationTime, setPortfolioNotificationTime] = useState('');
   const actionsRef = useRef(null);
   const [controlsWidth, setControlsWidth] = useState(null);
+
+  const saveFeeSettings = async (nextSell, nextWithdraw) => {
+    if (!userId) return;
+    try {
+      const token = localStorage.getItem('csinvest:token');
+      await axios.patch(
+        `${BASE_URL}/users/me`,
+        {
+          sell_fee_pct: clampFeePct(nextSell),
+          withdraw_fee_pct: clampFeePct(nextWithdraw),
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (e) {
+      console.error('Failed to save fee settings', e);
+    }
+  };
+
+  const bumpSellFee = (delta) => {
+    const next = clampFeePct((Number(sellFeePct) || 0) + delta);
+    setSellFeePct(next);
+    setRawSellFee(next.toFixed(2));
+    saveFeeSettings(next, withdrawFeePct);
+  };
+
+  const bumpWithdrawFee = (delta) => {
+    const next = clampFeePct((Number(withdrawFeePct) || 0) + delta);
+    setWithdrawFeePct(next);
+    setRawWithdrawFee(next.toFixed(2));
+    saveFeeSettings(sellFeePct, next);
+  };
 
   useEffect(() => {
     if (!actionsRef.current || items.length === 0) return;
@@ -130,6 +163,26 @@ function InventoryPage() {
       window.removeEventListener('resize', measure);
     };
   }, [items.length, loading]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchFeeSettings = async () => {
+      try {
+        const token = localStorage.getItem('csinvest:token');
+        const res = await axios.get(`${BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const storedSell = clampFeePct(res.data?.sell_fee_pct ?? 2);
+        const storedWithdraw = clampFeePct(res.data?.withdraw_fee_pct ?? 2);
+        setSellFeePct(storedSell);
+        setWithdrawFeePct(storedWithdraw);
+        setRawSellFee(storedSell.toFixed(2));
+        setRawWithdrawFee(storedWithdraw.toFixed(2));
+      } catch (e) {
+        console.error('Failed to load fee settings', e);
+      }
+    };
+
+    fetchFeeSettings();
+  }, [userId]);
 
   useEffect(() => {
     if (showPortfolioModal && userId) {
@@ -964,17 +1017,11 @@ function InventoryPage() {
                           placeholder="0"
                           value={rawSellFee}
                           onChange={(e) => { setRawSellFee(e.target.value); setSellFeePct(parseFee(e.target.value)); }}
-                          onBlur={() => normalizeOnBlur(rawSellFee, setRawSellFee, setSellFeePct)}
+                          onBlur={() => normalizeOnBlur(rawSellFee, setRawSellFee, setSellFeePct, (n) => saveFeeSettings(n, withdrawFeePct))}
                         />
                         <div className="number-arrows">
-                          <button type="button" onClick={() => { setSellFeePct(p => {
-                            const v = round2(Math.min(100, (Number(p)||0) + 0.1));
-                            setRawSellFee(v.toFixed(2));
-                            return v; }); }}>▲</button>
-                          <button type="button" onClick={() => { setSellFeePct(p => {
-                            const v = round2(Math.max(0, (Number(p)||0) - 0.1));
-                            setRawSellFee(v.toFixed(2));
-                            return v; }); }}>▼</button>
+                          <button type="button" onClick={() => bumpSellFee(0.1)}>▲</button>
+                          <button type="button" onClick={() => bumpSellFee(-0.1)}>▼</button>
                         </div>
                       </div>
                       <div>
@@ -1008,17 +1055,11 @@ function InventoryPage() {
                           placeholder="0"
                           value={rawWithdrawFee}
                           onChange={(e) => { setRawWithdrawFee(e.target.value); setWithdrawFeePct(parseFee(e.target.value)); }}
-                          onBlur={() => normalizeOnBlur(rawWithdrawFee, setRawWithdrawFee, setWithdrawFeePct)}
+                          onBlur={() => normalizeOnBlur(rawWithdrawFee, setRawWithdrawFee, setWithdrawFeePct, (n) => saveFeeSettings(sellFeePct, n))}
                         />
                         <div className="number-arrows">
-                          <button type="button" onClick={() => { setWithdrawFeePct(p => {
-                            const v = round2(Math.min(100, (Number(p)||0) + 0.1));
-                            setRawWithdrawFee(v.toFixed(2));
-                            return v; }); }}>▲</button>
-                          <button type="button" onClick={() => { setWithdrawFeePct(p => {
-                            const v = round2(Math.max(0, (Number(p)||0) - 0.1));
-                            setRawWithdrawFee(v.toFixed(2));
-                            return v; }); }}>▼</button>
+                          <button type="button" onClick={() => bumpWithdrawFee(0.1)}>▲</button>
+                          <button type="button" onClick={() => bumpWithdrawFee(-0.1)}>▼</button>
                         </div>
                       </div>
                       <div>

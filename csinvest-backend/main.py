@@ -49,6 +49,8 @@ class AuthUser(BaseModel):
     discord_portfolio_webhook_url: str | None = None
     discord_portfolio_notification_time: str | None = None
     currency: str | None = None
+    sell_fee_pct: float = 2
+    withdraw_fee_pct: float = 2
 
 def user_to_schema(u: User) -> AuthUser:
     return AuthUser(
@@ -57,7 +59,9 @@ def user_to_schema(u: User) -> AuthUser:
         email=u.email,
         discord_portfolio_webhook_url=u.discord_portfolio_webhook_url,
         discord_portfolio_notification_time=u.discord_portfolio_notification_time,
-        currency=u.currency or 'USD'
+        currency=u.currency or 'USD',
+        sell_fee_pct=float(u.sell_fee_pct if u.sell_fee_pct is not None else 2),
+        withdraw_fee_pct=float(u.withdraw_fee_pct if u.withdraw_fee_pct is not None else 2),
     )
 
 @app.post("/auth/register")
@@ -90,6 +94,8 @@ class UpdateUserRequest(BaseModel):
     discord_portfolio_webhook_url: str | None = None
     discord_portfolio_notification_time: str | None = None
     currency: str | None = None
+    sell_fee_pct: float | None = None
+    withdraw_fee_pct: float | None = None
 
 @app.patch("/users/me")
 def update_user_me(payload: UpdateUserRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -100,6 +106,13 @@ def update_user_me(payload: UpdateUserRequest, db: Session = Depends(get_db), cu
         if normalized not in allowed_currencies:
             raise HTTPException(status_code=400, detail='Unsupported currency')
         update_data['currency'] = normalized
+
+    for fee_key in ('sell_fee_pct', 'withdraw_fee_pct'):
+        if fee_key in update_data and update_data[fee_key] is not None:
+            fee_val = float(update_data[fee_key])
+            if fee_val < 0 or fee_val > 100:
+                raise HTTPException(status_code=400, detail=f'{fee_key} must be between 0 and 100')
+            update_data[fee_key] = round(fee_val, 2)
 
     for key, value in update_data.items():
         setattr(current, key, value)

@@ -22,7 +22,7 @@ export default function CharmsPage() {
   const q = new URLSearchParams(location.search).get('q') || '';
 
   const charmImgMap = useMemo(() => {
-    const files = import.meta.glob('../assets/charms/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
     Object.entries(files).forEach(([path, url]) => {
       const filename = path.split('/').pop() || '';
