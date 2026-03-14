@@ -341,6 +341,13 @@ function SkinDetailPage() {
   const normalizedMaxFloat = Math.max(minFloat, maxFloat);
   const minFloatPercent = normalizedMinFloat * 100;
   const maxFloatPercent = normalizedMaxFloat * 100;
+  const floatTierLabels = [
+    { key: 'fn', label: 'FN', position: 3.5 },
+    { key: 'mw', label: 'MW', position: 11 },
+    { key: 'ft', label: 'FT', position: 26.5 },
+    { key: 'ww', label: 'WW', position: 41.5 },
+    { key: 'bs', label: 'BS', position: 72.5 },
+  ];
   const effectiveSelectedFloat = clampToRange(
     selectedFloat ?? normalizedMinFloat,
     normalizedMinFloat,
@@ -630,11 +637,15 @@ function SkinDetailPage() {
                         </div>
                       </div>
                       <div className="float-range-tiers" aria-hidden="true">
-                        <span>FN</span>
-                        <span>MW</span>
-                        <span>FT</span>
-                        <span>WW</span>
-                        <span>BS</span>
+                        {floatTierLabels.map((tier) => (
+                          <span
+                            key={tier.key}
+                            className="float-range-tier-label"
+                            style={{ left: `${tier.position}%` }}
+                          >
+                            {tier.label}
+                          </span>
+                        ))}
                       </div>
                     </div>
                     <div style={{ marginTop: 14, width: 300, maxWidth: '100%', marginInline: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
