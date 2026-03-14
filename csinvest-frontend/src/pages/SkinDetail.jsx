@@ -18,6 +18,7 @@ function SkinDetailPage() {
   const [error, setError] = useState(null);
   const [selectedFloat, setSelectedFloat] = useState(null);
   const [floatInput, setFloatInput] = useState('');
+  const [patternInput, setPatternInput] = useState('1');
   const floatTrackRef = useRef(null);
   const isDraggingFloatRef = useRef(false);
 
@@ -66,7 +67,7 @@ function SkinDetailPage() {
   }, []);
 
   const charmImgMap = useMemo(() => {
-    const files = import.meta.glob('../assets/charms/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
     Object.entries(files).forEach(([path, url]) => {
       const filename = path.split('/').pop() || '';
@@ -114,6 +115,8 @@ function SkinDetailPage() {
           const nextFloat = Number.isFinite(initialMinFloat) ? Math.max(0, Math.min(1, initialMinFloat)) : 0;
           setSelectedFloat(nextFloat);
           setFloatInput(formatFloatInput(nextFloat));
+          const nextPattern = Number(loadedItem?.paint_seed);
+          setPatternInput(String(Number.isFinite(nextPattern) && nextPattern > 0 ? Math.trunc(nextPattern) : 1));
         } else {
           const loadedItem = res.data;
           setItem(loadedItem);
@@ -123,6 +126,8 @@ function SkinDetailPage() {
           const nextFloat = Number.isFinite(initialMinFloat) ? Math.max(0, Math.min(1, initialMinFloat)) : 0;
           setSelectedFloat(nextFloat);
           setFloatInput(formatFloatInput(nextFloat));
+          const nextPattern = Number(loadedItem?.paint_seed);
+          setPatternInput(String(Number.isFinite(nextPattern) && nextPattern > 0 ? Math.trunc(nextPattern) : 1));
         }
 
         try {
@@ -348,7 +353,13 @@ function SkinDetailPage() {
       defIndex: parsedInspectFields?.defIndex ?? item.def_index,
       paintIndex: parsedInspectFields?.paintIndex ?? item.paint_index,
       rarityIndex: parsedInspectFields?.rarityIndex ?? item.rarity_index,
-      paintSeed: parsedInspectFields?.paintSeed ?? item.paint_seed,
+      paintSeed: (() => {
+        const parsedPattern = Number(patternInput);
+        if (Number.isFinite(parsedPattern) && parsedPattern > 0) {
+          return Math.trunc(parsedPattern);
+        }
+        return parsedInspectFields?.paintSeed ?? item.paint_seed;
+      })(),
       quality: parsedInspectFields?.quality ?? item.quality,
     },
     effectiveSelectedFloat
@@ -417,6 +428,17 @@ function SkinDetailPage() {
 
   const onFloatInputBlur = () => {
     setFloatInput(formatFloatInput(effectiveSelectedFloat));
+  };
+
+  const onPatternInputChange = (nextRaw) => {
+    const cleaned = nextRaw.replace(/[^0-9]/g, '');
+    setPatternInput(cleaned);
+  };
+
+  const onPatternInputBlur = () => {
+    const parsed = Number(patternInput);
+    const normalized = Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 1;
+    setPatternInput(String(normalized));
   };
 
   const rarityClass = (rarity) => {
@@ -584,45 +606,68 @@ function SkinDetailPage() {
                 {supportsFloat && (
                   <div className="skin-float-range" style={{ marginTop: (cases.length > 0 || collection) ? 20 : 0 }}>
                     <strong style={{ display: 'block', marginBottom: 10 }}>Float range:</strong>
-                    <div
-                      className="float-range-track-wrap"
-                      ref={floatTrackRef}
-                      onMouseDown={onFloatTrackMouseDown}
-                      onMouseMove={onFloatTrackMouseMove}
-                      onMouseUp={onFloatTrackMouseUp}
-                      onMouseLeave={onFloatTrackMouseUp}
-                    >
-                      <div className="float-range-track" aria-hidden="true" />
-                      <div className="float-range-mask" style={{ left: '0%', width: `${minFloatPercent}%` }} aria-hidden="true" />
-                      <div className="float-range-mask" style={{ left: `${maxFloatPercent}%`, width: `${Math.max(100 - maxFloatPercent, 0)}%` }} aria-hidden="true" />
-                      <div className="float-range-cap" style={{ left: `${minFloatPercent}%`, width: `${Math.max(maxFloatPercent - minFloatPercent, 1)}%` }} aria-hidden="true" />
-                      <div className="float-range-pin float-range-pin-min" style={{ left: `${minFloatPercent}%` }}>
-                        <span className="float-range-pin-label">MIN {normalizedMinFloat.toFixed(2)}</span>
+                    <div style={{ minWidth: 260 }}>
+                      <div
+                        className="float-range-track-wrap"
+                        ref={floatTrackRef}
+                        onMouseDown={onFloatTrackMouseDown}
+                        onMouseMove={onFloatTrackMouseMove}
+                        onMouseUp={onFloatTrackMouseUp}
+                        onMouseLeave={onFloatTrackMouseUp}
+                      >
+                        <div className="float-range-track" aria-hidden="true" />
+                        <div className="float-range-mask" style={{ left: '0%', width: `${minFloatPercent}%` }} aria-hidden="true" />
+                        <div className="float-range-mask" style={{ left: `${maxFloatPercent}%`, width: `${Math.max(100 - maxFloatPercent, 0)}%` }} aria-hidden="true" />
+                        <div className="float-range-cap" style={{ left: `${minFloatPercent}%`, width: `${Math.max(maxFloatPercent - minFloatPercent, 1)}%` }} aria-hidden="true" />
+                        <div className="float-range-pin float-range-pin-min" style={{ left: `${minFloatPercent}%` }}>
+                          <span className="float-range-pin-label">MIN {normalizedMinFloat.toFixed(2)}</span>
+                        </div>
+                        <div className="float-range-pin float-range-pin-max" style={{ left: `${maxFloatPercent}%` }}>
+                          <span className="float-range-pin-label">MAX {normalizedMaxFloat.toFixed(2)}</span>
+                        </div>
+                        <div className="float-range-pin float-range-pin-current" style={{ left: `${selectedFloatPercent}%` }}>
+                          <span className="float-range-current-dot" />
+                        </div>
                       </div>
-                      <div className="float-range-pin float-range-pin-max" style={{ left: `${maxFloatPercent}%` }}>
-                        <span className="float-range-pin-label">MAX {normalizedMaxFloat.toFixed(2)}</span>
-                      </div>
-                      <div className="float-range-pin float-range-pin-current" style={{ left: `${selectedFloatPercent}%` }}>
-                        <span className="float-range-current-dot" />
+                      <div className="float-range-tiers" aria-hidden="true">
+                        <span>FN</span>
+                        <span>MW</span>
+                        <span>FT</span>
+                        <span>WW</span>
+                        <span>BS</span>
                       </div>
                     </div>
-                    <div className="float-range-tiers" aria-hidden="true">
-                      <span>FN</span>
-                      <span>MW</span>
-                      <span>FT</span>
-                      <span>WW</span>
-                      <span>BS</span>
+                    <div style={{ marginTop: 14, width: 300, maxWidth: '100%', marginInline: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <label htmlFor="float-input" style={{ fontSize: '1rem', lineHeight: 1, fontWeight: 600 }}>Float</label>
+                        <input
+                          id="float-input"
+                          type="text"
+                          inputMode="decimal"
+                          className="float-input"
+                          value={floatInput}
+                          onChange={(e) => onFloatInputChange(e.target.value)}
+                          onBlur={onFloatInputBlur}
+                          aria-label="Float value"
+                          style={{ width: 140 }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <label htmlFor="pattern-input" style={{ fontSize: '1rem', lineHeight: 1, fontWeight: 600 }}>Pattern</label>
+                        <input
+                          id="pattern-input"
+                          type="text"
+                          inputMode="numeric"
+                          className="float-input"
+                          value={patternInput}
+                          onChange={(e) => onPatternInputChange(e.target.value)}
+                          onBlur={onPatternInputBlur}
+                          aria-label="Pattern value"
+                          style={{ width: 140 }}
+                        />
+                      </div>
                     </div>
-                    <div className="float-inspect-controls">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="float-input"
-                        value={floatInput}
-                        onChange={(e) => onFloatInputChange(e.target.value)}
-                        onBlur={onFloatInputBlur}
-                        aria-label="Float value"
-                      />
+                    <div className="float-inspect-controls" style={{ marginTop: 14, justifyContent: 'center' }}>
                       <a
                         href={inspectHref}
                         className="account-button header-bordered-button"

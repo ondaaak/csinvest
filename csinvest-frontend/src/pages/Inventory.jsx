@@ -7,6 +7,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAppModal } from '../components/AppModalProvider.jsx';
 
 const BASE_URL = '/api';
+const CURRENCY_SYMBOLS = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  CZK: 'Kč',
+  RUB: '₽',
+};
 
 const isDoppler = (nm) => nm && nm.includes('Doppler');
 
@@ -382,6 +389,13 @@ function InventoryPage() {
 
   const getCurrentTotal = (it) => (it.current_price || 0) * getAmount(it);
 
+  const formatInputPrice = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    const symbol = CURRENCY_SYMBOLS[currency] || '$';
+    return `${symbol}${n.toFixed(2)}`;
+  };
+
   const openItem = (itm) => {
     if (!itm) return;
     
@@ -718,8 +732,8 @@ function InventoryPage() {
                     </div>
                     <div style={{ fontSize:'0.75rem', opacity:0.7, marginTop:2 }}>
                       {buyMode[item.user_item_id] === 'total'
-                        ? `Unit: ${formatPrice(((Number(editing[item.user_item_id].buy_price) || 0) / (Number(editing[item.user_item_id].amount) || 1)) || 0)}`
-                        : `Total: ${formatPrice((Number(editing[item.user_item_id].buy_price) || 0) * (Number(editing[item.user_item_id].amount) || 1))}`}
+                        ? `Unit: ${formatInputPrice(((Number(editing[item.user_item_id].buy_price) || 0) / (Number(editing[item.user_item_id].amount) || 1)) || 0)}`
+                        : `Total: ${formatInputPrice((Number(editing[item.user_item_id].buy_price) || 0) * (Number(editing[item.user_item_id].amount) || 1))}`}
                     </div>
                   </div>
                 ) : (
