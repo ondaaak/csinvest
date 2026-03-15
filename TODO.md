@@ -4,3 +4,5 @@
     Doppler Phases work weirdly.
     Refreshes every hour = VIP ? xd , roles
     New webhooks doesnt work ?
+    add steam link to my profile
+    filters for float ranges
