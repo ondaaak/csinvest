@@ -12,6 +12,7 @@ import { useAuth } from './auth/AuthContext.jsx';
 import './App.css'; 
 import { useCurrency } from './currency/CurrencyContext.jsx';
 import discordIcon from './assets/site/discord.png';
+import steamIcon from './assets/site/steam.png';
 
 const BASE_URL = '/api'; 
 
@@ -335,9 +336,19 @@ function OverviewPage() {
 
 function App() {
     const { user } = useAuth();
-    const { currency, cycleCurrency, refreshRates, loadingRates, lastUpdated } = useCurrency();
+    const { currency, cycleCurrency, refreshRates, loadingRates, lastUpdated, rates } = useCurrency();
     const location = useLocation();
     const path = location.pathname || '/';
+
+    const currencySymbols = {
+        USD: '$',
+        EUR: '€',
+        GBP: '£',
+        CZK: 'Kč',
+        RUB: '₽',
+    };
+    const currentRate = typeof rates?.[currency] === 'number' ? rates[currency] : 1;
+    const ratesTooltip = `${lastUpdated ? `Rates updated: ${new Date(lastUpdated).toLocaleString('cs-CZ')}` : 'Rates updated: not yet'}\n1$ = ${currentRate.toFixed(2)}${currencySymbols[currency] || currency}`;
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -363,7 +374,7 @@ function App() {
                 </div>
                 <div className="header-right">
                     
-                    <div className="header-tools" title={lastUpdated ? `Rates updated: ${new Date(lastUpdated).toLocaleString('cs-CZ')}` : 'Rates not updated'}>
+                                        <div className="header-tools" title={ratesTooltip}>
                       <button aria-label="Toggle currency" onClick={cycleCurrency} style={{
                           background:'var(--button-bg)',
                           color:'var(--button-text)',
@@ -429,6 +440,18 @@ function App() {
                 <div className="footer-line" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     <img src={discordIcon} alt="Discord" style={{ height: '14px', width: '14px' }} />
                     <span>ondaaak</span>
+                </div>
+                <div className="footer-line" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <span>|</span>
+                    <a
+                        href="https://steamcommunity.com/profiles/76561199012173128/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                        <img src={steamIcon} alt="Steam" style={{ height: '14px', width: '14px' }} />
+                        <span>ondra</span>
+                    </a>
                 </div>
             </footer>
         </>
