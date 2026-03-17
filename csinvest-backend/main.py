@@ -143,6 +143,11 @@ class SearchResponseItem(BaseModel):
     name: str
     item_type: str
     slug: str
+    inspect: str | None = None
+    def_index: int | None = None
+    paint_index: int | None = None
+    rarity_index: int | None = None
+    quality: int | None = None
     rarity: str | None = None
     current_price: float | None = None
     case_id: int | None = None
@@ -155,6 +160,11 @@ def to_search_item(itm: Item) -> SearchResponseItem:
         name=itm.name, 
         item_type=itm.item_type, 
         slug=itm.slug,
+        inspect=itm.inspect,
+        def_index=itm.def_index,
+        paint_index=itm.paint_index,
+        rarity_index=itm.rarity_index,
+        quality=itm.quality,
         rarity=itm.rarity,
         current_price=itm.current_price,
         case_id=itm.case_id,

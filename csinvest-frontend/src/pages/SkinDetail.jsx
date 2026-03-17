@@ -21,6 +21,7 @@ function SkinDetailPage() {
   const [patternInput, setPatternInput] = useState('1');
   const floatTrackRef = useRef(null);
   const isDraggingFloatRef = useRef(false);
+  const dragHandlersRef = useRef({ move: null, up: null });
 
   const skinImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
@@ -403,6 +404,27 @@ function SkinDetailPage() {
   };
 
   const onFloatTrackMouseDown = (e) => {
+    const onMove = (evt) => {
+      if (!isDraggingFloatRef.current) return;
+      setFloatFromPointerX(evt.clientX);
+    };
+
+    const onUp = () => {
+      isDraggingFloatRef.current = false;
+      const handlers = dragHandlersRef.current;
+      if (handlers.move) window.removeEventListener('mousemove', handlers.move);
+      if (handlers.up) window.removeEventListener('mouseup', handlers.up);
+      dragHandlersRef.current = { move: null, up: null };
+    };
+
+    const prev = dragHandlersRef.current;
+    if (prev.move) window.removeEventListener('mousemove', prev.move);
+    if (prev.up) window.removeEventListener('mouseup', prev.up);
+
+    dragHandlersRef.current = { move: onMove, up: onUp };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+
     isDraggingFloatRef.current = true;
     setFloatFromPointerX(e.clientX);
   };
@@ -418,6 +440,10 @@ function SkinDetailPage() {
 
   const onFloatTrackMouseUp = () => {
     isDraggingFloatRef.current = false;
+    const handlers = dragHandlersRef.current;
+    if (handlers.move) window.removeEventListener('mousemove', handlers.move);
+    if (handlers.up) window.removeEventListener('mouseup', handlers.up);
+    dragHandlersRef.current = { move: null, up: null };
   };
 
   const onFloatInputChange = (nextRaw) => {
@@ -620,7 +646,6 @@ function SkinDetailPage() {
                         onMouseDown={onFloatTrackMouseDown}
                         onMouseMove={onFloatTrackMouseMove}
                         onMouseUp={onFloatTrackMouseUp}
-                        onMouseLeave={onFloatTrackMouseUp}
                       >
                         <div className="float-range-track" aria-hidden="true" />
                         <div className="float-range-mask" style={{ left: '0%', width: `${minFloatPercent}%` }} aria-hidden="true" />

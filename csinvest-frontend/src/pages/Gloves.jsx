@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { buildSteamInspectHref } from '../utils/inspect.js';
+import { getCachedJson } from '../utils/apiCache.js';
 
 const API_BASE = '/api';
 
@@ -135,9 +137,7 @@ export default function GlovesPage() {
       setError(null);
       try {
         const url = `${API_BASE}/gloves?q=${encodeURIComponent(q)}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to load gloves');
-        const data = await res.json();
+        const data = await getCachedJson(url, { ttlMs: 180000 });
         const arr = Array.isArray(data) ? data : [];
         setItems(arr);
         setQuery(q);
@@ -148,8 +148,6 @@ export default function GlovesPage() {
       }
     };
     fetchData();
-    window.scrollTo(0, 0);
-    setTimeout(() => window.scrollTo(0, 0), 0);
   }, [q]);
 
   const sortedItems = React.useMemo(() => {
@@ -320,12 +318,34 @@ export default function GlovesPage() {
       ) : (
         <div className="categories-grid search-page-grid">
           {sortedItems.map(it => (
-            <div
+            <Link
               key={it.slug}
               className="category-card item-card"
-              onClick={() => openSkinDetail(it.slug)}
-              style={{ cursor: 'pointer' }}
+              to={{ pathname: `/skin/${it.slug}` }}
+              state={{ fromSearchHierarchy: { section: 'gloves', sectionLabel: 'Gloves', type: activeGloveType } }}
+              style={{ cursor: 'pointer', position: 'relative', textDecoration: 'none', color: 'inherit' }}
             >
+              {(() => {
+                const inspectHref = buildSteamInspectHref(it.inspect, it);
+                return (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="Inspect in game"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (inspectHref) window.location.href = inspectHref;
+                  }}
+                  style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, border: '1px solid var(--border-color)', borderRadius: 8, width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: inspectHref ? 1 : 0.45, cursor: inspectHref ? 'pointer' : 'not-allowed' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </button>
+                );
+              })()}
               {getGloveImage(it.slug) ? (
                 <img src={getGloveImage(it.slug)} alt={it.name} className="category-img" />
               ) : (
@@ -334,7 +354,7 @@ export default function GlovesPage() {
               <div style={{ marginBottom:8 }}>
                 <div className="category-label" style={{ fontSize:'0.95rem' }}>{it.name}</div>
               </div>
-            </div>
+            </Link>
           ))}
           {(!loading && items.length === 0) && (
             <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No gloves found.</div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
+import { buildSteamInspectHref } from '../utils/inspect.js';
 const API_BASE = '/api';
 
 const CATEGORIES = [
@@ -25,7 +26,7 @@ function SearchPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
-  const navigate = useNavigate();
+  const location = useLocation();
 
   const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const glob = import.meta.glob('../assets/search/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
@@ -62,10 +63,33 @@ function SearchPage() {
     return match ? itemThumbs[match] : null;
   };
 
-  const onCategoryClick = (cat) => {
+  const categoryHref = (cat) => {
     const qs = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
-    navigate(`/search/${cat.key}${qs}`);
+    return `/search/${cat.key}${qs}`;
   };
+
+  const itemHref = (item) => (item.item_type === 'case' ? `/case/${item.slug}` : `/skin/${item.slug}`);
+  const scrollKey = `scroll:${location.pathname}${location.search}`;
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem(scrollKey);
+    if (saved) {
+      const y = Number(saved);
+      if (Number.isFinite(y) && y >= 0) {
+        requestAnimationFrame(() => window.scrollTo(0, y));
+      }
+    }
+
+    const onScroll = () => {
+      sessionStorage.setItem(scrollKey, String(window.scrollY || window.pageYOffset || 0));
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      onScroll();
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [scrollKey]);
 
   useEffect(() => {
     const q = query.trim();
@@ -153,29 +177,53 @@ function SearchPage() {
           {open && query && suggestions.length > 0 && (
             <div className="search-suggestions">
               {suggestions.map((s) => (
-                <button
+                <div
                   key={s.slug}
-                  onClick={() => {
-                    navigate(s.item_type === 'case' ? `/case/${s.slug}` : `/skin/${s.slug}`);
-                    setOpen(false);
-                  }}
                   className="search-suggestion-row"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
                 >
-                  {(() => {
-                    const thumb = getThumb(s.slug);
-                    return thumb ? (
-                      <div className="search-thumb">
-                        <img src={thumb} alt={s.name} />
-                      </div>
-                    ) : (
-                      <div className="category-icon" aria-hidden="true"></div>
-                    );
-                  })()}
-                  <div className="search-text">
-                    <div className="search-name">{s.name}</div>
-                    <div className="search-type">{s.item_type}</div>
-                  </div>
-                </button>
+                  <Link
+                    to={itemHref(s)}
+                    onClick={() => {
+                      setOpen(false);
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
+                  >
+                    {(() => {
+                      const thumb = getThumb(s.slug);
+                      return thumb ? (
+                        <div className="search-thumb">
+                          <img src={thumb} alt={s.name} />
+                        </div>
+                      ) : (
+                        <div className="category-icon" aria-hidden="true"></div>
+                      );
+                    })()}
+                    <div className="search-text">
+                      <div className="search-name">{s.name}</div>
+                      <div className="search-type">{s.item_type}</div>
+                    </div>
+                  </Link>
+                  {buildSteamInspectHref(s.inspect, s) && (
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      title="Inspect in game"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const href = buildSteamInspectHref(s.inspect, s);
+                        if (href) window.location.href = href;
+                      }}
+                      style={{ flexShrink: 0, border: '1px solid var(--border-color)', borderRadius: 8, width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -191,20 +239,35 @@ function SearchPage() {
           let src = undefined;
           for (const k of aliases) { if (imgMap[k]) { src = imgMap[k]; break; } }
           return (
-            <button
-              key={c.key}
-              className={`category-card ${c.disabled ? 'disabled-category' : ''}`}
-              onClick={() => !c.disabled && onCategoryClick(c)}
-              disabled={c.disabled}
-              style={c.disabled ? { opacity: 0.5, cursor: 'not-allowed', filter: 'grayscale(100%)' } : {}}
-            >
-              {src ? (
-                <img className="category-img" src={src} alt={c.label} />
-              ) : (
-                <div className="category-icon" aria-hidden="true"></div>
-              )}
-              <div className="category-label">{c.label}</div>
-            </button>
+            c.disabled ? (
+              <button
+                key={c.key}
+                className="category-card disabled-category"
+                disabled
+                style={{ opacity: 0.5, cursor: 'not-allowed', filter: 'grayscale(100%)' }}
+              >
+                {src ? (
+                  <img className="category-img" src={src} alt={c.label} />
+                ) : (
+                  <div className="category-icon" aria-hidden="true"></div>
+                )}
+                <div className="category-label">{c.label}</div>
+              </button>
+            ) : (
+              <Link
+                key={c.key}
+                className="category-card"
+                to={categoryHref(c)}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                {src ? (
+                  <img className="category-img" src={src} alt={c.label} />
+                ) : (
+                  <div className="category-icon" aria-hidden="true"></div>
+                )}
+                <div className="category-label">{c.label}</div>
+              </Link>
+            )
           );
         })}
       </div>

@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext';
 import { useAppModal } from '../components/AppModalProvider.jsx';
+import { getCachedJson, invalidateCachedUrl } from '../utils/apiCache.js';
 
 const BASE_URL = '/api';
 
@@ -37,8 +38,8 @@ function CasesPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get(`${BASE_URL}/cases`);
-        const arr = Array.isArray(res.data) ? res.data : [];
+        const data = await getCachedJson(`${BASE_URL}/cases`, { ttlMs: 180000 });
+        const arr = Array.isArray(data) ? data : [];
         setCases(arr);
       } catch (e) {
         console.error(e);
@@ -65,9 +66,9 @@ function CasesPage() {
     try {
       setRefreshing(true);
       await axios.post(`${BASE_URL}/refresh-items`, null, { params: { item_type: 'case' } });
-
-      const res = await axios.get(`${BASE_URL}/cases`);
-      const arr = Array.isArray(res.data) ? res.data : [];
+      invalidateCachedUrl(`${BASE_URL}/cases`);
+      const data = await getCachedJson(`${BASE_URL}/cases`, { ttlMs: 180000, force: true });
+      const arr = Array.isArray(data) ? data : [];
       setCases(arr);
     } catch (e) {
       console.error(e);
@@ -227,17 +228,11 @@ function CasesPage() {
       </div>
       <div className="categories-grid cases-grid">
         {sortedCases.map(cs => (
-          <div
+          <Link
             key={cs.item_id}
             className="category-card"
-            onClick={() => {
-              if (cs.collection_slug) {
-                navigate(`/collection/${cs.collection_slug}`);
-              } else {
-                navigate(`/case/${cs.slug}`);
-              }
-            }}
-            style={{ cursor: 'pointer' }}
+            to={cs.collection_slug ? `/collection/${cs.collection_slug}` : `/case/${cs.slug}`}
+            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
           >
             {caseImgMap[cs.slug] ? (
               <img src={caseImgMap[cs.slug]} alt={cs.name} className="category-img" />
@@ -264,7 +259,7 @@ function CasesPage() {
               {formatPrice(cs.current_price)}
               {isPriceOutdated(cs.last_update) && <WarningIcon />}
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

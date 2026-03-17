@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation, useNavigationType } from 'react-router-dom';
 import { InventoryPage, SearchPage, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage, WeaponsPage, CollectionsPage, CollectionDetailPage } from './pages';
 import LoginPage from './pages/Login.jsx';
 import RegisterPage from './pages/Register.jsx';
@@ -338,7 +338,11 @@ function App() {
     const { user } = useAuth();
     const { currency, cycleCurrency, refreshRates, loadingRates, lastUpdated, rates } = useCurrency();
     const location = useLocation();
+    const navigationType = useNavigationType();
     const path = location.pathname || '/';
+    const scrollPositionsRef = useRef(new Map());
+    const restoreTimerRef = useRef(null);
+    const routeKey = `${location.pathname}${location.search}`;
 
     const currencySymbols = {
         USD: '$',
@@ -351,8 +355,64 @@ function App() {
     const ratesTooltip = `${lastUpdated ? `Rates updated: ${new Date(lastUpdated).toLocaleString('cs-CZ')}` : 'Rates updated: not yet'}\n1$ = ${currentRate.toFixed(2)}${currencySymbols[currency] || currency}`;
 
     useEffect(() => {
+        if (restoreTimerRef.current) {
+            clearTimeout(restoreTimerRef.current);
+            restoreTimerRef.current = null;
+        }
+
+        const saveScroll = () => {
+            const y = window.scrollY || window.pageYOffset || 0;
+            scrollPositionsRef.current.set(routeKey, y);
+            try {
+                sessionStorage.setItem(`scroll:${routeKey}`, String(y));
+            } catch {
+                // Ignore storage write errors.
+            }
+        };
+
+        window.addEventListener('scroll', saveScroll, { passive: true });
+        return () => {
+            saveScroll();
+            window.removeEventListener('scroll', saveScroll);
+        };
+    }, [routeKey]);
+
+    useEffect(() => {
+        if (navigationType === 'POP') {
+            let saved = scrollPositionsRef.current.get(routeKey);
+            if (typeof saved !== 'number') {
+                const raw = sessionStorage.getItem(`scroll:${routeKey}`);
+                const parsed = Number(raw);
+                if (Number.isFinite(parsed) && parsed >= 0) {
+                    saved = parsed;
+                }
+            }
+
+            if (typeof saved === 'number') {
+                let tries = 0;
+                const maxTries = 30;
+                const restore = () => {
+                    window.scrollTo(0, saved);
+                    const maxScrollable = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                    const reached = Math.abs((window.scrollY || 0) - saved) <= 3;
+                    const canReach = maxScrollable >= saved - 3;
+
+                    if ((reached || canReach) || tries >= maxTries) {
+                        return;
+                    }
+
+                    tries += 1;
+                    restoreTimerRef.current = setTimeout(restore, 50);
+                };
+
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(restore);
+                });
+                return;
+            }
+        }
         window.scrollTo(0, 0);
-    }, [path]);
+    }, [routeKey, path, navigationType]);
 
     const isAuthPage = path === '/login' || path === '/register' || path === '/account';
     

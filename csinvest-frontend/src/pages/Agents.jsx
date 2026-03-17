@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useAppModal } from '../components/AppModalProvider.jsx';
+import { buildSteamInspectHref } from '../utils/inspect.js';
+import { getCachedJson, invalidateCachedUrl } from '../utils/apiCache.js';
 
 const API_BASE = '/api';
 
@@ -50,9 +52,7 @@ export default function AgentsPage() {
       setError(null);
       try {
         const url = q ? `${API_BASE}/search/items?q=${encodeURIComponent(q)}&item_type=agent` : `${API_BASE}/items?item_type=agent`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to load agents');
-        const data = await res.json();
+        const data = await getCachedJson(url, { ttlMs: 180000 });
         const arr = Array.isArray(data) ? data : [];
         setItems(arr);
         setQuery(q);
@@ -81,8 +81,8 @@ export default function AgentsPage() {
       setRefreshing(true);
       await fetch(`${API_BASE}/refresh-items?item_type=agent`, { method: 'POST' });
       const url = query ? `${API_BASE}/search/items?q=${encodeURIComponent(query)}&item_type=agent` : `${API_BASE}/items?item_type=agent`;
-      const res = await fetch(url);
-      const data = await res.json();
+      invalidateCachedUrl(url);
+      const data = await getCachedJson(url, { ttlMs: 180000, force: true });
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -225,12 +225,33 @@ export default function AgentsPage() {
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
       <div className="categories-grid search-page-grid">
         {sortedItems.map(it => (
-          <div
+          <Link
             key={it.slug}
             className="category-card item-card"
-            onClick={() => navigate(`/skin/${it.slug}`)}
-            style={{ cursor: 'pointer' }}
+            to={`/skin/${it.slug}`}
+            style={{ cursor: 'pointer', position: 'relative', textDecoration: 'none', color: 'inherit' }}
           >
+            {(() => {
+              const inspectHref = buildSteamInspectHref(it.inspect, it);
+              return (
+              <button
+                type="button"
+                className="icon-btn"
+                title="Inspect in game"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (inspectHref) window.location.href = inspectHref;
+                }}
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, border: '1px solid var(--border-color)', borderRadius: 8, width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: inspectHref ? 1 : 0.45, cursor: inspectHref ? 'pointer' : 'not-allowed' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </button>
+              );
+            })()}
             {getAgentImage(it.slug) ? (
               <img src={getAgentImage(it.slug)} alt={it.name} className="category-img" />
             ) : (
@@ -257,7 +278,7 @@ export default function AgentsPage() {
               {typeof it.current_price === 'number' ? formatPrice(it.current_price) : '—'}
               {isPriceOutdated(it.last_update) && <WarningIcon />}
             </div>
-          </div>
+          </Link>
         ))}
         {(!loading && items.length === 0) && (
           <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No agents found.</div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { getCachedJson } from '../utils/apiCache.js';
 
 const BASE_URL = '/api';
 
@@ -40,8 +40,8 @@ function CollectionsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get(`${BASE_URL}/collections`);
-        const arr = Array.isArray(res.data) ? res.data : [];
+        const data = await getCachedJson(`${BASE_URL}/collections`, { ttlMs: 180000 });
+        const arr = Array.isArray(data) ? data : [];
         setCollections(arr);
       } catch (e) {
         console.error(e);
@@ -144,11 +144,11 @@ function CollectionsPage() {
         {sortedCollections.map(c => {
           const badge = badgeColors(c.drop_type);
           return (
-            <div
+            <Link
               key={c.slug}
               className="category-card item-card"
-              onClick={() => navigate(`/collection/${c.slug}`)}
-              style={{ cursor: 'pointer', position: 'relative', aspectRatio: '1/1' }}
+              to={`/collection/${c.slug}`}
+              style={{ cursor: 'pointer', position: 'relative', aspectRatio: '1/1', textDecoration: 'none', color: 'inherit' }}
             >
               {getCollectionImage(c.slug) ? (
                 <img src={getCollectionImage(c.slug)} alt={c.name} className="category-img" />
@@ -172,7 +172,7 @@ function CollectionsPage() {
                   </span>
                 </div>
               )}
-            </div>
+            </Link>
           );
         })}
         {(!loading && collections.length === 0) && (

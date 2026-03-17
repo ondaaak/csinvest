@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
+import { buildSteamInspectHref } from '../utils/inspect.js';
 
 const BASE_URL = '/api';
 
@@ -153,13 +154,30 @@ function CaseDetailPage() {
       <div className="categories-grid case-detail-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
         {items.map(it => {
           const rarityStyle = getRarityColor(it.rarity);
+          const inspectHref = buildSteamInspectHref(it.inspect, it);
           return (
             <div
               key={it.item_id || it.slug}
               className="category-card item-card"
               onClick={() => navigate(`/skin/${it.slug}`)}
-              style={{ cursor: 'pointer', padding: 12 }}
+              style={{ cursor: 'pointer', padding: 12, position: 'relative' }}
             >
+              <button
+                type="button"
+                className="icon-btn"
+                title={inspectHref ? 'Inspect in game' : 'Inspect not available'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (inspectHref) window.location.href = inspectHref;
+                }}
+                style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, border: '1px solid var(--border-color)', borderRadius: 8, width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: inspectHref ? 1 : 0.45, cursor: inspectHref ? 'pointer' : 'not-allowed' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </button>
               {getSkinImage(it.slug, it.name) ? (
                 <img src={getSkinImage(it.slug, it.name)} alt={it.name} className="category-img" style={{ width: '100%', height: 'auto', maxHeight: 100, objectFit: 'contain' }} />
               ) : (

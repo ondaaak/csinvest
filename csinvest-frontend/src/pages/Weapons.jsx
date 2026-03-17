@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { buildSteamInspectHref } from '../utils/inspect.js';
+import { getCachedJson } from '../utils/apiCache.js';
 
 const API_BASE = '/api';
 const WEAPONS_FILTERS_STORAGE_KEY = 'csinvest:weapons:filters:v2';
@@ -253,9 +255,7 @@ export default function WeaponsPage() {
       setError(null);
       try {
         const url = showAllWeapons ? `${API_BASE}/weapons` : `${API_BASE}/weapons?q=${encodeURIComponent(q)}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to load weapons');
-        const data = await res.json();
+        const data = await getCachedJson(url, { ttlMs: 180000 });
         const arr = Array.isArray(data) ? data : [];
         setItems(arr);
         setQuery(showAllWeapons ? '' : q);
@@ -266,9 +266,6 @@ export default function WeaponsPage() {
       }
     };
     fetchData();
-    // Scroll to top with a slight delay to override browser scroll restoration
-    window.scrollTo(0, 0);
-    setTimeout(() => window.scrollTo(0, 0), 0);
   }, [q, showAllWeapons]);
 
   const normalizeRarityKey = (rarity) => {
@@ -796,12 +793,42 @@ export default function WeaponsPage() {
       ) : (
         <div className="categories-grid search-page-grid">
           {sortedItems.map(it => (
-            <div
+            <Link
               key={it.slug}
               className="category-card item-card"
-              onClick={() => openSkinDetail(it.slug)}
-              style={{ cursor: 'pointer' }}
+              to={{
+                pathname: `/skin/${it.slug}`,
+              }}
+              state={{
+                fromSearchHierarchy: {
+                  section: 'weapons',
+                  sectionLabel: 'Weapons',
+                  type: activeWeaponType,
+                },
+              }}
+              style={{ cursor: 'pointer', position: 'relative', textDecoration: 'none', color: 'inherit' }}
             >
+              {(() => {
+                const inspectHref = buildSteamInspectHref(it.inspect, it);
+                return (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  title="Inspect in game"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (inspectHref) window.location.href = inspectHref;
+                  }}
+                  style={{ position: 'absolute', top: 8, right: 8, zIndex: 3, border: '1px solid var(--border-color)', borderRadius: 8, width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: inspectHref ? 1 : 0.45, cursor: inspectHref ? 'pointer' : 'not-allowed' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </button>
+                );
+              })()}
               {getSkinImage(it.slug) ? (
                 <img src={getSkinImage(it.slug)} alt={it.name} className="category-img" />
               ) : (
@@ -824,7 +851,7 @@ export default function WeaponsPage() {
                   </span>
                 )}
               </div>
-            </div>
+            </Link>
           ))}
           {(!loading && sortedItems.length === 0) && (
             <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No weapons found.</div>
