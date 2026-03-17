@@ -85,9 +85,30 @@ function CollectionDetailPage() {
     }
   };
 
+  const getRarityRank = (rarity) => {
+    if (!rarity) return 0;
+    const r = rarity.toLowerCase();
+    if (r.includes('contraband') || r.includes('knife') || r.includes('glove')) return 7;
+    if (r.includes('covert') || r.includes('extraordinary')) return 6;
+    if (r.includes('classified')) return 5;
+    if (r.includes('restricted')) return 4;
+    if (r.includes('mil-spec') || r.includes('milspec')) return 3;
+    if (r.includes('industrial')) return 2;
+    if (r.includes('consumer')) return 1;
+    return 0;
+  };
+
+  const sortByRarityDesc = (items) => {
+    return [...items].sort((a, b) => {
+      const rarityDelta = getRarityRank(b.rarity) - getRarityRank(a.rarity);
+      if (rarityDelta !== 0) return rarityDelta;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  };
+
   const allItems = data?.skins || [];
   const packages = useMemo(() => allItems.filter(i => i.item_type === 'case' || i.name.toLowerCase().includes('package')), [allItems]);
-  const skins = useMemo(() => allItems.filter(i => !(i.item_type === 'case' || i.name.toLowerCase().includes('package'))), [allItems]);
+  const skins = useMemo(() => sortByRarityDesc(allItems.filter(i => !(i.item_type === 'case' || i.name.toLowerCase().includes('package')))), [allItems]);
 
   if (loading) return <div className="dashboard-container"><div className="loading">Loading…</div></div>;
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;

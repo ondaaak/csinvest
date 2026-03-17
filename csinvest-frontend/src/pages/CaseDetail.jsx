@@ -74,9 +74,30 @@ function CaseDetailPage() {
     return r === 'glove' || r === 'knife/glove';
   };
 
-  const skinItems = rawSkinItems.filter(s => !knifeLike(s) && !gloveLike(s));
-  const knifeItems = [...knives, ...rawSkinItems.filter(knifeLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i);
-  const gloveItems = [...gloves, ...rawSkinItems.filter(gloveLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i);
+  const getRarityRank = (rarity) => {
+    if (!rarity) return 0;
+    const r = rarity.toLowerCase();
+    if (r.includes('contraband') || r.includes('knife') || r.includes('glove')) return 7;
+    if (r.includes('covert') || r.includes('extraordinary')) return 6;
+    if (r.includes('classified')) return 5;
+    if (r.includes('restricted')) return 4;
+    if (r.includes('mil-spec') || r.includes('milspec')) return 3;
+    if (r.includes('industrial')) return 2;
+    if (r.includes('consumer')) return 1;
+    return 0;
+  };
+
+  const sortByRarityDesc = (items) => {
+    return [...items].sort((a, b) => {
+      const rarityDelta = getRarityRank(b.rarity) - getRarityRank(a.rarity);
+      if (rarityDelta !== 0) return rarityDelta;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  };
+
+  const skinItems = sortByRarityDesc(rawSkinItems.filter(s => !knifeLike(s) && !gloveLike(s)));
+  const knifeItems = sortByRarityDesc([...knives, ...rawSkinItems.filter(knifeLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i));
+  const gloveItems = sortByRarityDesc([...gloves, ...rawSkinItems.filter(gloveLike)].filter((v,i,a)=>a.findIndex(x=>x.item_id===v.item_id)===i));
 
   const getSkinImage = (itemSlug, itemName) => {
     if (!itemSlug) return null;
