@@ -66,6 +66,18 @@ class UserItem(Base):
     phase = Column(String)   # For Doppler phases
     item = relationship("Item")
 
+class UserItemHistory(Base):
+    __tablename__ = "USERITEMHISTORY"
+    user_item_history_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("USER.user_id"), nullable=False, index=True)
+    item_id = Column(Integer, ForeignKey("ITEM.item_id"), nullable=False, index=True)
+    amount = Column(Integer, nullable=False, default=1)
+    buy_price = Column(Numeric(10, 2), nullable=False)
+    sell_price = Column(Numeric(10, 2), nullable=False)
+    sold_date = Column(Date, nullable=False, default=datetime.date.today)
+
+    item = relationship("Item")
+
 class Market(Base):
     __tablename__ = "MARKET"
     market_id = Column(Integer, primary_key=True)

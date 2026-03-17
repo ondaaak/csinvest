@@ -23,14 +23,17 @@ function InventoryPage() {
   const { showAlert, showConfirm } = useAppModal();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
+  const [soldItems, setSoldItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('total'); 
   const [sortAsc, setSortAsc] = useState(false);
+  const [viewMode, setViewMode] = useState('current');
   const [editing, setEditing] = useState({}); 
   const [buyMode, setBuyMode] = useState({}); 
   const [savingIds, setSavingIds] = useState(new Set()); 
   const [updatingIds, setUpdatingIds] = useState(new Set());
+  const [sellingIds, setSellingIds] = useState(new Set());
 
   const [sellFeePct, setSellFeePct] = useState(2); 
   const [withdrawFeePct, setWithdrawFeePct] = useState(2); 
@@ -110,6 +113,28 @@ function InventoryPage() {
     if (onNormalized) onNormalized(n);
   };
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddSoldModal, setShowAddSoldModal] = useState(false);
+  const [sellDialogItem, setSellDialogItem] = useState(null);
+  const [sellDialogBuyPrice, setSellDialogBuyPrice] = useState('');
+  const [sellDialogPrice, setSellDialogPrice] = useState('');
+  const [sellDialogCurrency, setSellDialogCurrency] = useState(currency || 'USD');
+  const [sellDialogDate, setSellDialogDate] = useState(new Date().toISOString().slice(0, 10));
+  const [sellingNow, setSellingNow] = useState(false);
+  const [soldEditing, setSoldEditing] = useState({});
+  const [soldSavingIds, setSoldSavingIds] = useState(new Set());
+
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [historySuggestions, setHistorySuggestions] = useState([]);
+  const [historySuggestionsOpen, setHistorySuggestionsOpen] = useState(false);
+  const [historySelected, setHistorySelected] = useState(null);
+  const historySuggestRef = useRef(null);
+  const [historyAmount, setHistoryAmount] = useState('1');
+  const [historyBuyPrice, setHistoryBuyPrice] = useState('');
+  const [historySellPrice, setHistorySellPrice] = useState('');
+  const [historyDate, setHistoryDate] = useState(new Date().toISOString().slice(0, 10));
+  const [historyCurrency, setHistoryCurrency] = useState(currency || 'USD');
+  const [historySaving, setHistorySaving] = useState(false);
+  const [historyError, setHistoryError] = useState('');
   const [infoItem, setInfoItem] = useState(null); // State for the item details modal
   const [notificationItem, setNotificationItem] = useState(null); // State for notification modal
   
@@ -118,6 +143,13 @@ function InventoryPage() {
   const [portfolioNotificationTime, setPortfolioNotificationTime] = useState('');
   const actionsRef = useRef(null);
   const [controlsWidth, setControlsWidth] = useState(null);
+
+  const parsePrice = (val) => {
+    if (val === '' || val === null || val === undefined) return 0;
+    const cleaned = String(val).replace(/[^0-9.,-]/g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    return Number.isFinite(num) ? num : 0;
+  };
 
   const saveFeeSettings = async (nextSell, nextWithdraw) => {
     if (!userId) return;
@@ -205,6 +237,48 @@ function InventoryPage() {
     }
   }, [showPortfolioModal, userId]);
 
+  useEffect(() => {
+    if (!showAddSoldModal) return;
+    const q = historyQuery.trim();
+    if (!q) {
+      setHistorySuggestions([]);
+      setHistorySuggestionsOpen(false);
+      return;
+    }
+
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(q)}&limit=8&exclude_item_type=collection`);
+        if (!res.ok) {
+          setHistorySuggestions([]);
+          setHistorySuggestionsOpen(false);
+          return;
+        }
+        const arr = await res.json();
+        const suggestions = Array.isArray(arr) ? arr : [];
+        setHistorySuggestions(suggestions);
+        setHistorySuggestionsOpen(suggestions.length > 0);
+      } catch {
+        setHistorySuggestions([]);
+        setHistorySuggestionsOpen(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(t);
+  }, [historyQuery, showAddSoldModal]);
+
+  useEffect(() => {
+    if (!showAddSoldModal) return;
+    const onMouseDown = (e) => {
+      if (!historySuggestRef.current) return;
+      if (!historySuggestRef.current.contains(e.target)) {
+        setHistorySuggestionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [showAddSoldModal]);
+
   const handlePortfolioWebhookSave = async (e) => {
     e.preventDefault();
     try {
@@ -243,6 +317,39 @@ function InventoryPage() {
       setItems(data);
     } catch (err) {
       console.error('Chyba načítání inventáře:', err);
+    }
+  };
+
+  const fetchSoldItems = async () => {
+    try {
+      if (!userId) {
+        setSoldItems([]);
+        return;
+      }
+      const token = localStorage.getItem('csinvest:token');
+      const res = await axios.get(`${BASE_URL}/useritemhistory`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const arr = Array.isArray(res.data) ? res.data : [];
+      const data = arr.map((item) => {
+        const amt = typeof item.amount === 'number' ? item.amount : 1;
+        return {
+          ...item,
+          current_price: item.sell_price,
+          profit: (item.sell_price - item.buy_price) * amt,
+          sold_date: item.sold_date,
+        };
+      });
+      setSoldItems(data);
+    } catch (err) {
+      console.error('Chyba načítání sold history:', err);
+    }
+  };
+
+  const fetchAllInventoryData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([fetchItems(), fetchSoldItems()]);
     } finally {
       setLoading(false);
     }
@@ -261,7 +368,7 @@ function InventoryPage() {
   };
 
   useEffect(() => {
-    fetchItems();
+    fetchAllInventoryData();
   }, [userId]);
 
     const saveEdit = async (id) => {
@@ -338,6 +445,14 @@ function InventoryPage() {
     return name.includes(q) || slug.includes(q);
   });
 
+  const filteredSold = soldItems.filter((it) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const name = (it.item?.name || '').toLowerCase();
+    const slug = (it.item?.slug || it.slug || '').toLowerCase();
+    return name.includes(q) || slug.includes(q);
+  });
+
   const startEdit = (item) => {
     const id = item.user_item_id;
     const rate = rates[currency] || 1;
@@ -387,6 +502,36 @@ function InventoryPage() {
     }
   });
 
+  const sortedSold = [...filteredSold].sort((a, b) => {
+    const dir = sortAsc ? 1 : -1;
+    switch (sortKey) {
+      case 'date': {
+        const ad = a.sold_date ? new Date(a.sold_date).getTime() : 0;
+        const bd = b.sold_date ? new Date(b.sold_date).getTime() : 0;
+        return (ad - bd) * dir;
+      }
+      case 'amount':
+        return (getAmount(a) - getAmount(b)) * dir;
+      case 'name':
+        return (a.item?.name || '').localeCompare(b.item?.name || '') * dir;
+      case 'buyUnit':
+        return ((a.buy_price || 0) - (b.buy_price || 0)) * dir;
+      case 'sellUnit':
+        return ((a.sell_price || 0) - (b.sell_price || 0)) * dir;
+      case 'total':
+        return (((a.sell_price || 0) * getAmount(a)) - ((b.sell_price || 0) * getAmount(b))) * dir;
+      case 'profit':
+        return ((a.profit || 0) - (b.profit || 0)) * dir;
+      case 'profitPct': {
+        const ap = ((a.profit || 0) / (((a.buy_price || 0) * getAmount(a)) || 0.000001)) * 100;
+        const bp = ((b.profit || 0) / (((b.buy_price || 0) * getAmount(b)) || 0.000001)) * 100;
+        return (ap - bp) * dir;
+      }
+      default:
+        return 0;
+    }
+  });
+
   const getCurrentTotal = (it) => (it.current_price || 0) * getAmount(it);
 
   const formatInputPrice = (value) => {
@@ -418,8 +563,205 @@ function InventoryPage() {
     }
   };
 
+  const switchToCurrent = () => {
+    setViewMode('current');
+    setSortKey('total');
+    setSortAsc(false);
+  };
+
+  const switchToSold = () => {
+    setViewMode('sold');
+    setSortKey('date');
+    setSortAsc(false);
+  };
+
+  const openSellDialog = (item) => {
+    const rate = rates[currency] || 1;
+    setSellDialogItem(item);
+    setSellDialogBuyPrice(((item.buy_price || 0) * rate).toFixed(2));
+    setSellDialogPrice(((item.current_price || 0) * rate).toFixed(2));
+    setSellDialogCurrency(currency || 'USD');
+    setSellDialogDate(new Date().toISOString().slice(0, 10));
+  };
+
+  const submitSellDialog = async (e) => {
+    e.preventDefault();
+    if (!sellDialogItem) return;
+    const userItemId = sellDialogItem.user_item_id;
+    if (!userItemId) return;
+
+    const rate = rates[sellDialogCurrency] || 1;
+    const buyPriceUsd = parsePrice(sellDialogBuyPrice) / rate;
+    const sellPriceUsd = parsePrice(sellDialogPrice) / rate;
+    const token = localStorage.getItem('csinvest:token');
+    setSellingNow(true);
+    setSellingIds((prev) => new Set([...prev, userItemId]));
+    try {
+      await axios.post(
+        `${BASE_URL}/useritems/${userItemId}/sell`,
+        { buy_price: buyPriceUsd, sell_price: sellPriceUsd, sold_date: sellDialogDate || null },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSellDialogItem(null);
+      await fetchAllInventoryData();
+    } catch (err) {
+      console.error(err);
+      await showAlert('Failed to move item to sold history.');
+    } finally {
+      setSellingNow(false);
+      setSellingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(userItemId);
+        return next;
+      });
+    }
+  };
+
+  const cycleSellDialogCurrency = () => {
+    const keys = Object.keys(rates);
+    const idx = keys.indexOf(sellDialogCurrency);
+    const next = keys[(idx + 1) % keys.length];
+    setSellDialogCurrency(next);
+  };
+
+  const cycleHistoryCurrency = () => {
+    const keys = Object.keys(rates);
+    const idx = keys.indexOf(historyCurrency);
+    const next = keys[(idx + 1) % keys.length];
+    setHistoryCurrency(next);
+  };
+
+  const openAddSoldModal = () => {
+    setHistoryQuery('');
+    setHistorySuggestions([]);
+    setHistorySuggestionsOpen(false);
+    setHistorySelected(null);
+    setHistoryAmount('1');
+    setHistoryBuyPrice('');
+    setHistorySellPrice('');
+    setHistoryDate(new Date().toISOString().slice(0, 10));
+    setHistoryCurrency(currency || 'USD');
+    setHistoryError('');
+    setShowAddSoldModal(true);
+  };
+
+  const submitAddSoldItem = async (e) => {
+    e.preventDefault();
+    if (!historySelected?.item_id) {
+      setHistoryError('Select an item name first.');
+      return;
+    }
+
+    const amount = Math.max(1, Number(historyAmount) || 1);
+    const rate = rates[historyCurrency] || 1;
+    const buyPriceUsd = parsePrice(historyBuyPrice) / rate;
+    const sellPriceUsd = parsePrice(historySellPrice) / rate;
+    const token = localStorage.getItem('csinvest:token');
+
+    setHistorySaving(true);
+    setHistoryError('');
+    try {
+      await axios.post(
+        `${BASE_URL}/useritemhistory`,
+        {
+          item_id: historySelected.item_id,
+          amount,
+          buy_price: buyPriceUsd,
+          sell_price: sellPriceUsd,
+          sold_date: historyDate || null,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setShowAddSoldModal(false);
+      await fetchSoldItems();
+    } catch (err) {
+      console.error(err);
+      setHistoryError('Failed to save sold item.');
+    } finally {
+      setHistorySaving(false);
+    }
+  };
+
+  const startSoldEdit = (item) => {
+    const id = item.user_item_history_id;
+    const rate = rates[currency] || 1;
+    setSoldEditing((prev) => ({
+      ...prev,
+      [id]: {
+        sold_date: item.sold_date || new Date().toISOString().slice(0, 10),
+        amount: getAmount(item),
+        buy_price: ((item.buy_price || 0) * rate).toFixed(2),
+        sell_price: ((item.sell_price || 0) * rate).toFixed(2),
+      },
+    }));
+  };
+
+  const cancelSoldEdit = (id) => {
+    setSoldEditing((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const saveSoldEdit = async (id) => {
+    const payload = soldEditing[id];
+    if (!payload) return;
+    if (soldSavingIds.has(id)) return;
+    setSoldSavingIds((prev) => new Set([...prev, id]));
+    const token = localStorage.getItem('csinvest:token');
+    const rate = rates[currency] || 1;
+
+    try {
+      await axios.patch(
+        `${BASE_URL}/useritemhistory/${id}`,
+        {
+          sold_date: payload.sold_date || null,
+          amount: Math.max(1, Number(payload.amount) || 1),
+          buy_price: parsePrice(payload.buy_price) / rate,
+          sell_price: parsePrice(payload.sell_price) / rate,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      cancelSoldEdit(id);
+      await fetchSoldItems();
+    } catch (err) {
+      console.error(err);
+      await showAlert('Failed to update sold item.');
+    } finally {
+      setSoldSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const deleteSoldItem = async (id) => {
+    if (!(await showConfirm('Delete this sold item?', { title: 'Delete sold item', confirmText: 'Delete' }))) return;
+    try {
+      const token = localStorage.getItem('csinvest:token');
+      await axios.delete(`${BASE_URL}/useritemhistory/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await fetchSoldItems();
+    } catch (err) {
+      console.error(err);
+      await showAlert('Failed to delete sold item.');
+    }
+  };
+
   const Arrow = ({ keyName }) => (
     <span className="sort-arrow">{sortKey === keyName ? (sortAsc ? '↑' : '↓') : ''}</span>
+  );
+
+  const SwitchArrowsIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 7h10" />
+      <path d="M15 5l2 2-2 2" />
+      <path d="M17 17H7" />
+      <path d="M9 19l-2-2 2-2" />
+    </svg>
   );
 
   const PencilIcon = () => (
@@ -479,6 +821,13 @@ function InventoryPage() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
       <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+    </svg>
+  );
+
+  const DollarIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="2" x2="12" y2="22" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H7" />
     </svg>
   );
 
@@ -626,11 +975,38 @@ function InventoryPage() {
   }
   
   const displayItems = sorted.filter(i => i.slug !== 'cash' && i.item?.name?.toLowerCase() !== 'cash');
+  const displaySoldItems = sortedSold;
+  const hasActiveRows = viewMode === 'current' ? items.length > 0 : soldItems.length > 0;
 
   return (
     <div className="dashboard-container inventory-page" style={{ maxWidth: '1400px' }}>
-      <h2 style={{ textAlign: 'center' }}>Items</h2>
-      {items.length > 0 && (
+      <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:10, marginBottom:8 }}>
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => (viewMode === 'current' ? switchToCurrent() : switchToSold())}
+          style={{ fontSize:'1.15rem', fontWeight:700, opacity:1 }}
+        >
+          {viewMode === 'current' ? 'Current Items' : 'Sold Items'}
+        </button>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => (viewMode === 'current' ? switchToSold() : switchToCurrent())}
+          title="Switch view"
+        >
+          <SwitchArrowsIcon />
+        </button>
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => (viewMode === 'current' ? switchToSold() : switchToCurrent())}
+          style={{ fontSize:'0.88rem', fontWeight:500, opacity:0.75 }}
+        >
+          {viewMode === 'current' ? 'Sold Items' : 'Current Items'}
+        </button>
+      </div>
+      {hasActiveRows && (
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <input
             className="search-input"
@@ -641,9 +1017,20 @@ function InventoryPage() {
           />
         </div>
       )}
+      {userId && viewMode === 'sold' && hasActiveRows && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+          <button
+            className="account-button inventory-main-action"
+            onClick={openAddSoldModal}
+            style={{ fontSize: '0.95rem', padding: '10px 18px' }}
+          >
+            Add New Item
+          </button>
+        </div>
+      )}
 
       <div className="inventory-actions">
-        {userId && items.length > 0 && (
+        {userId && viewMode === 'current' && (
           <div ref={actionsRef} className="inventory-actions-group">
             <button
               className="account-button inventory-main-action"
@@ -661,18 +1048,19 @@ function InventoryPage() {
         )}
       </div>
 
-      <div className={userId && items.length > 0 ? "blur-container" : ""}>
+      <div className={userId && hasActiveRows ? "blur-container" : ""}>
         {userId ? (
-          items.length > 0 ? (
+          hasActiveRows ? (
         <div className="inventory-table-wrap">
         <table>
         <thead>
           <tr>
+            {viewMode === 'sold' && <th className="sortable" onClick={() => requestSort('date')}>Date <Arrow keyName="date" /></th>}
             <th className="sortable" onClick={() => requestSort('amount')}>Amount <Arrow keyName="amount" /></th>
             <th style={{ width: 50 }}></th>
             <th className="sortable" onClick={() => requestSort('name')}>Name <Arrow keyName="name" /></th>
             <th className="sortable" onClick={() => requestSort('buyUnit')}>Buy (unit) <Arrow keyName="buyUnit" /></th>
-            <th className="sortable" onClick={() => requestSort('sellUnit')}>Sell (unit) <Arrow keyName="sellUnit" /></th>
+            <th className="sortable" onClick={() => requestSort('sellUnit')}>{viewMode === 'current' ? 'Sell (unit)' : 'Sold (unit)'} <Arrow keyName="sellUnit" /></th>
             <th className="sortable" onClick={() => requestSort('total')}>Total (all) <Arrow keyName="total" /></th>
             <th className="sortable" onClick={() => requestSort('profit')}>Profit <Arrow keyName="profit" /></th>
             <th className="sortable" onClick={() => requestSort('profitPct')}>Profit% <Arrow keyName="profitPct" /></th>
@@ -680,7 +1068,7 @@ function InventoryPage() {
           </tr>
         </thead>
         <tbody>
-          {displayItems.map((item) => (
+          {viewMode === 'current' && displayItems.map((item) => (
             <tr key={item.user_item_id}>
               <td>
                 {editing[item.user_item_id] ? (
@@ -768,6 +1156,7 @@ function InventoryPage() {
                   </>
                 ) : (
                   <>
+                    <button className="icon-btn" title="Mark as sold" onClick={() => openSellDialog(item)} disabled={savingIds.has(item.user_item_id) || sellingIds.has(item.user_item_id)}><DollarIcon /></button>
                     <button className="icon-btn" title="Edit" onClick={() => startEdit(item)} disabled={savingIds.has(item.user_item_id)}><PencilIcon /></button>
                     {/* Info Action */}
                     <button className="icon-btn" title="Info & Details" onClick={() => setInfoItem({ ...item, float_value: item.float_value ?? '' })} disabled={savingIds.has(item.user_item_id)}>
@@ -802,9 +1191,103 @@ function InventoryPage() {
               </td>
             </tr>
           ))}
+
+          {viewMode === 'sold' && displaySoldItems.map((item) => {
+            const rowEdit = soldEditing[item.user_item_history_id];
+            const amount = rowEdit ? (Number(rowEdit.amount) || 1) : getAmount(item);
+            const buyUnit = rowEdit ? Number(rowEdit.buy_price) || 0 : (item.buy_price || 0);
+            const sellUnit = rowEdit ? Number(rowEdit.sell_price) || 0 : (item.sell_price || 0);
+            const soldTotal = sellUnit * amount;
+            const buyTotal = buyUnit * amount;
+            const profit = soldTotal - buyTotal;
+            const profitPct = buyTotal > 0 ? (profit / buyTotal) * 100 : 0;
+            return (
+              <tr key={item.user_item_history_id}>
+                <td>
+                  {rowEdit ? (
+                    <input
+                      className="form-input"
+                      type="date"
+                      value={rowEdit.sold_date || ''}
+                      onChange={(e) => setSoldEditing((prev) => ({ ...prev, [item.user_item_history_id]: { ...prev[item.user_item_history_id], sold_date: e.target.value } }))}
+                    />
+                  ) : (
+                    item.sold_date ? new Date(item.sold_date).toLocaleDateString() : '—'
+                  )}
+                </td>
+                <td>
+                  {rowEdit ? (
+                    <input
+                      className="form-input"
+                      style={{ maxWidth: 80 }}
+                      value={rowEdit.amount}
+                      onChange={(e) => setSoldEditing((prev) => ({ ...prev, [item.user_item_history_id]: { ...prev[item.user_item_history_id], amount: e.target.value } }))}
+                    />
+                  ) : (
+                    getAmount(item)
+                  )}
+                </td>
+                <td style={{ padding: '4px 8px' }}>
+                  {(() => {
+                    const imgUrl = item.item?.image || getImage(item.item?.slug || item.slug, item.item?.name);
+                    return imgUrl ? (
+                      <img src={imgUrl} alt="" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                    ) : null;
+                  })()}
+                </td>
+                <td>
+                  {item.item ? (
+                    <button className="link-btn" onClick={() => openItem(item.item)}>
+                      {item.item.name}
+                    </button>
+                  ) : '—'}
+                </td>
+                <td>
+                  {rowEdit ? (
+                    <input
+                      className="form-input compact"
+                      style={{ width: 90 }}
+                      value={rowEdit.buy_price}
+                      onChange={(e) => setSoldEditing((prev) => ({ ...prev, [item.user_item_history_id]: { ...prev[item.user_item_history_id], buy_price: e.target.value } }))}
+                    />
+                  ) : (
+                    formatPrice(item.buy_price)
+                  )}
+                </td>
+                <td>
+                  {rowEdit ? (
+                    <input
+                      className="form-input compact"
+                      style={{ width: 90 }}
+                      value={rowEdit.sell_price}
+                      onChange={(e) => setSoldEditing((prev) => ({ ...prev, [item.user_item_history_id]: { ...prev[item.user_item_history_id], sell_price: e.target.value } }))}
+                    />
+                  ) : (
+                    formatPrice(item.sell_price)
+                  )}
+                </td>
+                <td>{formatPrice(soldTotal)}</td>
+                <td className={profit >= 0 ? 'profit-text' : 'loss-text'}>{formatPrice(profit)}</td>
+                <td className={profit >= 0 ? 'profit-text' : 'loss-text'}>{profitPct.toFixed(2)}%</td>
+                <td>
+                  {rowEdit ? (
+                    <>
+                      <button className="icon-btn" title="Save" onClick={() => saveSoldEdit(item.user_item_history_id)} disabled={soldSavingIds.has(item.user_item_history_id)}><SaveIcon /></button>
+                      <button className="icon-btn" title="Cancel" onClick={() => cancelSoldEdit(item.user_item_history_id)} disabled={soldSavingIds.has(item.user_item_history_id)}><CancelIcon /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="icon-btn" title="Edit" onClick={() => startSoldEdit(item)}><PencilIcon /></button>
+                      <button className="icon-btn" title="Delete" onClick={() => deleteSoldItem(item.user_item_history_id)}><TrashIcon /></button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
           
           {/* Cash Row - Always at the bottom if it exists */}
-          {cashItem && (
+          {viewMode === 'current' && cashItem && (
              <tr key={cashItem.user_item_id} style={{ borderTop: '2px solid #444', background: 'rgba(255, 255, 255, 0.05)' }}>
                <td></td>
                <td style={{ padding: '4px 8px' }}>
@@ -937,10 +1420,10 @@ function InventoryPage() {
           ) : (
             !loading ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                <div className="loading">Portfolio is empty.</div>
+                <div className="loading">{viewMode === 'current' ? 'Portfolio is empty.' : 'Sold items history is empty.'}</div>
                 <button
                   className="account-button inventory-main-action"
-                  onClick={() => setShowAddModal(true)}
+                  onClick={() => (viewMode === 'current' ? setShowAddModal(true) : openAddSoldModal())}
                   style={{ fontSize: '1rem', padding: '14px 24px' }}
                 >
                   Add New Item
@@ -954,7 +1437,7 @@ function InventoryPage() {
       </div>
 
       {/* Portfolio summary */}
-      {items.length > 0 && (
+      {viewMode === 'current' && items.length > 0 && (
         <div style={{ marginTop: 24 }}>
           {(() => {
             const totals = displayItems.reduce((acc, it) => {
@@ -1101,11 +1584,245 @@ function InventoryPage() {
           })()}
         </div>
       )}
+
+      {viewMode === 'sold' && soldItems.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          {(() => {
+            const totals = displaySoldItems.reduce((acc, it) => {
+              const amt = getAmount(it);
+              acc.buy += (it.buy_price || 0) * amt;
+              acc.sell += (it.sell_price || 0) * amt;
+              return acc;
+            }, { buy: 0, sell: 0 });
+
+            const profit = totals.sell - totals.buy;
+            const profitPct = totals.buy > 0 ? (profit / totals.buy) * 100 : 0;
+
+            return (
+              <div className="stat-card summary-card">
+                <div className="inventory-summary-grid" style={{ display:'grid', alignItems:'center', gap: 4 }}>
+                  <div className="inventory-summary-title" style={{ fontWeight: 600 }}>Sold price summary</div>
+                  <div>{/* spacer */}</div>
+                  <div>
+                    <div style={{ opacity:0.7 }}>Buy total</div>
+                    <div>{formatPrice(totals.buy)}</div>
+                  </div>
+                  <div>
+                    <div style={{ opacity:0.7 }}>Sold total</div>
+                    <div>{formatPrice(totals.sell)}</div>
+                  </div>
+                  <div>
+                    <div style={{ opacity:0.7 }}>Profit</div>
+                    <div className={profit >= 0 ? 'profit-text' : 'loss-text'}>{formatPrice(profit)}</div>
+                  </div>
+                  <div>
+                    <div style={{ opacity:0.7 }}>Profit%</div>
+                    <div className={profit >= 0 ? 'profit-text' : 'loss-text'}>{profitPct.toFixed(2)}%</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {showAddModal && (
         <AddItemModal
           onClose={() => setShowAddModal(false)}
-          onAdded={async () => { await fetchItems(); setShowAddModal(false); }}
+          onAdded={async () => { await fetchAllInventoryData(); setShowAddModal(false); }}
         />
+      )}
+
+      {showAddSoldModal && (
+        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAddSoldModal(false); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="modal-header" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>Add Sold Item</h3>
+              <button
+                type="button"
+                onClick={() => setShowAddSoldModal(false)}
+                style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'inherit', fontSize: '1.25rem', cursor: 'pointer', padding: '0 10px' }}
+              >
+                ✖
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={submitAddSoldItem}>
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Name</label>
+                  <div ref={historySuggestRef} style={{ position:'relative' }}>
+                    <input
+                      className="form-input"
+                      placeholder="Search item"
+                      value={historyQuery}
+                      onChange={(e) => {
+                        setHistoryQuery(e.target.value);
+                        setHistorySelected(null);
+                      }}
+                      onFocus={() => {
+                        if (historySuggestions.length > 0) setHistorySuggestionsOpen(true);
+                      }}
+                    />
+                    {historySuggestionsOpen && historySuggestions.length > 0 && (
+                      <div className="search-suggestions">
+                        {historySuggestions.map((s) => (
+                          <button
+                            key={s.slug}
+                            type="button"
+                            className="search-suggestion-row"
+                            onClick={() => {
+                              setHistorySelected(s);
+                              setHistoryQuery(s.name);
+                              setHistorySuggestionsOpen(false);
+                            }}
+                          >
+                            {(() => {
+                              const thumb = getImage(s.slug, s.name);
+                              return thumb ? (
+                                <div className="search-thumb"><img src={thumb} alt={s.name} /></div>
+                              ) : (
+                                <div className="category-icon" aria-hidden="true"></div>
+                              );
+                            })()}
+                            <div className="search-text">
+                              <div className="search-name">{s.name}</div>
+                              <div className="search-type">{s.item_type}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Amount</label>
+                  <input className="form-input" value={historyAmount} onChange={(e) => setHistoryAmount(e.target.value)} placeholder="1" />
+                </div>
+
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Date</label>
+                  <input className="form-input" type="date" value={historyDate} onChange={(e) => setHistoryDate(e.target.value)} />
+                </div>
+
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Buy Price</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      className="form-input"
+                      style={{ flex: 1 }}
+                      value={historyBuyPrice}
+                      onChange={(e) => setHistoryBuyPrice(e.target.value)}
+                      placeholder="0.00"
+                    />
+                    <button
+                      type="button"
+                      className="account-button"
+                      onClick={cycleHistoryCurrency}
+                      style={{ width: 'auto', minWidth: '52px', padding: '0 10px', fontSize: '0.85rem' }}
+                      title="Click to switch currency"
+                    >
+                      {historyCurrency}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Sell Price</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      className="form-input"
+                      style={{ flex: 1 }}
+                      value={historySellPrice}
+                      onChange={(e) => setHistorySellPrice(e.target.value)}
+                      placeholder="0.00"
+                    />
+                    <button
+                      type="button"
+                      className="account-button"
+                      onClick={cycleHistoryCurrency}
+                      style={{ width: 'auto', minWidth: '52px', padding: '0 10px', fontSize: '0.85rem' }}
+                      title="Click to switch currency"
+                    >
+                      {historyCurrency}
+                    </button>
+                  </div>
+                </div>
+
+                {historyError && <div className="error-text" style={{ marginTop: 8 }}>{historyError}</div>}
+
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
+                  <button type="submit" className="account-button" disabled={historySaving}>
+                    {historySaving ? 'Saving…' : 'Confirm'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sellDialogItem && (
+        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setSellDialogItem(null); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="modal-header">
+              <h3>Mark As Sold</h3>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={submitSellDialog}>
+                <div style={{ marginBottom: 12, opacity: 0.8 }}>{sellDialogItem.item?.name}</div>
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Sold Date</label>
+                  <input className="form-input" type="date" value={sellDialogDate} onChange={(e) => setSellDialogDate(e.target.value)} />
+                </div>
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Buy Price (unit)</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      className="form-input"
+                      style={{ flex: 1 }}
+                      value={sellDialogBuyPrice}
+                      onChange={(e) => setSellDialogBuyPrice(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="account-button"
+                      onClick={cycleSellDialogCurrency}
+                      style={{ width: 'auto', minWidth: '52px', padding: '0 10px', fontSize: '0.85rem' }}
+                      title="Click to switch currency"
+                    >
+                      {sellDialogCurrency}
+                    </button>
+                  </div>
+                </div>
+                <div style={{ marginBottom: 15 }}>
+                  <label className="form-label">Sell Price (unit)</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      className="form-input"
+                      style={{ flex: 1 }}
+                      value={sellDialogPrice}
+                      onChange={(e) => setSellDialogPrice(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="account-button"
+                      onClick={cycleSellDialogCurrency}
+                      style={{ width: 'auto', minWidth: '52px', padding: '0 10px', fontSize: '0.85rem' }}
+                      title="Click to switch currency"
+                    >
+                      {sellDialogCurrency}
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+                  <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setSellDialogItem(null)}>Cancel</button>
+                  <button type="submit" className="account-button" disabled={sellingNow}>{sellingNow ? 'Saving…' : 'Move To Sold'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Info / Details Modal */}

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from models import UserItem, Item, PortfolioHistory, MarketPrice
+from models import UserItem, UserItemHistory, Item, PortfolioHistory, MarketPrice
 import datetime
 from sqlalchemy import func
 
@@ -33,6 +33,14 @@ class ItemRepository:
         return self.db.query(UserItem).filter(UserItem.user_id == user_id).options(
             joinedload(UserItem.item).joinedload(Item.collection_item)
         ).all()
+
+    def get_user_item_history(self, user_id: int):
+        return (
+            self.db.query(UserItemHistory)
+            .filter(UserItemHistory.user_id == user_id)
+            .options(joinedload(UserItemHistory.item).joinedload(Item.collection_item))
+            .all()
+        )
 
     def get_user_item_by_id(self, user_item_id: int, user_id: int):
         return self.db.query(UserItem).filter(
@@ -74,6 +82,82 @@ class ItemRepository:
         self.db.commit()
         self.db.refresh(new_item)
         return new_item
+
+    def add_user_item_history(self, user_id: int, item_id: int, buy_price: float, sell_price: float, amount: int = 1, sold_date=None):
+        if sold_date is None:
+            sold_date = datetime.date.today()
+
+        rec = UserItemHistory(
+            user_id=user_id,
+            item_id=item_id,
+            amount=amount or 1,
+            buy_price=buy_price,
+            sell_price=sell_price,
+            sold_date=sold_date,
+        )
+        self.db.add(rec)
+        self.db.commit()
+        self.db.refresh(rec)
+        return rec
+
+    def move_user_item_to_history(self, user_item_id: int, user_id: int, sell_price: float | None = None, buy_price: float | None = None, sold_date=None):
+        rec = (
+            self.db.query(UserItem)
+            .filter(UserItem.user_item_id == user_item_id, UserItem.user_id == user_id)
+            .first()
+        )
+        if not rec:
+            return None
+
+        if sold_date is None:
+            sold_date = datetime.date.today()
+
+        amount = rec.amount or 1
+        sell_unit = float(rec.current_price or 0) if sell_price is None else float(sell_price)
+        buy_unit = float(rec.buy_price or 0) if buy_price is None else float(buy_price)
+        history_rec = UserItemHistory(
+            user_id=user_id,
+            item_id=rec.item_id,
+            amount=amount,
+            buy_price=buy_unit,
+            sell_price=sell_unit,
+            sold_date=sold_date,
+        )
+        self.db.add(history_rec)
+        self.db.delete(rec)
+        self.db.commit()
+        self.db.refresh(history_rec)
+        return history_rec
+
+    def update_user_item_history(self, user_item_history_id: int, user_id: int, **fields):
+        rec = (
+            self.db.query(UserItemHistory)
+            .filter(UserItemHistory.user_item_history_id == user_item_history_id, UserItemHistory.user_id == user_id)
+            .first()
+        )
+        if not rec:
+            return None
+
+        allowed = {'amount', 'buy_price', 'sell_price', 'sold_date'}
+        for k, v in fields.items():
+            if k in allowed:
+                setattr(rec, k, v)
+
+        self.db.commit()
+        self.db.refresh(rec)
+        return rec
+
+    def delete_user_item_history(self, user_item_history_id: int, user_id: int) -> bool:
+        rec = (
+            self.db.query(UserItemHistory)
+            .filter(UserItemHistory.user_item_history_id == user_item_history_id, UserItemHistory.user_id == user_id)
+            .first()
+        )
+        if not rec:
+            return False
+        self.db.delete(rec)
+        self.db.commit()
+        return True
 
     def get_items(self, item_type: str = None, limit: int = 100, offset: int = 0):
         q = self.db.query(Item)

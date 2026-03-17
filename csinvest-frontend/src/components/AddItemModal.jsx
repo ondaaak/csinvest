@@ -326,7 +326,7 @@ function AddItemModal({ onClose, onAdded }) {
                   type="button" 
                   className="account-button" 
                   onClick={cycleModalCurrency}
-                  style={{ width: 'auto', minWidth: '60px', padding: '0 12px' }}
+                  style={{ width: 'auto', minWidth: '52px', padding: '0 10px', fontSize: '0.85rem' }}
                   title="Click to switch currency"
                 >
                   {inputCurrency}

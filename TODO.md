@@ -3,9 +3,10 @@
     History of sold items
     Doppler Phases work weirdly.
     Refreshes every hour = VIP ? xd , roles
-    New webhooks doesnt work ?
-    inventory history ?
-    more items like capsules etc.
     knives inspect
-    notifications delay (1 hour)
-    collection and case skins sort weirdly
+    code review
+    db data review
+    mini inspect button in search
+    middle click button
+    float posuvnik aby jel i kdyz vzjedu nahoru
+    po kliknuti zpatky ponechat scrollnuti

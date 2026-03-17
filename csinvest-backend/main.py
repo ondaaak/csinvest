@@ -13,6 +13,7 @@ from config import Config
 from sqlalchemy import func
 from scheduler import start_scheduler
 from encryption import encrypt_api_key
+import datetime
 
 app = FastAPI()
 
@@ -96,6 +97,24 @@ class UpdateUserRequest(BaseModel):
     currency: str | None = None
     sell_fee_pct: float | None = None
     withdraw_fee_pct: float | None = None
+
+class CreateUserItemHistoryRequest(BaseModel):
+    item_id: int
+    amount: int = 1
+    buy_price: float
+    sell_price: float
+    sold_date: datetime.date | None = None
+
+class SellUserItemRequest(BaseModel):
+    sell_price: float | None = None
+    buy_price: float | None = None
+    sold_date: datetime.date | None = None
+
+class UpdateUserItemHistoryRequest(BaseModel):
+    amount: int | None = None
+    buy_price: float | None = None
+    sell_price: float | None = None
+    sold_date: datetime.date | None = None
 
 @app.patch("/users/me")
 def update_user_me(payload: UpdateUserRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -209,6 +228,63 @@ def get_portfolio(user_id: int, db: Session = Depends(get_db)):
     if not items:
         return {"message": "Tento uživatel nemá žádné položky nebo neexistuje."}
     return items
+
+@app.get("/useritemhistory")
+def get_my_user_item_history(db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    repo = ItemRepository(db)
+    return repo.get_user_item_history(current.user_id)
+
+@app.post("/useritemhistory")
+def create_user_item_history(payload: CreateUserItemHistoryRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    repo = ItemRepository(db)
+    itm = db.query(Item).filter(Item.item_id == payload.item_id).first()
+    if not itm:
+        raise HTTPException(status_code=404, detail="Item nenalezen")
+
+    amount = max(1, int(payload.amount or 1))
+    sold_date = payload.sold_date or datetime.date.today()
+    return repo.add_user_item_history(
+        user_id=current.user_id,
+        item_id=payload.item_id,
+        amount=amount,
+        buy_price=payload.buy_price,
+        sell_price=payload.sell_price,
+        sold_date=sold_date,
+    )
+
+@app.post("/useritems/{user_item_id}/sell")
+def sell_user_item(user_item_id: int, payload: SellUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    repo = ItemRepository(db)
+    moved = repo.move_user_item_to_history(
+        user_item_id=user_item_id,
+        user_id=current.user_id,
+        sell_price=payload.sell_price,
+        buy_price=payload.buy_price,
+        sold_date=payload.sold_date,
+    )
+    if not moved:
+        raise HTTPException(status_code=404, detail="User item nenalezen")
+    return moved
+
+@app.patch("/useritemhistory/{user_item_history_id}")
+def update_user_item_history(user_item_history_id: int, payload: UpdateUserItemHistoryRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    repo = ItemRepository(db)
+    updated = repo.update_user_item_history(
+        user_item_history_id=user_item_history_id,
+        user_id=current.user_id,
+        **payload.model_dump(exclude_unset=True)
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Sold item nenalezen")
+    return updated
+
+@app.delete("/useritemhistory/{user_item_history_id}", status_code=204)
+def delete_user_item_history(user_item_history_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    repo = ItemRepository(db)
+    ok = repo.delete_user_item_history(user_item_history_id, current.user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Sold item nenalezen")
+    return
 
 @app.get("/items")
 def get_items(item_type: str = None, limit: int = 100, db: Session = Depends(get_db)):
