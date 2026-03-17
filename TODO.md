@@ -8,3 +8,4 @@
     more items like capsules etc.
     knives inspect
     notifications delay (1 hour)
+    collection and case skins sort weirdly
