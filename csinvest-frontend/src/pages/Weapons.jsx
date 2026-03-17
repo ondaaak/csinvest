@@ -1,19 +1,78 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 const API_BASE = '/api';
+const WEAPONS_FILTERS_STORAGE_KEY = 'csinvest:weapons:filters:v2';
+
+const getDefaultFilters = () => ({
+  selectedRarities: [],
+  floatFilterEnabled: false,
+  minFloat: 0,
+  maxFloat: 1,
+  onlyCaseSkins: false,
+  onlyCollectionSkins: false,
+});
+
+const readStoredFilters = () => {
+  try {
+    const raw = localStorage.getItem(WEAPONS_FILTERS_STORAGE_KEY);
+    if (!raw) return getDefaultFilters();
+    const parsed = JSON.parse(raw);
+    return {
+      selectedRarities: Array.isArray(parsed.selectedRarities) ? parsed.selectedRarities.filter(v => typeof v === 'string') : [],
+      floatFilterEnabled: !!parsed.floatFilterEnabled,
+      minFloat: typeof parsed.minFloat === 'number' ? Math.max(0, Math.min(parsed.minFloat, 1)) : 0,
+      maxFloat: typeof parsed.maxFloat === 'number' ? Math.max(0, Math.min(parsed.maxFloat, 1)) : 1,
+      onlyCaseSkins: !!parsed.onlyCaseSkins,
+      onlyCollectionSkins: !!parsed.onlyCollectionSkins,
+    };
+  } catch {
+    return getDefaultFilters();
+  }
+};
 
 export default function WeaponsPage() {
+  const { user } = useAuth();
+  const canUseFilters = !!user;
+  const initialFilters = useMemo(() => readStoredFilters(), []);
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [sortMode, setSortMode] = useState('price_desc');
+  const [sortMode, setSortMode] = useState('rarity_desc');
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedRarities, setSelectedRarities] = useState(initialFilters.selectedRarities);
+  const [floatFilterEnabled, setFloatFilterEnabled] = useState(initialFilters.floatFilterEnabled);
+  const [minFloat, setMinFloat] = useState(initialFilters.minFloat);
+  const [maxFloat, setMaxFloat] = useState(initialFilters.maxFloat);
+  const [onlyCaseSkins, setOnlyCaseSkins] = useState(initialFilters.onlyCaseSkins);
+  const [onlyCollectionSkins, setOnlyCollectionSkins] = useState(initialFilters.onlyCollectionSkins);
   const boxRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const persistFiltersNow = (payload) => {
+    if (!canUseFilters) return;
+    try {
+      localStorage.setItem(WEAPONS_FILTERS_STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // Ignore storage write errors.
+    }
+  };
+
+  const RARITY_OPTIONS = useMemo(() => [
+    { key: 'contraband', label: 'Contraband' },
+    { key: 'covert', label: 'Covert / Extraordinary' },
+    { key: 'classified', label: 'Classified' },
+    { key: 'restricted', label: 'Restricted' },
+    { key: 'mil-spec', label: 'Mil-Spec' },
+    { key: 'industrial', label: 'Industrial' },
+    { key: 'consumer', label: 'Consumer' },
+  ], []);
 
   // Define weapon categories
   const WEAPON_CATEGORIES = React.useMemo(() => [
@@ -64,6 +123,7 @@ export default function WeaponsPage() {
   ], []);
 
   const q = new URLSearchParams(location.search).get('q') || '';
+  const showAllWeapons = q.toLowerCase() === 'all';
   const activeWeaponType = useMemo(() => {
     const ql = (q || '').toLowerCase().trim();
     const match = WEAPON_CATEGORIES.find(w => ql.startsWith(`${w.name.toLowerCase()} |`));
@@ -71,6 +131,14 @@ export default function WeaponsPage() {
   }, [q, WEAPON_CATEGORIES]);
 
   const openSkinDetail = (itemSlug) => {
+    persistFiltersNow({
+      selectedRarities,
+      floatFilterEnabled,
+      minFloat,
+      maxFloat,
+      onlyCaseSkins,
+      onlyCollectionSkins,
+    });
     navigate(`/skin/${itemSlug}`, {
       state: {
         fromSearchHierarchy: {
@@ -153,6 +221,7 @@ export default function WeaponsPage() {
     };
     const handleKey = (e) => {
       if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') setShowFilters(false);
     };
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleKey);
@@ -161,6 +230,17 @@ export default function WeaponsPage() {
       document.removeEventListener('keydown', handleKey);
     };
   }, []);
+
+  useEffect(() => {
+    persistFiltersNow({
+      selectedRarities,
+      floatFilterEnabled,
+      minFloat,
+      maxFloat,
+      onlyCaseSkins,
+      onlyCollectionSkins,
+    });
+  }, [selectedRarities, floatFilterEnabled, minFloat, maxFloat, onlyCaseSkins, onlyCollectionSkins, canUseFilters]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -172,13 +252,13 @@ export default function WeaponsPage() {
       setLoading(true);
       setError(null);
       try {
-        const url = `${API_BASE}/weapons?q=${encodeURIComponent(q)}`;
+        const url = showAllWeapons ? `${API_BASE}/weapons` : `${API_BASE}/weapons?q=${encodeURIComponent(q)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to load weapons');
         const data = await res.json();
         const arr = Array.isArray(data) ? data : [];
         setItems(arr);
-        setQuery(q);
+        setQuery(showAllWeapons ? '' : q);
       } catch (e) {
         setError(e.message || 'Error');
       } finally {
@@ -189,67 +269,164 @@ export default function WeaponsPage() {
     // Scroll to top with a slight delay to override browser scroll restoration
     window.scrollTo(0, 0);
     setTimeout(() => window.scrollTo(0, 0), 0);
-  }, [q]);
+  }, [q, showAllWeapons]);
+
+  const normalizeRarityKey = (rarity) => {
+    if (!rarity) return null;
+    const r = rarity.toLowerCase();
+    if (r.includes('contraband')) return 'contraband';
+    if (r.includes('covert') || r.includes('extraordinary')) return 'covert';
+    if (r.includes('classified')) return 'classified';
+    if (r.includes('restricted')) return 'restricted';
+    if (r.includes('mil-spec')) return 'mil-spec';
+    if (r.includes('industrial')) return 'industrial';
+    if (r.includes('consumer')) return 'consumer';
+    return null;
+  };
+
+  const getRarityValue = (rarity) => {
+    if (!rarity) return 0;
+    const r = rarity.toLowerCase();
+    if (r.includes('contraband')) return 7;
+    if (r.includes('covert') || r.includes('extraordinary')) return 6;
+    if (r.includes('classified')) return 5;
+    if (r.includes('restricted')) return 4;
+    if (r.includes('mil-spec')) return 3;
+    if (r.includes('industrial')) return 2;
+    if (r.includes('consumer')) return 1;
+    return 0;
+  };
+
+  const getItemFloatRange = (item) => {
+    const min = Number(item?.min_float);
+    const max = Number(item?.max_float);
+    if (!Number.isNaN(min) && !Number.isNaN(max) && min >= 0 && max <= 1 && min <= max) {
+      return { min, max };
+    }
+    const single = Number(item?.float_value ?? item?.float ?? item?.wear);
+    if (!Number.isNaN(single) && single >= 0 && single <= 1) {
+      return { min: single, max: single };
+    }
+    return null;
+  };
+
+  const hasCaseId = (item) => item?.case_id !== null && item?.case_id !== undefined;
+
+  const getSkinSource = (item) => {
+    return hasCaseId(item) ? 'case' : 'collection';
+  };
 
   const sortedItems = React.useMemo(() => {
-    const arr = [...items];
-    const getPrice = (c) => typeof c.current_price === 'number' ? c.current_price : 0;
-    const getRarityValue = (rarity) => {
-      if (!rarity) return 0;
-      const r = rarity.toLowerCase();
-      if (r.includes('contraband')) return 7;
-      if (r.includes('covert') || r.includes('extraordinary')) return 6;
-      if (r.includes('classified')) return 5;
-      if (r.includes('restricted')) return 4;
-      if (r.includes('mil-spec')) return 3;
-      if (r.includes('industrial')) return 2;
-      if (r.includes('consumer')) return 1;
-      return 0;
-    };
+    let arr = [...items];
+
+    const ql = (query || '').toLowerCase().trim();
+
+    if (ql) {
+      // Check if query starts with a known weapon category (e.g. "AK-47 | ")
+      const categoryMatch = WEAPON_CATEGORIES.find(w => ql.startsWith(w.name.toLowerCase() + ' |'));
+      let searchTokens = [];
+      let baseFilter = null;
+
+      if (categoryMatch) {
+        const prefix = categoryMatch.name.toLowerCase() + ' |';
+        baseFilter = (name) => name.startsWith(prefix);
+        const remaining = ql.slice(prefix.length).trim();
+        if (remaining) searchTokens = remaining.split(/\s+/).filter(Boolean);
+      } else {
+        searchTokens = ql.split(/\s+/).filter(Boolean);
+      }
+
+      arr = arr.filter(c => {
+        const name = (c.name || '').toLowerCase();
+        const slug = (c.slug || '').toLowerCase();
+
+        if (baseFilter && !baseFilter(name)) return false;
+
+        if (searchTokens.length === 0) return true;
+        return searchTokens.every(token => name.includes(token) || slug.includes(token));
+      });
+    }
+
+    if (canUseFilters && selectedRarities.length > 0) {
+      arr = arr.filter(c => {
+        const rarityKey = normalizeRarityKey(c.rarity);
+        return rarityKey && selectedRarities.includes(rarityKey);
+      });
+    }
+
+    if (canUseFilters && floatFilterEnabled) {
+      arr = arr.filter(c => {
+        const range = getItemFloatRange(c);
+        if (range == null) return false;
+
+        const eps = 0.000001;
+        const fullRangeOnly = minFloat <= eps && maxFloat >= 1 - eps;
+        if (fullRangeOnly) {
+          return range.min <= eps && range.max >= 1 - eps;
+        }
+
+        return range.min >= minFloat - eps && range.max <= maxFloat + eps;
+      });
+    }
+
+    if (canUseFilters && (onlyCaseSkins || onlyCollectionSkins)) {
+      arr = arr.filter(c => {
+        const source = getSkinSource(c);
+        return (onlyCaseSkins && source === 'case') || (onlyCollectionSkins && source === 'collection');
+      });
+    }
 
     switch (sortMode) {
       case 'rarity_desc':
-        arr.sort((a,b) => getRarityValue(b.rarity) - getRarityValue(a.rarity));
+        arr.sort((a, b) => getRarityValue(b.rarity) - getRarityValue(a.rarity));
         break;
       case 'rarity_asc':
-        arr.sort((a,b) => getRarityValue(a.rarity) - getRarityValue(b.rarity));
-        break;
-      case 'price_asc':
-        arr.sort((a,b) => getPrice(a) - getPrice(b));
-        break;
-      case 'price_desc':
-        arr.sort((a,b) => getPrice(b) - getPrice(a));
+        arr.sort((a, b) => getRarityValue(a.rarity) - getRarityValue(b.rarity));
         break;
       default:
         break;
     }
-    const ql = (query || '').toLowerCase().trim();
-    if (!ql) return arr;
 
-    // Check if query starts with a known weapon category (e.g. "AK-47 | ")
-    const categoryMatch = WEAPON_CATEGORIES.find(w => ql.startsWith(w.name.toLowerCase() + ' |'));
-    let searchTokens = [];
-    let baseFilter = null;
+    return arr;
+  }, [
+    items,
+    sortMode,
+    query,
+    WEAPON_CATEGORIES,
+    selectedRarities,
+    floatFilterEnabled,
+    minFloat,
+    maxFloat,
+    onlyCaseSkins,
+    onlyCollectionSkins,
+  ]);
 
-    if (categoryMatch) {
-      const prefix = categoryMatch.name.toLowerCase() + ' |';
-      baseFilter = (name) => name.startsWith(prefix);
-      const remaining = ql.slice(prefix.length).trim();
-      if (remaining) searchTokens = remaining.split(/\s+/).filter(Boolean);
-    } else {
-      searchTokens = ql.split(/\s+/).filter(Boolean);
-    }
+  const activeFilterCount = canUseFilters
+    ? selectedRarities.length + (floatFilterEnabled ? 1 : 0) + (onlyCaseSkins ? 1 : 0) + (onlyCollectionSkins ? 1 : 0)
+    : 0;
 
-    return arr.filter(c => {
-      const name = (c.name || '').toLowerCase();
-      const slug = (c.slug || '').toLowerCase();
+  const toggleRarity = (rarityKey) => {
+    setSelectedRarities(prev => prev.includes(rarityKey) ? prev.filter(r => r !== rarityKey) : [...prev, rarityKey]);
+  };
 
-      if (baseFilter && !baseFilter(name)) return false;
+  const resetFilters = () => {
+    setSelectedRarities([]);
+    setFloatFilterEnabled(false);
+    setMinFloat(0);
+    setMaxFloat(1);
+    setOnlyCaseSkins(false);
+    setOnlyCollectionSkins(false);
+  };
 
-      if (searchTokens.length === 0) return true;
-      return searchTokens.every(token => name.includes(token) || slug.includes(token));
-    });
-  }, [items, sortMode, query]);
+  const updateMinFloat = (nextRaw) => {
+    const next = Math.max(0, Math.min(Number(nextRaw), maxFloat));
+    setMinFloat(Number.isNaN(next) ? 0 : next);
+  };
+
+  const updateMaxFloat = (nextRaw) => {
+    const next = Math.min(1, Math.max(Number(nextRaw), minFloat));
+    setMaxFloat(Number.isNaN(next) ? 1 : next);
+  };
 
   const getRarityColor = (rarity) => {
     if (!rarity) return { bg: 'rgba(107,114,128,0.25)', color: 'var(--text-color)' };
@@ -284,7 +461,29 @@ export default function WeaponsPage() {
               <span style={{ fontSize: '0.95rem', opacity: 0.9 }}>{activeWeaponType}</span>
             </>
           )}
+          {showAllWeapons && (
+            <>
+              <span style={{ opacity: 0.7 }}>|</span>
+              <span style={{ fontSize: '0.95rem', opacity: 0.9 }}>All</span>
+            </>
+          )}
         </div>
+        {canUseFilters && (
+          <button
+            type="button"
+            onClick={() => setShowFilters(true)}
+            style={{
+              background:'var(--surface-bg)',
+              color:'var(--text-color)',
+              border:'1px solid var(--border-color)',
+              borderRadius:8,
+              padding:'6px 10px',
+              cursor:'pointer'
+            }}
+          >
+            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </button>
+        )}
         <div ref={boxRef} className="search-page-search-wrap">
           <input
             className="search-input"
@@ -359,16 +558,220 @@ export default function WeaponsPage() {
         <select className="search-page-sort" value={sortMode} onChange={(e)=>setSortMode(e.target.value)} style={{
           background:'var(--surface-bg)', color:'var(--text-color)', border:'1px solid var(--border-color)', borderRadius:8, padding:'6px 8px'
         }}>
-          <option value="price_desc">Price ↓</option>
-          <option value="price_asc">Price ↑</option>
           <option value="rarity_desc">Rarity ↓</option>
           <option value="rarity_asc">Rarity ↑</option>
         </select>
       </div>
+      {canUseFilters && showFilters && (
+        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowFilters(false); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ margin: 0 }}>Filters</h3>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                aria-label="Close filters"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-color)', fontSize: '1.2rem', cursor: 'pointer' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 18 }}>
+              <section>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>Rarity</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                  {RARITY_OPTIONS.map((opt) => {
+                    const color = getRarityColor(opt.label);
+                    const checked = selectedRarities.includes(opt.key);
+                    return (
+                      <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 8px', borderRadius: 8, border: '1px solid var(--surface-border)' }}>
+                        <input
+                          type="checkbox"
+                          className="filter-checkbox"
+                          checked={checked}
+                          onChange={() => toggleRarity(opt.key)}
+                        />
+                        <span style={{
+                          display: 'inline-block',
+                          fontSize: '0.72rem',
+                          padding: '3px 6px',
+                          borderRadius: 6,
+                          background: color.bg,
+                          color: color.color,
+                          fontWeight: 600,
+                        }}>
+                          {opt.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    className="filter-checkbox"
+                    checked={floatFilterEnabled}
+                    onChange={(e) => setFloatFilterEnabled(e.target.checked)}
+                  />
+                  <span style={{ fontWeight: 600 }}>Float range</span>
+                </label>
+
+                <div className="skin-float-range" style={{ opacity: floatFilterEnabled ? 1 : 0.45, pointerEvents: floatFilterEnabled ? 'auto' : 'none' }}>
+                  <div style={{ position: 'relative', height: 34, marginBottom: 8 }}>
+                    <div style={{ position: 'absolute', left: 0, right: 0, top: 13, height: 8, borderRadius: 999, background: 'linear-gradient(90deg, #2dd4bf 0%, #84cc16 20%, #facc15 45%, #fb923c 70%, #ef4444 100%)' }} />
+                    <input
+                      className="dual-range dual-range-min"
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.001}
+                      value={minFloat}
+                      onChange={(e) => updateMinFloat(e.target.value)}
+                      style={{ position: 'absolute', left: 0, right: 0, top: 8, width: '100%' }}
+                    />
+                    <input
+                      className="dual-range dual-range-max"
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.001}
+                      value={maxFloat}
+                      onChange={(e) => updateMaxFloat(e.target.value)}
+                      style={{ position: 'absolute', left: 0, right: 0, top: 8, width: '100%' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <label style={{ display: 'grid', gap: 4, fontSize: '0.82rem' }}>
+                      <span>Min float</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.001}
+                        value={minFloat}
+                        onChange={(e) => updateMinFloat(e.target.value)}
+                        className="float-input"
+                        style={{ width: '100%', textAlign: 'left' }}
+                      />
+                    </label>
+                    <label style={{ display: 'grid', gap: 4, fontSize: '0.82rem' }}>
+                      <span>Max float</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.001}
+                        value={maxFloat}
+                        onChange={(e) => updateMaxFloat(e.target.value)}
+                        className="float-input"
+                        style={{ width: '100%', textAlign: 'left' }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>Source</div>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      className="filter-checkbox"
+                      checked={onlyCaseSkins}
+                      onChange={(e) => setOnlyCaseSkins(e.target.checked)}
+                    />
+                    <span>Case skin</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      className="filter-checkbox"
+                      checked={onlyCollectionSkins}
+                      onChange={(e) => setOnlyCollectionSkins(e.target.checked)}
+                    />
+                    <span>Collection skin</span>
+                  </label>
+                </div>
+              </section>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  style={{
+                    background:'transparent',
+                    color:'var(--text-color)',
+                    border:'1px solid var(--surface-border)',
+                    borderRadius:8,
+                    padding:'7px 10px',
+                    cursor:'pointer'
+                  }}
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFilters(false)}
+                  style={{
+                    background:'var(--button-bg)',
+                    color:'var(--button-text)',
+                    border:'1px solid var(--surface-border)',
+                    borderRadius:8,
+                    padding:'7px 10px',
+                    cursor:'pointer'
+                  }}
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {loading && <div className="loading">Loading weapons…</div>}
       {error && <div className="loading" style={{ color:'tomato' }}>{error}</div>}
       {!q ? (
         <div className="categories-grid search-page-grid">
+          {canUseFilters && activeFilterCount > 0 && (
+            <div
+              key="All"
+              className="category-card item-card"
+              onClick={() => {
+                setQuery('');
+                navigate('?q=all');
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  width: 68,
+                  height: 68,
+                  borderRadius: 999,
+                  margin: '0 auto 10px auto',
+                  border: '1px solid var(--surface-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '2rem',
+                  fontWeight: 700,
+                  color: 'var(--text-color)',
+                  background: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.2), rgba(255,255,255,0.05))'
+                }}
+              >
+                ?
+              </div>
+              <div style={{ marginBottom:8, textAlign:'center', fontWeight:'bold' }}>
+                <div className="category-label" style={{ fontSize:'1.1rem' }}>All</div>
+              </div>
+            </div>
+          )}
           {WEAPON_CATEGORIES.map(cat => (
             <div
               key={cat.name}
@@ -423,7 +826,7 @@ export default function WeaponsPage() {
               </div>
             </div>
           ))}
-          {(!loading && items.length === 0) && (
+          {(!loading && sortedItems.length === 0) && (
             <div style={{ textAlign: 'center', width: '100%', color: '#6b7280' }}>No weapons found.</div>
           )}
         </div>

@@ -75,11 +75,11 @@ class ItemRepository:
         self.db.refresh(new_item)
         return new_item
 
-    def get_items(self, item_type: str = None, limit: int = 100):
+    def get_items(self, item_type: str = None, limit: int = 100, offset: int = 0):
         q = self.db.query(Item)
         if item_type:
             q = q.filter(Item.item_type == item_type)
-        return q.limit(limit).all()
+        return q.offset(offset).limit(limit).all()
 
     def get_item_by_id(self, item_id: int):
         return self.db.query(Item).filter(Item.item_id == item_id).first()

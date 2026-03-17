@@ -126,6 +126,9 @@ class SearchResponseItem(BaseModel):
     slug: str
     rarity: str | None = None
     current_price: float | None = None
+    case_id: int | None = None
+    min_float: float | None = None
+    max_float: float | None = None
 
 def to_search_item(itm: Item) -> SearchResponseItem:
     return SearchResponseItem(
@@ -134,15 +137,25 @@ def to_search_item(itm: Item) -> SearchResponseItem:
         item_type=itm.item_type, 
         slug=itm.slug,
         rarity=itm.rarity,
-        current_price=itm.current_price
+        current_price=itm.current_price,
+        case_id=itm.case_id,
+        min_float=itm.min_float,
+        max_float=itm.max_float,
     )
 
-def _list_unique_items_by_type(item_type: str, q: str | None, db: Session):
+def _list_unique_items_by_type(item_type: str, q: str | None, db: Session, limit: int | None = None, offset: int = 0):
     repo = ItemRepository(db)
+    safe_offset = max(0, offset)
+    safe_limit = max(1, min(limit, 2000)) if limit is not None else None
+
     if q:
-        items = [r for r in repo.search_items(q, limit=10_000_000) if r.item_type == item_type]
+        fetch_limit = (safe_offset + safe_limit) if safe_limit is not None else 10_000_000
+        items = [r for r in repo.search_items(q, limit=fetch_limit) if r.item_type == item_type]
     else:
-        items = repo.get_items(item_type=item_type, limit=10_000_000)
+        if safe_limit is None:
+            items = repo.get_items(item_type=item_type, limit=10_000_000, offset=0)
+        else:
+            items = repo.get_items(item_type=item_type, limit=safe_limit, offset=safe_offset)
 
     seen = set()
     unique = []
@@ -150,6 +163,9 @@ def _list_unique_items_by_type(item_type: str, q: str | None, db: Session):
         if item.name not in seen:
             seen.add(item.name)
             unique.append(item)
+
+    if q and safe_limit is not None:
+        unique = unique[safe_offset:safe_offset + safe_limit]
 
     return [to_search_item(item) for item in unique]
 
@@ -174,8 +190,13 @@ def list_agents(q: str | None = None, db: Session = Depends(get_db)):
     return _list_unique_items_by_type('agent', q, db)
 
 @app.get("/weapons")
-def list_weapons(q: str | None = None, db: Session = Depends(get_db)):
-    return _list_unique_items_by_type('skin', q, db)
+def list_weapons(
+    q: str | None = None,
+    limit: int | None = Query(None, ge=1, le=2000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _list_unique_items_by_type('skin', q, db, limit=limit, offset=offset)
 
 @app.get("/")
 def read_root():

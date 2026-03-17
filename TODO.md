@@ -4,7 +4,6 @@
     Doppler Phases work weirdly.
     Refreshes every hour = VIP ? xd , roles
     New webhooks doesnt work ?
-    filters for float ranges
     inventory history ?
     more items like capsules etc.
     knives inspect
