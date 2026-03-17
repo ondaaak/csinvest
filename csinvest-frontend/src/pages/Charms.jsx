@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { useAppModal } from '../components/AppModalProvider.jsx';
 import { buildSteamInspectHref } from '../utils/inspect.js';
 import { getCachedJson, invalidateCachedUrl } from '../utils/apiCache.js';
+import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const API_BASE = '/api';
 
@@ -22,6 +23,7 @@ export default function CharmsPage() {
   const { formatPrice } = useCurrency();
 
   const q = new URLSearchParams(location.search).get('q') || '';
+  const returnScope = `charms:list:${q || 'all'}`;
 
   const charmImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
@@ -64,6 +66,11 @@ export default function CharmsPage() {
     };
     fetchData();
   }, [q]);
+
+  useEffect(() => {
+    if (loading) return;
+    return restoreReturnTarget(returnScope, { block: 'center', maxTries: 50, intervalMs: 60 });
+  }, [loading, items.length, returnScope]);
 
   const doRefreshPrices = async () => {
     const anyOutdated = items.some(i => {
@@ -229,6 +236,8 @@ export default function CharmsPage() {
             key={it.slug}
             className="category-card item-card"
             to={`/skin/${it.slug}`}
+            data-return-id={it.slug}
+            onClick={() => saveReturnTarget(returnScope, it.slug)}
             style={{ cursor: 'pointer', position: 'relative', textDecoration: 'none', color: 'inherit' }}
           >
             {(() => {

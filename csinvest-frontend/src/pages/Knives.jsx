@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { buildSteamInspectHref } from '../utils/inspect.js';
 import { getCachedJson } from '../utils/apiCache.js';
+import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const API_BASE = '/api';
 
@@ -41,6 +42,8 @@ export default function KnivesPage() {
   ], []);
 
   const q = new URLSearchParams(location.search).get('q') || '';
+  const categoryReturnScope = 'knives:categories';
+  const itemReturnScope = `knives:items:${q || 'all'}`;
   const activeKnifeType = useMemo(() => {
     const ql = (q || '').toLowerCase().trim();
     const match = KNIFE_TYPES.find(k => ql.startsWith(`${k.name.toLowerCase()} |`));
@@ -48,6 +51,7 @@ export default function KnivesPage() {
   }, [q, KNIFE_TYPES]);
 
   const openSkinDetail = (itemSlug) => {
+    saveReturnTarget(itemReturnScope, itemSlug);
     navigate(`/skin/${itemSlug}`, {
       state: {
         fromSearchHierarchy: {
@@ -162,6 +166,14 @@ export default function KnivesPage() {
     };
     fetchData();
   }, [q]);
+
+  useEffect(() => {
+    if (q) {
+      if (loading) return;
+      return restoreReturnTarget(itemReturnScope, { block: 'center', maxTries: 50, intervalMs: 60 });
+    }
+    return restoreReturnTarget(categoryReturnScope, { block: 'center', maxTries: 20, intervalMs: 60 });
+  }, [q, loading, items.length, itemReturnScope]);
 
   const sortedItems = React.useMemo(() => {
     const arr = [...items];
@@ -315,7 +327,9 @@ export default function KnivesPage() {
             <div
               key={cat.name}
               className="category-card item-card"
+              data-return-id={cat.name}
               onClick={() => {
+                saveReturnTarget(categoryReturnScope, cat.name);
                 setQuery(cat.name + ' | ');
                 navigate(`?q=${encodeURIComponent(cat.name + ' | ')}`);
               }}
@@ -340,6 +354,8 @@ export default function KnivesPage() {
               className="category-card item-card"
               to={{ pathname: `/skin/${it.slug}` }}
               state={{ fromSearchHierarchy: { section: 'knives', sectionLabel: 'Knives', type: activeKnifeType } }}
+              data-return-id={it.slug}
+              onClick={() => saveReturnTarget(itemReturnScope, it.slug)}
               style={{ cursor: 'pointer', position: 'relative', textDecoration: 'none', color: 'inherit' }}
             >
               {(() => {

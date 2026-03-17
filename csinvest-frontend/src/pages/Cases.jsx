@@ -5,10 +5,12 @@ import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext';
 import { useAppModal } from '../components/AppModalProvider.jsx';
 import { getCachedJson, invalidateCachedUrl } from '../utils/apiCache.js';
+import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const BASE_URL = '/api';
 
 function CasesPage() {
+  const returnScope = 'cases:list';
   const { user } = useAuth();
   const { showAlert } = useAppModal();
   const [cases, setCases] = useState([]);
@@ -50,6 +52,11 @@ function CasesPage() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    return restoreReturnTarget(returnScope, { block: 'center', maxTries: 50, intervalMs: 60 });
+  }, [loading, cases.length]);
 
   const doRefreshPrices = async () => {
     const anyOutdated = cases.some(c => {
@@ -232,6 +239,8 @@ function CasesPage() {
             key={cs.item_id}
             className="category-card"
             to={cs.collection_slug ? `/collection/${cs.collection_slug}` : `/case/${cs.slug}`}
+            data-return-id={cs.collection_slug ? `collection:${cs.collection_slug}` : `case:${cs.slug}`}
+            onClick={() => saveReturnTarget(returnScope, cs.collection_slug ? `collection:${cs.collection_slug}` : `case:${cs.slug}`)}
             style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
           >
             {caseImgMap[cs.slug] ? (

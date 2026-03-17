@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { buildSteamInspectHref } from '../utils/inspect.js';
+import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const BASE_URL = '/api';
 
@@ -13,6 +14,7 @@ function CaseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const restoreTargetKey = `case-detail:${slug}`;
 
   const caseImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
@@ -56,6 +58,16 @@ function CaseDetailPage() {
     };
     load();
   }, [slug]);
+
+  useEffect(() => {
+    if (loading || !data) return;
+    return restoreReturnTarget(restoreTargetKey, { block: 'center', maxTries: 50, intervalMs: 60 });
+  }, [loading, data, restoreTargetKey]);
+
+  const openSkinDetail = (itemSlug) => {
+    saveReturnTarget(restoreTargetKey, itemSlug);
+    navigate(`/skin/${itemSlug}`);
+  };
 
   if (loading) return <div className="dashboard-container"><div className="loading">Loading…</div></div>;
   if (error) return <div className="dashboard-container"><div className="loading">{error}</div></div>;
@@ -159,7 +171,8 @@ function CaseDetailPage() {
             <div
               key={it.item_id || it.slug}
               className="category-card item-card"
-              onClick={() => navigate(`/skin/${it.slug}`)}
+              data-return-id={it.slug}
+              onClick={() => openSkinDetail(it.slug)}
               style={{ cursor: 'pointer', padding: 12, position: 'relative' }}
             >
               <button

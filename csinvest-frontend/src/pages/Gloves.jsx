@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { buildSteamInspectHref } from '../utils/inspect.js';
 import { getCachedJson } from '../utils/apiCache.js';
+import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const API_BASE = '/api';
 
@@ -29,6 +30,8 @@ export default function GlovesPage() {
   ], []);
 
   const q = new URLSearchParams(location.search).get('q') || '';
+  const categoryReturnScope = 'gloves:categories';
+  const itemReturnScope = `gloves:items:${q || 'all'}`;
   const activeGloveType = useMemo(() => {
     const ql = (q || '').toLowerCase().trim();
     const match = GLOVE_TYPES.find(g => ql.startsWith(`${g.name.toLowerCase()} |`));
@@ -36,6 +39,7 @@ export default function GlovesPage() {
   }, [q, GLOVE_TYPES]);
 
   const openSkinDetail = (itemSlug) => {
+    saveReturnTarget(itemReturnScope, itemSlug);
     navigate(`/skin/${itemSlug}`, {
       state: {
         fromSearchHierarchy: {
@@ -149,6 +153,14 @@ export default function GlovesPage() {
     };
     fetchData();
   }, [q]);
+
+  useEffect(() => {
+    if (q) {
+      if (loading) return;
+      return restoreReturnTarget(itemReturnScope, { block: 'center', maxTries: 50, intervalMs: 60 });
+    }
+    return restoreReturnTarget(categoryReturnScope, { block: 'center', maxTries: 20, intervalMs: 60 });
+  }, [q, loading, items.length, itemReturnScope]);
 
   const sortedItems = React.useMemo(() => {
     const arr = [...items];
@@ -298,7 +310,9 @@ export default function GlovesPage() {
             <div
               key={cat.name}
               className="category-card item-card"
+              data-return-id={cat.name}
               onClick={() => {
+                saveReturnTarget(categoryReturnScope, cat.name);
                 setQuery(cat.name + ' | ');
                 navigate(`?q=${encodeURIComponent(cat.name + ' | ')}`);
               }}
@@ -323,6 +337,8 @@ export default function GlovesPage() {
               className="category-card item-card"
               to={{ pathname: `/skin/${it.slug}` }}
               state={{ fromSearchHierarchy: { section: 'gloves', sectionLabel: 'Gloves', type: activeGloveType } }}
+              data-return-id={it.slug}
+              onClick={() => saveReturnTarget(itemReturnScope, it.slug)}
               style={{ cursor: 'pointer', position: 'relative', textDecoration: 'none', color: 'inherit' }}
             >
               {(() => {

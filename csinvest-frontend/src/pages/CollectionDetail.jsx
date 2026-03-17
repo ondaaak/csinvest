@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { buildSteamInspectHref } from '../utils/inspect.js';
+import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const BASE_URL = '/api';
 
@@ -14,6 +15,7 @@ function CollectionDetailPage() {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+  const restoreTargetKey = `collection-detail:return-target:${slug}`;
 
   const collectionImgMap = useMemo(() => {
     const files = import.meta.glob('../assets/collections/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
@@ -69,6 +71,16 @@ function CollectionDetailPage() {
   useEffect(() => {
     loadData();
   }, [slug]);
+
+  useEffect(() => {
+    if (loading || !data) return;
+    return restoreReturnTarget(restoreTargetKey, { block: 'center', maxTries: 50, intervalMs: 60 });
+  }, [loading, data, restoreTargetKey]);
+
+  const openSkinDetail = (itemSlug) => {
+    saveReturnTarget(restoreTargetKey, itemSlug);
+    navigate(`/skin/${itemSlug}`);
+  };
 
   const doRefreshPackagePrices = async () => {
     const pkgs = (data?.skins || []).filter(i => i.item_type === 'case' || i.name.toLowerCase().includes('package'));
@@ -268,7 +280,8 @@ function CollectionDetailPage() {
               <div
                 key={it.slug}
                 className="category-card item-card"
-                onClick={() => navigate(`/skin/${it.slug}`)}
+                data-return-id={it.slug}
+                onClick={() => openSkinDetail(it.slug)}
                 style={{ cursor: 'pointer', position: 'relative' }}
               >
                 <button

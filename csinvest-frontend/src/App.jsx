@@ -11,6 +11,7 @@ import CharmsPage from './pages/Charms.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import './App.css'; 
 import { useCurrency } from './currency/CurrencyContext.jsx';
+import { hasPendingReturnTarget } from './utils/returnTarget.js';
 import discordIcon from './assets/site/discord.png';
 import steamIcon from './assets/site/steam.png';
 
@@ -344,6 +345,39 @@ function App() {
     const restoreTimerRef = useRef(null);
     const routeKey = `${location.pathname}${location.search}`;
 
+    const getScrollSnapshot = () => {
+        const y = window.scrollY || window.pageYOffset || 0;
+        const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        return { y, max };
+    };
+
+    const readSavedSnapshot = (key) => {
+        const inMemory = scrollPositionsRef.current.get(key);
+        if (inMemory && typeof inMemory === 'object') {
+            return inMemory;
+        }
+
+        const raw = sessionStorage.getItem(`scroll:${key}`);
+        if (!raw) return null;
+
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object' && Number.isFinite(parsed.y)) {
+                return {
+                    y: Math.max(0, Number(parsed.y) || 0),
+                    max: Number.isFinite(parsed.max) ? Math.max(0, Number(parsed.max)) : null,
+                };
+            }
+        } catch {
+            const legacy = Number(raw);
+            if (Number.isFinite(legacy) && legacy >= 0) {
+                return { y: legacy, max: null };
+            }
+        }
+
+        return null;
+    };
+
     const currencySymbols = {
         USD: '$',
         EUR: '€',
@@ -361,10 +395,10 @@ function App() {
         }
 
         const saveScroll = () => {
-            const y = window.scrollY || window.pageYOffset || 0;
-            scrollPositionsRef.current.set(routeKey, y);
+            const snapshot = getScrollSnapshot();
+            scrollPositionsRef.current.set(routeKey, snapshot);
             try {
-                sessionStorage.setItem(`scroll:${routeKey}`, String(y));
+                sessionStorage.setItem(`scroll:${routeKey}`, JSON.stringify(snapshot));
             } catch {
                 // Ignore storage write errors.
             }
@@ -379,30 +413,35 @@ function App() {
 
     useEffect(() => {
         if (navigationType === 'POP') {
-            let saved = scrollPositionsRef.current.get(routeKey);
-            if (typeof saved !== 'number') {
-                const raw = sessionStorage.getItem(`scroll:${routeKey}`);
-                const parsed = Number(raw);
-                if (Number.isFinite(parsed) && parsed >= 0) {
-                    saved = parsed;
-                }
+            if (hasPendingReturnTarget()) {
+                return;
             }
 
-            if (typeof saved === 'number') {
+            const saved = readSavedSnapshot(routeKey);
+
+            if (saved && Number.isFinite(saved.y)) {
                 let tries = 0;
-                const maxTries = 30;
+                const maxTries = 80;
                 const restore = () => {
-                    window.scrollTo(0, saved);
                     const maxScrollable = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-                    const reached = Math.abs((window.scrollY || 0) - saved) <= 3;
-                    const canReach = maxScrollable >= saved - 3;
+                    const wasNearBottom = Number.isFinite(saved.max) ? saved.y >= (saved.max - 24) : false;
+                    const ratioTarget = Number.isFinite(saved.max) && saved.max > 0
+                        ? (saved.y / saved.max) * maxScrollable
+                        : saved.y;
+                    const target = wasNearBottom
+                        ? maxScrollable
+                        : Math.max(0, Math.min(maxScrollable, ratioTarget));
+
+                    window.scrollTo(0, target);
+                    const reached = Math.abs((window.scrollY || 0) - target) <= 3;
+                    const canReach = maxScrollable >= target - 3;
 
                     if ((reached || canReach) || tries >= maxTries) {
                         return;
                     }
 
                     tries += 1;
-                    restoreTimerRef.current = setTimeout(restore, 50);
+                    restoreTimerRef.current = setTimeout(restore, 60);
                 };
 
                 requestAnimationFrame(() => {

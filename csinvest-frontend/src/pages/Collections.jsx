@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getCachedJson } from '../utils/apiCache.js';
+import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const BASE_URL = '/api';
 
 function CollectionsPage() {
+  const returnScope = 'collections:list';
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,6 +54,11 @@ function CollectionsPage() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    return restoreReturnTarget(returnScope, { block: 'center', maxTries: 50, intervalMs: 60 });
+  }, [loading, collections.length]);
 
   const sortedCollections = useMemo(() => {
     const arr = [...collections];
@@ -148,6 +155,8 @@ function CollectionsPage() {
               key={c.slug}
               className="category-card item-card"
               to={`/collection/${c.slug}`}
+              data-return-id={c.slug}
+              onClick={() => saveReturnTarget(returnScope, c.slug)}
               style={{ cursor: 'pointer', position: 'relative', aspectRatio: '1/1', textDecoration: 'none', color: 'inherit' }}
             >
               {getCollectionImage(c.slug) ? (
