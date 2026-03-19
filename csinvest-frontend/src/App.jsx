@@ -18,7 +18,7 @@ import steamIcon from './assets/site/steam.png';
 const BASE_URL = '/api'; 
 
 
-const PortfolioChart = ({ history, currentTotals }) => {
+const PortfolioChart = ({ history, currentTotals, feeMultiplier = 1 }) => {
     const { formatPrice } = useCurrency();
     const [showTotal, setShowTotal] = useState(true);
     const [showProfit, setShowProfit] = useState(true);
@@ -50,9 +50,10 @@ const PortfolioChart = ({ history, currentTotals }) => {
 
     const dataForChartBase = (history || []).map(record => {
         const t = new Date(record.timestamp);
-        const val = Number(record.total_value ?? 0);
-        const prof = Number(record.total_profit ?? 0);
-        const inv = Number(record.total_invested ?? (val - prof));
+        const grossVal = Number(record.total_value ?? 0);
+        const inv = Number(record.total_invested ?? 0);
+        const val = grossVal * feeMultiplier;
+        const prof = val - inv;
         const pct = inv > 0 ? (prof / inv) * 100 : 0;
         return {
             name: t.toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
@@ -92,6 +93,57 @@ const PortfolioChart = ({ history, currentTotals }) => {
             { ...dataForChartBase[dataForChartBase.length - 1], ...livePoint },
         ];
     })();
+    const segmentedProfitData = (() => {
+        if (dataForChart.length <= 1) {
+            return dataForChart.map((point) => {
+                const profit = Number(point?.profit ?? 0);
+                return {
+                    ...point,
+                    profitPositive: profit >= 0 ? profit : null,
+                    profitNegative: profit < 0 ? profit : null,
+                };
+            });
+        }
+
+        const out = [];
+        for (let i = 0; i < dataForChart.length; i += 1) {
+            const current = dataForChart[i];
+            const currentProfit = Number(current?.profit ?? 0);
+            out.push({
+                ...current,
+                profitPositive: currentProfit >= 0 ? currentProfit : null,
+                profitNegative: currentProfit < 0 ? currentProfit : null,
+            });
+
+            if (i === dataForChart.length - 1) continue;
+
+            const next = dataForChart[i + 1];
+            const nextProfit = Number(next?.profit ?? 0);
+            const crossesZero = (currentProfit < 0 && nextProfit > 0) || (currentProfit > 0 && nextProfit < 0);
+            if (!crossesZero) continue;
+
+            const ts1 = Number(current?.ts ?? 0);
+            const ts2 = Number(next?.ts ?? ts1);
+            const value1 = Number(current?.value ?? 0);
+            const value2 = Number(next?.value ?? value1);
+            const ratio = (0 - currentProfit) / (nextProfit - currentProfit);
+            const crossTs = ts1 + ((ts2 - ts1) * ratio);
+            const crossValue = value1 + ((value2 - value1) * ratio);
+
+            out.push({
+                ...current,
+                ts: crossTs,
+                name: new Date(crossTs).toLocaleDateString('cs-CZ', { day: '2-digit', month: '2-digit' }),
+                value: crossValue,
+                profit: 0,
+                profitPct: 0,
+                profitPositive: 0,
+                profitNegative: 0,
+            });
+        }
+
+        return out;
+    })();
 
     if (dataForChart.length === 0) {
         return (
@@ -115,7 +167,7 @@ const PortfolioChart = ({ history, currentTotals }) => {
                 <div style={{ fontSize:'0.8rem', opacity:0.8, borderBottom: '1px solid #444', marginBottom: 4, paddingBottom: 2 }}>
                     {dt.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
                 </div>
-                {payload.map((entry, idx) => {
+                {Array.from(new Map(payload.map((entry) => [entry.name, entry])).values()).map((entry, idx) => {
                     const isProfit = entry.name === 'Profit';
                     const pctStr = isProfit && point.profitPct !== undefined 
                         ? ` (${point.profitPct >= 0 ? '+' : ''}${point.profitPct.toFixed(2)}%)` 
@@ -139,12 +191,12 @@ const PortfolioChart = ({ history, currentTotals }) => {
                 </label>
                 <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none' }}>
                     <input type="checkbox" checked={showProfit} onChange={e => setShowProfit(e.target.checked)} />
-                    <span style={{ color: '#4caf50' }}>Profit</span>
+                    <span style={{ color: '#ffffff' }}>Profit</span>
                 </label>
             </div>
             <div ref={chartHostRef} style={{ width: '100%', height: 'calc(100% - 36px)', minWidth: 220, minHeight: 220 }}>
                 {chartSize.width > 0 && chartSize.height > 0 && (
-                    <LineChart width={chartSize.width} height={chartSize.height} data={dataForChart} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
+                    <LineChart width={chartSize.width} height={chartSize.height} data={segmentedProfitData} margin={{ top: 5, right: 20, left: 0, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#3a3a3a" />
                         <XAxis
                             dataKey="ts"
@@ -155,13 +207,16 @@ const PortfolioChart = ({ history, currentTotals }) => {
                             tick={{ fontSize: 12 }}
                             tickMargin={10}
                         />
-                        <YAxis stroke="var(--card-text-color)" domain={['auto', 'auto']} tickFormatter={(value) => `$${value}`} width={60} />
+                        <YAxis stroke="var(--card-text-color)" domain={['auto', 'auto']} tickFormatter={(value) => formatPrice(value)} width={84} />
                         <Tooltip content={<CustomTooltip />} />
                         {showTotal && (
                             <Line type="monotone" dataKey="value" name="Total Value" stroke="#ffffff" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
                         )}
                         {showProfit && (
-                            <Line type="monotone" dataKey="profit" name="Profit" stroke="#4caf50" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                            <>
+                                <Line type="monotone" dataKey="profitPositive" name="Profit" stroke="var(--profit-color)" strokeWidth={3} dot={false} connectNulls={false} activeDot={{ r: 6 }} />
+                                <Line type="monotone" dataKey="profitNegative" name="Profit" stroke="var(--loss-color)" strokeWidth={3} dot={false} connectNulls={false} activeDot={{ r: 6 }} />
+                            </>
                         )}
                     </LineChart>
                 )}
@@ -177,8 +232,21 @@ function OverviewPage() {
     const [portfolio, setPortfolio] = useState([]);
     const [history, setHistory] = useState([]);
     const [totals, setTotals] = useState({ invested: 0, value: 0, profit: 0 });
+    const [feeMultiplier, setFeeMultiplier] = useState(0.9604);
     const [timeframe, setTimeframe] = useState('all');
     const [sortAsc, setSortAsc] = useState(false);
+
+    const clampFeePct = (value) => {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 0;
+        return Math.max(0, Math.min(100, n));
+    };
+
+    const toNetMultiplier = (sellFeePct, withdrawFeePct) => {
+        const sell = clampFeePct(sellFeePct) / 100;
+        const withdraw = clampFeePct(withdrawFeePct) / 100;
+        return Math.max(0, (1 - sell) * (1 - withdraw));
+    };
 
     const fetchData = async () => {
         if (!userId) {
@@ -188,13 +256,19 @@ function OverviewPage() {
             return;
         }
         try {
-            const [portfolioResponse, historyResponse] = await Promise.all([
+            const token = localStorage.getItem('csinvest:token');
+            const [portfolioResponse, historyResponse, meResponse] = await Promise.all([
                 axios.get(`${BASE_URL}/portfolio/${userId}`),
-                axios.get(`${BASE_URL}/portfolio-history/${userId}`)
+                axios.get(`${BASE_URL}/portfolio-history/${userId}`),
+                axios.get(`${BASE_URL}/auth/me`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
             ]);
 
             const portfolioArray = Array.isArray(portfolioResponse.data) ? portfolioResponse.data : [];
             const historyArray = Array.isArray(historyResponse.data) ? historyResponse.data : [];
+            const sellFeePct = clampFeePct(meResponse?.data?.sell_fee_pct ?? 2);
+            const withdrawFeePct = clampFeePct(meResponse?.data?.withdraw_fee_pct ?? 2);
+            const nextFeeMultiplier = toNetMultiplier(sellFeePct, withdrawFeePct);
+            setFeeMultiplier(nextFeeMultiplier);
 
             const portfolioData = portfolioArray.map(item => {
                 const amt = typeof item.amount === 'number' ? item.amount : 1;
@@ -207,9 +281,20 @@ function OverviewPage() {
             setPortfolio(portfolioData);
             setHistory(historyArray);
 
-            // Keep header totals based on currently fetched portfolio prices,
-            // not on historical snapshots that can lag behind.
-            const liveTotals = portfolioData.reduce((acc, item) => {
+            // Keep overview totals aligned with Inventory summary logic:
+            // apply fees only on non-cash items, then add cash back 1:1.
+            const nonCashItems = portfolioData.filter((item) => {
+                const slug = String(item?.slug || item?.item?.slug || '').toLowerCase();
+                const name = String(item?.item?.name || '').toLowerCase();
+                return slug !== 'cash' && name !== 'cash';
+            });
+            const cashItems = portfolioData.filter((item) => {
+                const slug = String(item?.slug || item?.item?.slug || '').toLowerCase();
+                const name = String(item?.item?.name || '').toLowerCase();
+                return slug === 'cash' || name === 'cash';
+            });
+
+            const nonCashTotals = nonCashItems.reduce((acc, item) => {
                 const amt = typeof item.amount === 'number' ? item.amount : 1;
                 const buyUnit = Number(item.buy_price) || 0;
                 const currentUnit = Number(item.current_price) || 0;
@@ -218,10 +303,19 @@ function OverviewPage() {
                 return acc;
             }, { invested: 0, value: 0 });
 
+            const cashValue = cashItems.reduce((acc, item) => {
+                const amt = typeof item.amount === 'number' ? item.amount : 1;
+                const buyUnit = Number(item.buy_price) || 0;
+                return acc + (buyUnit * amt);
+            }, 0);
+
+            const netValueAfterFees = (nonCashTotals.value * nextFeeMultiplier) + cashValue;
+            const investedWithCash = nonCashTotals.invested + cashValue;
+
             setTotals({
-                invested: liveTotals.invested,
-                value: liveTotals.value,
-                profit: liveTotals.value - liveTotals.invested,
+                invested: investedWithCash,
+                value: netValueAfterFees,
+                profit: netValueAfterFees - investedWithCash,
             });
         } catch (err) {
             console.error("Chyba při načítání dat z API:", err);
@@ -265,6 +359,7 @@ function OverviewPage() {
             <div className="dashboard-container overview-page">
             <div className="total-value-block">
                 <div className="total-value-label">Total value</div>
+                <div style={{ fontSize: '0.78rem', opacity: 0.7, marginBottom: 4 }}>After sell + withdraw fees</div>
                 <div className="value-amount">{formatPrice(totals.value)}</div>
                 <div className={isProfit ? 'profit-indicator' : 'loss-indicator'}>
                     {isProfit ? '+' : ''}{profitPercent.toFixed(2)}%
@@ -288,7 +383,7 @@ function OverviewPage() {
                         ))}
                     </div>
                 </div>
-                <PortfolioChart history={filteredHistory} currentTotals={totals} />
+                <PortfolioChart history={filteredHistory} currentTotals={totals} feeMultiplier={feeMultiplier} />
             </div>
             
             {sortedPortfolio.length > 0 && (

@@ -16,9 +16,7 @@ function CollectionsPage() {
 
   // We can try to load images if they exist, or just use placeholders
   const collectionImgMap = useMemo(() => {
-    // Assuming we might have collection images in the future, or reuse case images if applicable
-    // For now, this might return empty or unmatched if filenames don't match
-    const files = import.meta.glob('../assets/collections/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
     Object.entries(files).forEach(([path, url]) => {
       const filename = path.split('/').pop() || '';

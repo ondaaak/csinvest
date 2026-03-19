@@ -18,7 +18,7 @@ function CollectionDetailPage() {
   const restoreTargetKey = `collection-detail:return-target:${slug}`;
 
   const collectionImgMap = useMemo(() => {
-    const files = import.meta.glob('../assets/collections/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
     Object.entries(files).forEach(([path, url]) => {
       const filename = path.split('/').pop() || '';

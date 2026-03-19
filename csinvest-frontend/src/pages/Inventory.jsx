@@ -143,6 +143,8 @@ function InventoryPage() {
   const [portfolioNotificationTime, setPortfolioNotificationTime] = useState('');
   const actionsRef = useRef(null);
   const [controlsWidth, setControlsWidth] = useState(null);
+  const summaryRef = useRef(null);
+  const [isLowerHalf, setIsLowerHalf] = useState(false);
 
   const parsePrice = (val) => {
     if (val === '' || val === null || val === undefined) return 0;
@@ -202,6 +204,26 @@ function InventoryPage() {
       window.removeEventListener('resize', measure);
     };
   }, [items.length, loading]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const doc = document.documentElement;
+      const body = document.body;
+      const docHeight = Math.max(body.scrollHeight, doc.scrollHeight);
+      const maxScroll = Math.max(1, docHeight - window.innerHeight);
+      const y = Math.max(0, window.scrollY || window.pageYOffset || 0);
+      setIsLowerHalf(y >= maxScroll / 2);
+    };
+
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -978,6 +1000,23 @@ function InventoryPage() {
   const displaySoldItems = sortedSold;
   const hasActiveRows = viewMode === 'current' ? items.length > 0 : soldItems.length > 0;
 
+  const handleInventoryJump = () => {
+    if (isLowerHalf) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (summaryRef.current) {
+      summaryRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    window.scrollTo({
+      top: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+      behavior: 'smooth',
+    });
+  };
+
   return (
     <div className="dashboard-container inventory-page" style={{ maxWidth: '1400px' }}>
       <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:10, marginBottom:8 }}>
@@ -1030,7 +1069,7 @@ function InventoryPage() {
       )}
 
       <div className="inventory-actions">
-        {userId && viewMode === 'current' && (
+        {userId && viewMode === 'current' && items.length > 0 && (
           <div ref={actionsRef} className="inventory-actions-group">
             <button
               className="account-button inventory-main-action"
@@ -1047,6 +1086,21 @@ function InventoryPage() {
           </div>
         )}
       </div>
+
+      {userId && hasActiveRows && (
+        <button
+          type="button"
+          className="inventory-jump-btn"
+          onClick={handleInventoryJump}
+          title={isLowerHalf ? 'Scroll to top' : 'Scroll to totals'}
+          aria-label={isLowerHalf ? 'Scroll to top' : 'Scroll to totals'}
+          style={{ transform: `translateY(-50%) rotate(${isLowerHalf ? 180 : 0}deg)` }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      )}
 
       <div className={userId && hasActiveRows ? "blur-container" : ""}>
         {userId ? (
@@ -1420,7 +1474,7 @@ function InventoryPage() {
           ) : (
             !loading ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                <div className="loading">{viewMode === 'current' ? 'Portfolio is empty.' : 'Sold items history is empty.'}</div>
+                <div className="loading">{viewMode === 'current' ? 'Portfolio is empty.' : 'Item history is empty.'}</div>
                 <button
                   className="account-button inventory-main-action"
                   onClick={() => (viewMode === 'current' ? setShowAddModal(true) : openAddSoldModal())}
@@ -1438,7 +1492,7 @@ function InventoryPage() {
 
       {/* Portfolio summary */}
       {viewMode === 'current' && items.length > 0 && (
-        <div style={{ marginTop: 24 }}>
+        <div ref={summaryRef} style={{ marginTop: 24 }}>
           {(() => {
             const totals = displayItems.reduce((acc, it) => {
               const amt = getAmount(it);
@@ -1586,7 +1640,7 @@ function InventoryPage() {
       )}
 
       {viewMode === 'sold' && soldItems.length > 0 && (
-        <div style={{ marginTop: 24 }}>
+        <div ref={summaryRef} style={{ marginTop: 24 }}>
           {(() => {
             const totals = displaySoldItems.reduce((acc, it) => {
               const amt = getAmount(it);

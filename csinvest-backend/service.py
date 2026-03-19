@@ -8,11 +8,84 @@ import datetime
 
 class PriceService:
     USER_ITEM_REFRESH_MIN_AGE_SECONDS = 1800
+    FX_CACHE_TTL_SECONDS = 12 * 60 * 60
+    CURRENCY_SYMBOLS = {
+        "USD": "$",
+        "EUR": "€",
+        "GBP": "£",
+        "CZK": "Kč",
+        "RUB": "₽",
+    }
 
     def __init__(self, db: Session, strategy: IMarketStrategy):
         self.repo = ItemRepository(db)
         self.strategy = strategy
         self.factory = PriceFactory()
+        self._fx_cache_timestamp = 0.0
+        self._fx_rates = {
+            "USD": 1.0,
+            "EUR": 0.86,
+            "GBP": 0.75,
+            "CZK": 20.77,
+            "RUB": 77.73,
+        }
+
+    def _normalize_currency(self, currency: str | None) -> str:
+        c = str(currency or "USD").upper()
+        return c if c in self.CURRENCY_SYMBOLS else "USD"
+
+    def _load_fx_rates(self) -> dict:
+        now = time.time()
+        if (now - self._fx_cache_timestamp) < self.FX_CACHE_TTL_SECONDS:
+            return self._fx_rates
+
+        symbols = ["EUR", "GBP", "CZK", "RUB"]
+        try:
+            r = requests.get(
+                f"https://api.exchangerate.host/latest?base=USD&symbols={','.join(symbols)}",
+                timeout=5,
+            )
+            r.raise_for_status()
+            data = r.json()
+            rates_obj = data.get("rates") or data.get("data", {}).get("rates") or {}
+            picked = {k: float(rates_obj[k]) for k in symbols if isinstance(rates_obj.get(k), (int, float))}
+            if picked:
+                self._fx_rates = {"USD": 1.0, **picked}
+                self._fx_cache_timestamp = now
+                return self._fx_rates
+        except Exception:
+            pass
+
+        try:
+            r = requests.get("https://open.er-api.com/v6/latest/USD", timeout=5)
+            r.raise_for_status()
+            data = r.json()
+            rates_obj = data.get("rates") or data.get("conversion_rates") or {}
+            picked = {k: float(rates_obj[k]) for k in symbols if isinstance(rates_obj.get(k), (int, float))}
+            if picked:
+                self._fx_rates = {"USD": 1.0, **picked}
+                self._fx_cache_timestamp = now
+                return self._fx_rates
+        except Exception:
+            pass
+
+        # Keep previous/fallback rates if remote fetch fails.
+        self._fx_cache_timestamp = now
+        return self._fx_rates
+
+    def _convert_price(self, usd_value: float, currency: str | None) -> float:
+        cur = self._normalize_currency(currency)
+        rates = self._load_fx_rates()
+        rate = float(rates.get(cur, 1.0))
+        return float(usd_value or 0.0) * rate
+
+    def _format_price(self, usd_value: float, currency: str | None, use_grouping: bool = False) -> str:
+        cur = self._normalize_currency(currency)
+        symbol = self.CURRENCY_SYMBOLS.get(cur, "$")
+        converted = self._convert_price(usd_value, cur)
+        if use_grouping:
+            return f"{symbol}{converted:,.2f}"
+        return f"{symbol}{converted:.2f}"
 
     def _is_user_item_refresh_too_recent(self, last_update: datetime.datetime | None) -> bool:
         if not last_update:
@@ -25,7 +98,7 @@ class PriceService:
             # If datetime comparison fails (e.g. tz mismatch), do not block refresh.
             return False
 
-    def _send_discord_notification(self, webhook_url: str, item_name: str, old_price: float, new_price: float):
+    def _send_discord_notification(self, webhook_url: str, item_name: str, old_price: float, new_price: float, currency: str = "USD"):
         if not webhook_url:
             return
             
@@ -38,14 +111,18 @@ class PriceService:
 
             emoji = "📈" if diff >= 0 else "📉"
             color = 5763719 if diff >= 0 else 15548997  # Green or Red
+            old_fmt = self._format_price(old_price, currency)
+            new_fmt = self._format_price(new_price, currency)
+            diff_fmt = self._format_price(abs(diff), currency)
+            diff_str = f"+{diff_fmt}" if diff >= 0 else f"-{diff_fmt}"
 
             embed = {
                 "title": f"{emoji} Price Update: {item_name}",
                 "color": color,
                 "fields": [
-                    {"name": "Old Price", "value": f"${old_price:.2f}", "inline": True},
-                    {"name": "New Price", "value": f"${new_price:.2f}", "inline": True},
-                    {"name": "Change", "value": f"{diff:+.2f} ({pct:+.2f}%)", "inline": False}
+                    {"name": "Old Price", "value": old_fmt, "inline": True},
+                    {"name": "New Price", "value": new_fmt, "inline": True},
+                    {"name": "Change", "value": f"{diff_str} ({pct:+.2f}%)", "inline": False}
                 ],
                 "footer": {"text": "CSInvest Portfolio Tracker"}
             }
@@ -54,7 +131,7 @@ class PriceService:
         except Exception as e:
             print(f"Failed to send Discord notification: {e}")
 
-    def _send_portfolio_summary_notification(self, webhook_url: str, items: list, username: str = "User"):
+    def _send_portfolio_summary_notification(self, webhook_url: str, items: list, username: str = "User", currency: str = "USD"):
         if not webhook_url or not items:
             return
 
@@ -91,9 +168,11 @@ class PriceService:
             # Old Total Value: 1000 (datum posledni aktualizace) -> We don't have exact old date per item easily accessible here, but we can assume "Previous Update"
             # We can use NOW as current date
             
-            lines.append(f"**Old Total Value:** ${total_old_value:,.2f} (Previous)")
-            lines.append(f"**New Total Value:** ${total_new_value:,.2f} ({now_dt.strftime('%d.%m.%Y %H:%M')})")
-            lines.append(f"**Total Profit:** ${total_diff:,.2f} ({total_pct:+.2f}%)")
+            lines.append(f"**Old Total Value:** {self._format_price(total_old_value, currency, use_grouping=True)} (Previous)")
+            lines.append(f"**New Total Value:** {self._format_price(total_new_value, currency, use_grouping=True)} ({now_dt.strftime('%d.%m.%Y %H:%M')})")
+            total_diff_abs = self._format_price(abs(total_diff), currency, use_grouping=True)
+            total_diff_str = f"+{total_diff_abs}" if total_diff >= 0 else f"-{total_diff_abs}"
+            lines.append(f"**Total Profit:** {total_diff_str} ({total_pct:+.2f}%)")
             lines.append("")
             
             lines.append("```")
@@ -108,8 +187,8 @@ class PriceService:
             def add_rows(rows):
                 for item in rows:
                     name = item['name'][:21] # Truncate slightly more
-                    old_p = f"${item['old_price']:.2f}"
-                    new_p = f"${item['new_price']:.2f}"
+                    old_p = self._format_price(item['old_price'], currency)
+                    new_p = self._format_price(item['new_price'], currency)
                     
                     # profit is diff between new and old
                     # item['profit_pct'] is correctly calculated as change %
@@ -150,6 +229,7 @@ class PriceService:
         from encryption import decrypt_api_key
         user = self.repo.db.query(User).filter(User.user_id == user_id).first()
         portfolio_webhook = user.discord_portfolio_webhook_url if user else None
+        user_currency = self._normalize_currency(user.currency if user else "USD")
         
         # Try to decrypt user API key
         user_api_key = None
@@ -276,7 +356,7 @@ class PriceService:
 
             # Check for webhook notification
             if owned.discord_webhook_url:
-                self._send_discord_notification(owned.discord_webhook_url, itm.name, old_price, new_price)
+                self._send_discord_notification(owned.discord_webhook_url, itm.name, old_price, new_price, user_currency)
 
             # Add to portfolio notification list
             # We want change since last update, so we use old_price which is captured before update
@@ -323,7 +403,7 @@ class PriceService:
         if portfolio_webhook and notification_items:
             # Pass username to personalized title
             user_name = user.username if user else "User"
-            self._send_portfolio_summary_notification(portfolio_webhook, notification_items, user_name)
+            self._send_portfolio_summary_notification(portfolio_webhook, notification_items, user_name, user_currency)
 
         totals = self.repo.calculate_portfolio_totals(user_id)
         self.repo.save_portfolio_history(user_id, totals)
@@ -522,7 +602,10 @@ class PriceService:
         self.repo.update_price(user_item_id, new_price)
         
         if user_item.discord_webhook_url:
-             self._send_discord_notification(user_item.discord_webhook_url, market_name, old_price, new_price)
+               from models import User
+               user = self.repo.db.query(User).filter(User.user_id == user_id).first()
+               user_currency = self._normalize_currency(user.currency if user else "USD")
+               self._send_discord_notification(user_item.discord_webhook_url, market_name, old_price, new_price, user_currency)
 
         # Also save historical market price record for this item type?
         # Maybe, but be careful as it is specific float price.

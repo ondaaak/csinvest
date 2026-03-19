@@ -177,53 +177,60 @@ function SearchPage() {
           {open && query && suggestions.length > 0 && (
             <div className="search-suggestions">
               {suggestions.map((s) => (
-                <div
-                  key={s.slug}
-                  className="search-suggestion-row"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
-                >
-                  <Link
-                    to={itemHref(s)}
-                    onClick={() => {
-                      setOpen(false);
-                    }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
-                  >
-                    {(() => {
-                      const thumb = getThumb(s.slug);
-                      return thumb ? (
-                        <div className="search-thumb">
-                          <img src={thumb} alt={s.name} />
-                        </div>
-                      ) : (
-                        <div className="category-icon" aria-hidden="true"></div>
-                      );
-                    })()}
-                    <div className="search-text">
-                      <div className="search-name">{s.name}</div>
-                      <div className="search-type">{s.item_type}</div>
-                    </div>
-                  </Link>
-                  {buildSteamInspectHref(s.inspect, s) && (
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="Inspect in game"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const href = buildSteamInspectHref(s.inspect, s);
-                        if (href) window.location.href = href;
-                      }}
-                      style={{ flexShrink: 0, border: '1px solid var(--border-color)', borderRadius: 8, width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                (() => {
+                  const hasDefIndex = s.def_index !== null && s.def_index !== undefined;
+                  const inspectHref = hasDefIndex ? buildSteamInspectHref(s.inspect, s) : null;
+                  return (
+                    <div
+                      key={s.slug}
+                      className="search-suggestion-row"
+                      style={{ display: 'grid', gridTemplateColumns: '1fr 28px', alignItems: 'center', gap: 8 }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <circle cx="11" cy="11" r="7" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                      <Link
+                        to={itemHref(s)}
+                        onClick={() => {
+                          setOpen(false);
+                        }}
+                        style={{ display: 'grid', gridTemplateColumns: '64px 1fr', alignItems: 'center', gap: 10, minWidth: 0, textDecoration: 'none', color: 'inherit' }}
+                      >
+                        {(() => {
+                          const thumb = getThumb(s.slug);
+                          return thumb ? (
+                            <div className="search-thumb">
+                              <img src={thumb} alt={s.name} />
+                            </div>
+                          ) : (
+                            <div className="category-icon" aria-hidden="true"></div>
+                          );
+                        })()}
+                        <div className="search-text" style={{ width: '100%' }}>
+                          <div className="search-name">{s.name}</div>
+                          <div className="search-type">{s.item_type}</div>
+                        </div>
+                      </Link>
+                      <div style={{ width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {inspectHref && (
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            title="Inspect in game"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (inspectHref) window.location.href = inspectHref;
+                            }}
+                            style={{ flexShrink: 0, border: '1px solid var(--border-color)', borderRadius: 8, width: 28, height: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <circle cx="11" cy="11" r="7" />
+                              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()
               ))}
             </div>
           )}
