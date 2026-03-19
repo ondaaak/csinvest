@@ -6,4 +6,4 @@
     code review
     db data review
     system for updating db and app ?
-    correct currency in webhook
+    fix webhook
