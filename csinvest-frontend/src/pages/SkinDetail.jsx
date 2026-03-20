@@ -46,7 +46,7 @@ function SkinDetailPage() {
   }, []);
 
   const collectionImgMap = useMemo(() => {
-    const files = import.meta.glob('../assets/collections/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
     const map = {};
     Object.entries(files).forEach(([path, url]) => {
       const filename = path.split('/').pop() || '';
@@ -327,8 +327,9 @@ function SkinDetailPage() {
 
   const getCollectionImage = (slug) => {
     if (!slug) return null;
-    if (collectionImgMap[slug]) return collectionImgMap[slug];
-    const k = Object.keys(collectionImgMap).find(key => slug.startsWith(key));
+    const normalizedSlug = String(slug).toLowerCase();
+    if (collectionImgMap[normalizedSlug]) return collectionImgMap[normalizedSlug];
+    const k = Object.keys(collectionImgMap).find(key => normalizedSlug.startsWith(key));
     return k ? collectionImgMap[k] : null;
   };
 
