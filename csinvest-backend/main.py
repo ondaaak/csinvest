@@ -10,16 +10,50 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from auth import hash_password, verify_password, create_access_token, get_current_user
 from config import Config
-from sqlalchemy import func
+from sqlalchemy import func, text
 from scheduler import start_scheduler
 from encryption import encrypt_api_key
 import datetime
+from database import engine
 
 app = FastAPI()
 
 @app.on_event("startup")
 def startup_event():
+    _ensure_useritemhistory_columns()
     start_scheduler()
+
+
+def _ensure_useritemhistory_columns():
+    expected_columns = {
+        "sell_fee_pct": "NUMERIC(5, 2) NOT NULL DEFAULT 0",
+        "withdraw_fee_pct": "NUMERIC(5, 2) NOT NULL DEFAULT 0",
+        "final_price": "NUMERIC(10, 2) NOT NULL DEFAULT 0",
+    }
+
+    with engine.begin() as conn:
+        dialect = conn.dialect.name
+        existing = set()
+
+        if dialect == "sqlite":
+            rows = conn.execute(text("PRAGMA table_info('USERITEMHISTORY')")).fetchall()
+            existing = {r[1] for r in rows}
+        else:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'USERITEMHISTORY'
+                    """
+                )
+            ).fetchall()
+            existing = {r[0] for r in rows}
+
+        for col_name, col_def in expected_columns.items():
+            if col_name in existing:
+                continue
+            conn.execute(text(f"ALTER TABLE \"USERITEMHISTORY\" ADD COLUMN {col_name} {col_def}"))
 
 
 cfg = Config()
@@ -103,17 +137,27 @@ class CreateUserItemHistoryRequest(BaseModel):
     amount: int = 1
     buy_price: float
     sell_price: float
+    sell_fee_pct: float | None = None
+    withdraw_fee_pct: float | None = None
+    final_price: float | None = None
     sold_date: datetime.date | None = None
 
 class SellUserItemRequest(BaseModel):
+    amount: int | None = None
     sell_price: float | None = None
     buy_price: float | None = None
+    sell_fee_pct: float | None = None
+    withdraw_fee_pct: float | None = None
+    final_price: float | None = None
     sold_date: datetime.date | None = None
 
 class UpdateUserItemHistoryRequest(BaseModel):
     amount: int | None = None
     buy_price: float | None = None
     sell_price: float | None = None
+    sell_fee_pct: float | None = None
+    withdraw_fee_pct: float | None = None
+    final_price: float | None = None
     sold_date: datetime.date | None = None
 
 @app.patch("/users/me")
@@ -259,19 +303,29 @@ def create_user_item_history(payload: CreateUserItemHistoryRequest, db: Session 
         amount=amount,
         buy_price=payload.buy_price,
         sell_price=payload.sell_price,
+        sell_fee_pct=payload.sell_fee_pct,
+        withdraw_fee_pct=payload.withdraw_fee_pct,
+        final_price=payload.final_price,
         sold_date=sold_date,
     )
 
 @app.post("/useritems/{user_item_id}/sell")
 def sell_user_item(user_item_id: int, payload: SellUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     repo = ItemRepository(db)
-    moved = repo.move_user_item_to_history(
-        user_item_id=user_item_id,
-        user_id=current.user_id,
-        sell_price=payload.sell_price,
-        buy_price=payload.buy_price,
-        sold_date=payload.sold_date,
-    )
+    try:
+        moved = repo.move_user_item_to_history(
+            user_item_id=user_item_id,
+            user_id=current.user_id,
+            amount=payload.amount,
+            sell_price=payload.sell_price,
+            buy_price=payload.buy_price,
+            sell_fee_pct=payload.sell_fee_pct,
+            withdraw_fee_pct=payload.withdraw_fee_pct,
+            final_price=payload.final_price,
+            sold_date=payload.sold_date,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not moved:
         raise HTTPException(status_code=404, detail="User item nenalezen")
     return moved

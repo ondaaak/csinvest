@@ -117,6 +117,11 @@ function InventoryPage() {
   const [sellDialogItem, setSellDialogItem] = useState(null);
   const [sellDialogBuyPrice, setSellDialogBuyPrice] = useState('');
   const [sellDialogPrice, setSellDialogPrice] = useState('');
+  const [sellDialogAmount, setSellDialogAmount] = useState('1');
+  const [sellDialogMaxAmount, setSellDialogMaxAmount] = useState(1);
+  const [sellDialogSellFee, setSellDialogSellFee] = useState('0');
+  const [sellDialogWithdrawFee, setSellDialogWithdrawFee] = useState('0');
+  const [sellDialogFinalPrice, setSellDialogFinalPrice] = useState('0');
   const [sellDialogCurrency, setSellDialogCurrency] = useState(currency || 'USD');
   const [sellDialogDate, setSellDialogDate] = useState(new Date().toISOString().slice(0, 10));
   const [sellingNow, setSellingNow] = useState(false);
@@ -151,6 +156,30 @@ function InventoryPage() {
     const cleaned = String(val).replace(/[^0-9.,-]/g, '').replace(',', '.');
     const num = parseFloat(cleaned);
     return Number.isFinite(num) ? num : 0;
+  };
+
+  const toClampedAmount = (val, maxAmount = 1) => {
+    const parsed = Math.floor(Number(val));
+    if (!Number.isFinite(parsed) || parsed < 1) return 1;
+    return Math.min(parsed, Math.max(1, Number(maxAmount) || 1));
+  };
+
+  const calculateFinalTotal = (sellUnit, amount, sellFeePctVal, withdrawFeePctVal) => {
+    const unit = Math.max(0, Number(sellUnit) || 0);
+    const amt = Math.max(1, Number(amount) || 1);
+    const sellFee = Math.min(100, Math.max(0, Number(sellFeePctVal) || 0)) / 100;
+    const withdrawFee = Math.min(100, Math.max(0, Number(withdrawFeePctVal) || 0)) / 100;
+    return unit * amt * (1 - sellFee) * (1 - withdrawFee);
+  };
+
+  const calculateSellUnitFromFinal = (finalTotal, amount, sellFeePctVal, withdrawFeePctVal) => {
+    const finalVal = Math.max(0, Number(finalTotal) || 0);
+    const amt = Math.max(1, Number(amount) || 1);
+    const sellFee = Math.min(100, Math.max(0, Number(sellFeePctVal) || 0)) / 100;
+    const withdrawFee = Math.min(100, Math.max(0, Number(withdrawFeePctVal) || 0)) / 100;
+    const factor = amt * (1 - sellFee) * (1 - withdrawFee);
+    if (factor <= 0) return 0;
+    return finalVal / factor;
   };
 
   const saveFeeSettings = async (nextSell, nextWithdraw) => {
@@ -599,11 +628,40 @@ function InventoryPage() {
 
   const openSellDialog = (item) => {
     const rate = rates[currency] || 1;
+    const maxAmount = Math.max(1, getAmount(item));
+    const localBuyUnit = (item.buy_price || 0) * rate;
+    const localSellUnit = (item.current_price || 0) * rate;
+    const initialSellFee = Number(sellFeePct) || 0;
+    const initialWithdrawFee = Number(withdrawFeePct) || 0;
+    const initialFinal = calculateFinalTotal(localSellUnit, maxAmount, initialSellFee, initialWithdrawFee);
+
     setSellDialogItem(item);
-    setSellDialogBuyPrice(((item.buy_price || 0) * rate).toFixed(2));
-    setSellDialogPrice(((item.current_price || 0) * rate).toFixed(2));
+    setSellDialogAmount(String(maxAmount));
+    setSellDialogMaxAmount(maxAmount);
+    setSellDialogBuyPrice(localBuyUnit.toFixed(2));
+    setSellDialogPrice(localSellUnit.toFixed(2));
+    setSellDialogSellFee(initialSellFee.toFixed(2));
+    setSellDialogWithdrawFee(initialWithdrawFee.toFixed(2));
+    setSellDialogFinalPrice(initialFinal.toFixed(2));
     setSellDialogCurrency(currency || 'USD');
     setSellDialogDate(new Date().toISOString().slice(0, 10));
+  };
+
+  const recalcSellDialogFinal = (next = {}) => {
+    const amountVal = toClampedAmount(next.amount ?? sellDialogAmount, sellDialogMaxAmount);
+    const sellUnit = parsePrice(next.sellUnit ?? sellDialogPrice);
+    const sellFee = parsePrice(next.sellFee ?? sellDialogSellFee);
+    const withdrawFee = parsePrice(next.withdrawFee ?? sellDialogWithdrawFee);
+    const finalTotal = calculateFinalTotal(sellUnit, amountVal, sellFee, withdrawFee);
+    setSellDialogFinalPrice(finalTotal.toFixed(2));
+  };
+
+  const recalcSellDialogFromFinal = (nextFinal) => {
+    const amountVal = toClampedAmount(sellDialogAmount, sellDialogMaxAmount);
+    const sellFee = parsePrice(sellDialogSellFee);
+    const withdrawFee = parsePrice(sellDialogWithdrawFee);
+    const sellUnit = calculateSellUnitFromFinal(parsePrice(nextFinal), amountVal, sellFee, withdrawFee);
+    setSellDialogPrice(sellUnit.toFixed(2));
   };
 
   const submitSellDialog = async (e) => {
@@ -613,15 +671,27 @@ function InventoryPage() {
     if (!userItemId) return;
 
     const rate = rates[sellDialogCurrency] || 1;
+    const amount = toClampedAmount(sellDialogAmount, sellDialogMaxAmount);
     const buyPriceUsd = parsePrice(sellDialogBuyPrice) / rate;
     const sellPriceUsd = parsePrice(sellDialogPrice) / rate;
+    const sellFee = Math.min(100, Math.max(0, parsePrice(sellDialogSellFee)));
+    const withdrawFee = Math.min(100, Math.max(0, parsePrice(sellDialogWithdrawFee)));
+    const finalPriceUsd = parsePrice(sellDialogFinalPrice) / rate;
     const token = localStorage.getItem('csinvest:token');
     setSellingNow(true);
     setSellingIds((prev) => new Set([...prev, userItemId]));
     try {
       await axios.post(
         `${BASE_URL}/useritems/${userItemId}/sell`,
-        { buy_price: buyPriceUsd, sell_price: sellPriceUsd, sold_date: sellDialogDate || null },
+        {
+          amount,
+          buy_price: buyPriceUsd,
+          sell_price: sellPriceUsd,
+          sell_fee_pct: sellFee,
+          withdraw_fee_pct: withdrawFee,
+          final_price: finalPriceUsd,
+          sold_date: sellDialogDate || null,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSellDialogItem(null);
@@ -643,6 +713,13 @@ function InventoryPage() {
     const keys = Object.keys(rates);
     const idx = keys.indexOf(sellDialogCurrency);
     const next = keys[(idx + 1) % keys.length];
+    const prevRate = rates[sellDialogCurrency] || 1;
+    const nextRate = rates[next] || 1;
+    const ratio = nextRate / prevRate;
+
+    setSellDialogBuyPrice((parsePrice(sellDialogBuyPrice) * ratio).toFixed(2));
+    setSellDialogPrice((parsePrice(sellDialogPrice) * ratio).toFixed(2));
+    setSellDialogFinalPrice((parsePrice(sellDialogFinalPrice) * ratio).toFixed(2));
     setSellDialogCurrency(next);
   };
 
@@ -1817,24 +1894,41 @@ function InventoryPage() {
       )}
 
       {sellDialogItem && (
-        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setSellDialogItem(null); }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+        <div
+          className="modal-overlay"
+          style={{ alignItems: 'flex-start', paddingTop: 24 }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setSellDialogItem(null); }}
+        >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360 }}>
             <div className="modal-header">
               <h3>Mark As Sold</h3>
             </div>
-            <div className="modal-body">
-              <form onSubmit={submitSellDialog}>
+            <div className="modal-body" style={{ paddingTop: 10, paddingBottom: 12 }}>
+              <form onSubmit={submitSellDialog} style={{ fontSize: '0.92rem' }}>
                 <div style={{ marginBottom: 12, opacity: 0.8 }}>{sellDialogItem.item?.name}</div>
-                <div style={{ marginBottom: 15 }}>
-                  <label className="form-label">Sold Date</label>
-                  <input className="form-input" type="date" value={sellDialogDate} onChange={(e) => setSellDialogDate(e.target.value)} />
+                <div style={{ marginBottom: 9 }}>
+                  <label className="form-label">Amount (max {sellDialogMaxAmount})</label>
+                  <input
+                    className="form-input"
+                    style={{ height: 34, padding: '6px 10px' }}
+                    value={sellDialogAmount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSellDialogAmount(val);
+                      recalcSellDialogFinal({ amount: val });
+                    }}
+                  />
                 </div>
-                <div style={{ marginBottom: 15 }}>
+                <div style={{ marginBottom: 9 }}>
+                  <label className="form-label">Sold Date</label>
+                  <input className="form-input" style={{ height: 34, padding: '6px 10px' }} type="date" value={sellDialogDate} onChange={(e) => setSellDialogDate(e.target.value)} />
+                </div>
+                <div style={{ marginBottom: 9 }}>
                   <label className="form-label">Buy Price (unit)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <input
                       className="form-input"
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, height: 34, padding: '6px 10px' }}
                       value={sellDialogBuyPrice}
                       onChange={(e) => setSellDialogBuyPrice(e.target.value)}
                     />
@@ -1842,36 +1936,90 @@ function InventoryPage() {
                       type="button"
                       className="account-button"
                       onClick={cycleSellDialogCurrency}
-                      style={{ width: 'auto', minWidth: '52px', padding: '0 10px', fontSize: '0.85rem' }}
+                      style={{ width: 'auto', minWidth: '48px', padding: '0 8px', fontSize: '0.78rem', height: 34 }}
                       title="Click to switch currency"
                     >
                       {sellDialogCurrency}
                     </button>
                   </div>
                 </div>
-                <div style={{ marginBottom: 15 }}>
+                <div style={{ marginBottom: 9 }}>
                   <label className="form-label">Sell Price (unit)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <input
                       className="form-input"
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, height: 34, padding: '6px 10px' }}
                       value={sellDialogPrice}
-                      onChange={(e) => setSellDialogPrice(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSellDialogPrice(val);
+                        recalcSellDialogFinal({ sellUnit: val });
+                      }}
                     />
                     <button
                       type="button"
                       className="account-button"
                       onClick={cycleSellDialogCurrency}
-                      style={{ width: 'auto', minWidth: '52px', padding: '0 10px', fontSize: '0.85rem' }}
+                      style={{ width: 'auto', minWidth: '48px', padding: '0 8px', fontSize: '0.78rem', height: 34 }}
                       title="Click to switch currency"
                     >
                       {sellDialogCurrency}
                     </button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-                  <button type="button" className="account-button" style={{ background: '#444' }} onClick={() => setSellDialogItem(null)}>Cancel</button>
-                  <button type="submit" className="account-button" disabled={sellingNow}>{sellingNow ? 'Saving…' : 'Move To Sold'}</button>
+                <div style={{ marginBottom: 9 }}>
+                  <label className="form-label">Sell Fee (%)</label>
+                  <input
+                    className="form-input"
+                    style={{ height: 34, padding: '6px 10px' }}
+                    value={sellDialogSellFee}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSellDialogSellFee(val);
+                      recalcSellDialogFinal({ sellFee: val });
+                    }}
+                  />
+                </div>
+                <div style={{ marginBottom: 9 }}>
+                  <label className="form-label">Withdraw Fee (%)</label>
+                  <input
+                    className="form-input"
+                    style={{ height: 34, padding: '6px 10px' }}
+                    value={sellDialogWithdrawFee}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSellDialogWithdrawFee(val);
+                      recalcSellDialogFinal({ withdrawFee: val });
+                    }}
+                  />
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label className="form-label">Final Price (total)</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      className="form-input"
+                      style={{ flex: 1, height: 34, padding: '6px 10px' }}
+                      value={sellDialogFinalPrice}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSellDialogFinalPrice(val);
+                        recalcSellDialogFromFinal(val);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="account-button"
+                      onClick={cycleSellDialogCurrency}
+                      style={{ width: 'auto', minWidth: '48px', padding: '0 8px', fontSize: '0.78rem', height: 34 }}
+                      title="Click to switch currency"
+                    >
+                      {sellDialogCurrency}
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 2 }}>
+                  <button type="button" className="account-button" style={{ background: '#444', padding: '8px 12px', minHeight: 34 }} onClick={() => setSellDialogItem(null)}>Cancel</button>
+                  <button type="submit" className="account-button" style={{ padding: '8px 12px', minHeight: 34 }} disabled={sellingNow}>{sellingNow ? 'Saving…' : 'Move To Sold'}</button>
                 </div>
               </form>
             </div>

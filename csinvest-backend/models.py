@@ -74,6 +74,9 @@ class UserItemHistory(Base):
     amount = Column(Integer, nullable=False, default=1)
     buy_price = Column(Numeric(10, 2), nullable=False)
     sell_price = Column(Numeric(10, 2), nullable=False)
+    sell_fee_pct = Column(Numeric(5, 2), nullable=False, default=0)
+    withdraw_fee_pct = Column(Numeric(5, 2), nullable=False, default=0)
+    final_price = Column(Numeric(10, 2), nullable=False, default=0)
     sold_date = Column(Date, nullable=False, default=datetime.date.today)
 
     item = relationship("Item")

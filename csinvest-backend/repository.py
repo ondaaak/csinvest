@@ -83,16 +83,45 @@ class ItemRepository:
         self.db.refresh(new_item)
         return new_item
 
-    def add_user_item_history(self, user_id: int, item_id: int, buy_price: float, sell_price: float, amount: int = 1, sold_date=None):
+    def _compute_final_price(self, sell_price: float, amount: int, sell_fee_pct: float, withdraw_fee_pct: float) -> float:
+        gross = float(sell_price or 0) * int(amount or 1)
+        sell_mult = 1 - (max(0.0, float(sell_fee_pct or 0.0)) / 100.0)
+        withdraw_mult = 1 - (max(0.0, float(withdraw_fee_pct or 0.0)) / 100.0)
+        return gross * sell_mult * withdraw_mult
+
+    def add_user_item_history(
+        self,
+        user_id: int,
+        item_id: int,
+        buy_price: float,
+        sell_price: float,
+        amount: int = 1,
+        sell_fee_pct: float | None = None,
+        withdraw_fee_pct: float | None = None,
+        final_price: float | None = None,
+        sold_date=None,
+    ):
         if sold_date is None:
             sold_date = datetime.date.today()
+
+        amount = max(1, int(amount or 1))
+        sell_fee = max(0.0, float(sell_fee_pct or 0.0))
+        withdraw_fee = max(0.0, float(withdraw_fee_pct or 0.0))
+        final_total = (
+            float(final_price)
+            if final_price is not None
+            else self._compute_final_price(float(sell_price or 0), amount, sell_fee, withdraw_fee)
+        )
 
         rec = UserItemHistory(
             user_id=user_id,
             item_id=item_id,
-            amount=amount or 1,
+            amount=amount,
             buy_price=buy_price,
             sell_price=sell_price,
+            sell_fee_pct=sell_fee,
+            withdraw_fee_pct=withdraw_fee,
+            final_price=final_total,
             sold_date=sold_date,
         )
         self.db.add(rec)
@@ -100,7 +129,18 @@ class ItemRepository:
         self.db.refresh(rec)
         return rec
 
-    def move_user_item_to_history(self, user_item_id: int, user_id: int, sell_price: float | None = None, buy_price: float | None = None, sold_date=None):
+    def move_user_item_to_history(
+        self,
+        user_item_id: int,
+        user_id: int,
+        amount: int | None = None,
+        sell_price: float | None = None,
+        buy_price: float | None = None,
+        sell_fee_pct: float | None = None,
+        withdraw_fee_pct: float | None = None,
+        final_price: float | None = None,
+        sold_date=None,
+    ):
         rec = (
             self.db.query(UserItem)
             .filter(UserItem.user_item_id == user_item_id, UserItem.user_id == user_id)
@@ -112,19 +152,42 @@ class ItemRepository:
         if sold_date is None:
             sold_date = datetime.date.today()
 
-        amount = rec.amount or 1
+        current_amount = rec.amount or 1
+        sell_amount = current_amount if amount is None else int(amount)
+        if sell_amount < 1:
+            raise ValueError("Amount must be at least 1")
+        if sell_amount > current_amount:
+            raise ValueError(f"Amount cannot be higher than available ({current_amount})")
+
         sell_unit = float(rec.current_price or 0) if sell_price is None else float(sell_price)
         buy_unit = float(rec.buy_price or 0) if buy_price is None else float(buy_price)
+        sell_fee = max(0.0, float(sell_fee_pct or 0.0))
+        withdraw_fee = max(0.0, float(withdraw_fee_pct or 0.0))
+        final_total = (
+            float(final_price)
+            if final_price is not None
+            else self._compute_final_price(sell_unit, sell_amount, sell_fee, withdraw_fee)
+        )
+
         history_rec = UserItemHistory(
             user_id=user_id,
             item_id=rec.item_id,
-            amount=amount,
+            amount=sell_amount,
             buy_price=buy_unit,
             sell_price=sell_unit,
+            sell_fee_pct=sell_fee,
+            withdraw_fee_pct=withdraw_fee,
+            final_price=final_total,
             sold_date=sold_date,
         )
         self.db.add(history_rec)
-        self.db.delete(rec)
+
+        if sell_amount >= current_amount:
+            self.db.delete(rec)
+        else:
+            rec.amount = current_amount - sell_amount
+            rec.last_update = datetime.datetime.now()
+
         self.db.commit()
         self.db.refresh(history_rec)
         return history_rec
@@ -138,7 +201,7 @@ class ItemRepository:
         if not rec:
             return None
 
-        allowed = {'amount', 'buy_price', 'sell_price', 'sold_date'}
+        allowed = {'amount', 'buy_price', 'sell_price', 'sell_fee_pct', 'withdraw_fee_pct', 'final_price', 'sold_date'}
         for k, v in fields.items():
             if k in allowed:
                 setattr(rec, k, v)
@@ -230,13 +293,12 @@ class ItemRepository:
             itm.last_update = datetime.datetime.now()
             self.db.commit()
 
-    def update_useritems_current_price_for_item(self, item_id: int, new_price: float):
+    def update_useritems_current_price_for_item(self, item_id: int, new_price: float, user_id: int | None = None):
         now = datetime.datetime.now()
-        (
-            self.db.query(UserItem)
-            .filter(UserItem.item_id == item_id)
-            .update({UserItem.current_price: new_price, UserItem.last_update: now}, synchronize_session=False)
-        )
+        q = self.db.query(UserItem).filter(UserItem.item_id == item_id)
+        if user_id is not None:
+            q = q.filter(UserItem.user_id == user_id)
+        q.update({UserItem.current_price: new_price, UserItem.last_update: now}, synchronize_session=False)
         self.db.commit()
 
     def save_market_price(self, market_id: int, item_id: int, price: float):

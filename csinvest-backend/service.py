@@ -131,7 +131,15 @@ class PriceService:
         except Exception as e:
             print(f"Failed to send Discord notification: {e}")
 
-    def _send_portfolio_summary_notification(self, webhook_url: str, items: list, username: str = "User", currency: str = "USD"):
+    def _send_portfolio_summary_notification(
+        self,
+        webhook_url: str,
+        items: list,
+        username: str = "User",
+        currency: str = "USD",
+        total_old_value: float | None = None,
+        total_new_value: float | None = None,
+    ):
         if not webhook_url or not items:
             return
 
@@ -139,12 +147,21 @@ class PriceService:
             import datetime
             now_dt = datetime.datetime.now()
             
-            # Recalculate totals based on latest prices vs old prices
-            total_new_value = sum(i['new_price'] * i['amount'] for i in items)
-            total_old_value = sum(i['old_price'] * i['amount'] for i in items) # old_price is per unit
+            # If totals are provided from a full-portfolio calculation, prefer them.
+            # Otherwise, fallback to totals computed from provided items.
+            old_total = (
+                float(total_old_value)
+                if total_old_value is not None
+                else sum(i['old_price'] * i['amount'] for i in items)
+            )
+            new_total = (
+                float(total_new_value)
+                if total_new_value is not None
+                else sum(i['new_price'] * i['amount'] for i in items)
+            )
             
-            total_diff = total_new_value - total_old_value
-            total_pct = (total_diff / total_old_value * 100) if total_old_value > 0 else 0
+            total_diff = new_total - old_total
+            total_pct = (total_diff / old_total * 100) if old_total > 0 else 0
 
             # Sort by profit % descending
             items.sort(key=lambda x: x['profit_pct'], reverse=True)
@@ -168,8 +185,8 @@ class PriceService:
             # Old Total Value: 1000 (datum posledni aktualizace) -> We don't have exact old date per item easily accessible here, but we can assume "Previous Update"
             # We can use NOW as current date
             
-            lines.append(f"**Old Total Value:** {self._format_price(total_old_value, currency, use_grouping=True)} (Previous)")
-            lines.append(f"**New Total Value:** {self._format_price(total_new_value, currency, use_grouping=True)} ({now_dt.strftime('%d.%m.%Y %H:%M')})")
+            lines.append(f"**Old Total Value:** {self._format_price(old_total, currency, use_grouping=True)} (Previous)")
+            lines.append(f"**New Total Value:** {self._format_price(new_total, currency, use_grouping=True)} ({now_dt.strftime('%d.%m.%Y %H:%M')})")
             total_diff_abs = self._format_price(abs(total_diff), currency, use_grouping=True)
             total_diff_str = f"+{total_diff_abs}" if total_diff >= 0 else f"-{total_diff_abs}"
             lines.append(f"**Total Profit:** {total_diff_str} ({total_pct:+.2f}%)")
@@ -247,6 +264,17 @@ class PriceService:
         user_items = self.repo.get_user_items(user_id)
         results = []
         notification_items = []
+
+        # Track portfolio totals across all current holdings (including cash) so
+        # the Discord summary matches what user sees in portfolio-level totals.
+        portfolio_old_total = 0.0
+        portfolio_new_total = 0.0
+        for owned in user_items:
+            amount = owned.amount if owned.amount else 1
+            old_unit = float(owned.current_price) if owned.current_price else 0.0
+            line_total = old_unit * amount
+            portfolio_old_total += line_total
+            portfolio_new_total += line_total
 
         print(f"Začínám aktualizaci pro uživatele {user_id}. Počet položek: {len(user_items)}")
 
@@ -352,7 +380,10 @@ class PriceService:
             new_price = clean_data["price"]
 
             self.repo.update_item_current_price(itm.item_id, new_price)
-            self.repo.update_useritems_current_price_for_item(itm.item_id, new_price)
+            self.repo.update_useritems_current_price_for_item(itm.item_id, new_price, user_id=user_id)
+
+            amount = owned.amount if owned.amount else 1
+            portfolio_new_total += (new_price - old_price) * amount
 
             # Check for webhook notification
             if owned.discord_webhook_url:
@@ -381,7 +412,7 @@ class PriceService:
                     diff_pct = 0.0
 
             amount = owned.amount if owned.amount else 1
-            
+
             notification_items.append({
                 "name": itm.name,
                 "old_price": float(val_old),
@@ -403,7 +434,14 @@ class PriceService:
         if portfolio_webhook and notification_items:
             # Pass username to personalized title
             user_name = user.username if user else "User"
-            self._send_portfolio_summary_notification(portfolio_webhook, notification_items, user_name, user_currency)
+            self._send_portfolio_summary_notification(
+                portfolio_webhook,
+                notification_items,
+                user_name,
+                user_currency,
+                total_old_value=portfolio_old_total,
+                total_new_value=portfolio_new_total,
+            )
 
         totals = self.repo.calculate_portfolio_totals(user_id)
         self.repo.save_portfolio_history(user_id, totals)
