@@ -356,7 +356,10 @@ function InventoryPage() {
         setLoading(false);
         return;
       }
-      const res = await axios.get(`${BASE_URL}/portfolio/${userId}`);
+      const token = localStorage.getItem('csinvest:token');
+      const res = await axios.get(`${BASE_URL}/portfolio/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const arr = Array.isArray(res.data) ? res.data : [];
       const data = arr.map((item) => {
         const amt = typeof item.amount === 'number' ? item.amount : 1;
@@ -409,7 +412,10 @@ function InventoryPage() {
     setLoading(true);
     try {
       if (!userId) throw new Error('Unauthenticated');
-      await axios.post(`${BASE_URL}/refresh-portfolio/${userId}`);
+      const token = localStorage.getItem('csinvest:token');
+      await axios.post(`${BASE_URL}/refresh-portfolio/${userId}`, null, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       await fetchItems();
     } catch (err) {
       console.error(err);

@@ -23,6 +23,7 @@ export function AuthProvider({ children }) {
 
   const clearStoredAuth = useCallback(() => {
     setUserState(null);
+    // Keep clearing legacy token while migrating to cookie-based auth.
     localStorage.removeItem('csinvest:token');
     localStorage.removeItem('csinvest:user');
   }, []);
@@ -40,22 +41,22 @@ export function AuthProvider({ children }) {
     const init = async () => {
       const token = localStorage.getItem('csinvest:token');
       if (!token) {
-        clearStoredAuth();
-        return;
-      }
-
-      const cachedUser = readStoredUser();
-      if (cachedUser) {
-        setUser(cachedUser);
+        const cachedUser = readStoredUser();
+        if (cachedUser) {
+          setUser(cachedUser);
+        }
       }
 
       try {
         const res = await fetch(`${API_BASE}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (res.ok) {
           const u = await res.json();
           setUser(u);
+          // Drop legacy token once cookie auth has succeeded.
+          localStorage.removeItem('csinvest:token');
           return;
         }
 
@@ -73,12 +74,13 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
       if (!res.ok) return false;
       const data = await res.json();
-      localStorage.setItem('csinvest:token', data.access_token);
+      localStorage.removeItem('csinvest:token');
       setUser(data.user);
       return true;
     } catch {
@@ -90,6 +92,7 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password })
       });
@@ -104,7 +107,7 @@ export function AuthProvider({ children }) {
         throw new Error(msg);
       }
       const data = await res.json();
-      localStorage.setItem('csinvest:token', data.access_token);
+      localStorage.removeItem('csinvest:token');
       setUser(data.user);
       return true;
     } catch (e) {
@@ -114,6 +117,10 @@ export function AuthProvider({ children }) {
   }, [setUser]);
 
   const logout = useCallback(() => {
+    fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => {});
     clearStoredAuth();
   }, [clearStoredAuth]);
 

@@ -25,6 +25,7 @@ function SearchPage() {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
+  const [thumbUrls, setThumbUrls] = useState({});
   const boxRef = useRef(null);
   const location = useLocation();
 
@@ -39,28 +40,67 @@ function SearchPage() {
   );
 
   const slugNormalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  const skinsGlob = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
-  // Gloves are now in skins folder
-  const casesGlob = import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { eager: true, query: '?url', import: 'default' });
-  const assetFromFolder = (globObj) => Object.fromEntries(
-    Object.entries(globObj).map(([p, url]) => {
+  const skinsGlob = useMemo(() => import.meta.glob('../assets/skins/*.{png,jpg,jpeg,svg,webp}', { query: '?url', import: 'default' }), []);
+  const casesGlob = useMemo(() => import.meta.glob('../assets/cases/*.{png,jpg,jpeg,svg,webp}', { query: '?url', import: 'default' }), []);
+  const assetLoadersFromFolder = (globObj) => Object.fromEntries(
+    Object.entries(globObj).map(([p, loader]) => {
       const filename = p.split('/').pop() || '';
       const keyRaw = filename.substring(0, filename.lastIndexOf('.'));
-      return [slugNormalize(keyRaw), url];
+      return [slugNormalize(keyRaw), loader];
     })
   );
-  const itemThumbs = useMemo(() => ({
-    ...assetFromFolder(skinsGlob),
-    ...assetFromFolder(casesGlob),
-  }), []);
+  const itemThumbLoaders = useMemo(() => ({
+    ...assetLoadersFromFolder(skinsGlob),
+    ...assetLoadersFromFolder(casesGlob),
+  }), [skinsGlob, casesGlob]);
 
-  const sortedThumbKeys = useMemo(() => Object.keys(itemThumbs).sort((a, b) => b.length - a.length), [itemThumbs]);
+  const sortedThumbKeys = useMemo(() => Object.keys(itemThumbLoaders).sort((a, b) => b.length - a.length), [itemThumbLoaders]);
+
+  useEffect(() => {
+    if (!suggestions.length) return;
+
+    const missing = suggestions
+      .map((s) => slugNormalize(s.slug))
+      .filter((slug) => slug && !thumbUrls[slug]);
+
+    if (!missing.length) return;
+
+    let cancelled = false;
+
+    const loadThumb = async (slug) => {
+      const directLoader = itemThumbLoaders[slug];
+      const matchedKey = directLoader ? slug : (sortedThumbKeys.find((k) => slug.startsWith(k)) || null);
+      const loader = directLoader || (matchedKey ? itemThumbLoaders[matchedKey] : null);
+      if (!loader) return;
+
+      try {
+        const url = await loader();
+        if (!cancelled && typeof url === 'string') {
+          setThumbUrls((prev) => {
+            if (prev[slug]) return prev;
+            return { ...prev, [slug]: url };
+          });
+        }
+      } catch {
+        // Ignore missing/broken assets and keep placeholder image.
+      }
+    };
+
+    missing.forEach((slug) => {
+      void loadThumb(slug);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [suggestions, itemThumbLoaders, sortedThumbKeys, thumbUrls]);
 
   const getThumb = (slug) => {
     if (!slug) return null;
-    if (itemThumbs[slug]) return itemThumbs[slug];
-    const match = sortedThumbKeys.find(k => slug.startsWith(k));
-    return match ? itemThumbs[match] : null;
+    const normalized = slugNormalize(slug);
+    if (thumbUrls[normalized]) return thumbUrls[normalized];
+    const match = sortedThumbKeys.find(k => normalized.startsWith(k));
+    return match ? thumbUrls[match] || null : null;
   };
 
   const categoryHref = (cat) => {

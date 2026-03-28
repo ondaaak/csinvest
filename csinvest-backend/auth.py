@@ -4,7 +4,7 @@ import json
 import base64
 import hmac
 import hashlib
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -17,7 +17,7 @@ SECRET_KEY = cfg.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_SECONDS = cfg.ACCESS_TOKEN_EXPIRE_SECONDS
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 # bcrypt has a 72-byte input limit; bcrypt_sha256 pre-hashes safely and avoids this.
 pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 
@@ -74,8 +74,30 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Token expired")
     return payload
 
-def get_current_user(db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
-    token = credentials.credentials
+
+def _extract_token_from_sources(request: Request, credentials: HTTPAuthorizationCredentials | None) -> str | None:
+    if credentials and credentials.credentials:
+        bearer = credentials.credentials.strip()
+        # Some legacy frontend paths may send "Bearer null" while migrating to cookie auth.
+        if bearer and bearer.lower() not in {"null", "undefined"}:
+            return bearer
+
+    cookie_name = cfg.AUTH_COOKIE_NAME
+    cookie_token = (request.cookies.get(cookie_name) or "").strip()
+    if cookie_token:
+        return cookie_token
+
+    return None
+
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> User:
+    token = _extract_token_from_sources(request, credentials)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     payload = decode_token(token)
     sub = payload.get("sub")
     if not sub:

@@ -72,7 +72,11 @@ function CasesPage() {
 
     try {
       setRefreshing(true);
-      await axios.post(`${BASE_URL}/refresh-items`, null, { params: { item_type: 'case' } });
+      const token = localStorage.getItem('csinvest:token');
+      await axios.post(`${BASE_URL}/refresh-items`, null, {
+        params: { item_type: 'case' },
+        headers: { Authorization: `Bearer ${token}` },
+      });
       invalidateCachedUrl(`${BASE_URL}/cases`);
       const data = await getCachedJson(`${BASE_URL}/cases`, { ttlMs: 180000, force: true });
       const arr = Array.isArray(data) ? data : [];

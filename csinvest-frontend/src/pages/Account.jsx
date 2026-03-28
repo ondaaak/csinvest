@@ -5,6 +5,12 @@ import { useAppModal } from '../components/AppModalProvider.jsx';
 
 const BASE_URL = '/api';
 
+const buildAuthConfig = () => {
+  const token = localStorage.getItem('csinvest:token');
+  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+  return { withCredentials: true, headers };
+};
+
 export default function AccountPage() {
   const { user, userId, logout } = useAuth();
   const { showAlert, showConfirm } = useAppModal();
@@ -21,10 +27,8 @@ export default function AccountPage() {
   // Fetch CSFloat key status
   useEffect(() => {
     const fetchKeyStatus = async () => {
-        const token = localStorage.getItem('csinvest:token');
-        if (!token) return;
         try {
-            const res = await axios.get(`${BASE_URL}/user/csfloat/status`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.get(`${BASE_URL}/user/csfloat/status`, buildAuthConfig());
             setCsfloatKeySet(res.data.is_set);
         } catch (e) { console.error(e); }
     };
@@ -32,10 +36,9 @@ export default function AccountPage() {
   }, [userId]);
 
   const saveCsfloatKey = async () => {
-      const token = localStorage.getItem('csinvest:token');
       if (!csfloatKeyInput.trim()) return;
       try {
-          await axios.post(`${BASE_URL}/user/csfloat`, { api_key: csfloatKeyInput }, { headers: { Authorization: `Bearer ${token}` } });
+        await axios.post(`${BASE_URL}/user/csfloat`, { api_key: csfloatKeyInput }, buildAuthConfig());
           setCsfloatKeySet(true);
           setCsfloatKeyInput('');
           setShowKeyInput(false);
@@ -47,10 +50,9 @@ export default function AccountPage() {
   };
 
   const deleteCsfloatKey = async () => {
-      const token = localStorage.getItem('csinvest:token');
       if (!(await showConfirm('Are you sure you want to remove your CSFloat API Key?', { title: 'Remove API Key', confirmText: 'Confirm' }))) return;
       try {
-          await axios.delete(`${BASE_URL}/user/csfloat`, { headers: { Authorization: `Bearer ${token}` } });
+        await axios.delete(`${BASE_URL}/user/csfloat`, buildAuthConfig());
           setCsfloatKeySet(false);
           // alert("CSFloat API Key removed!");
       } catch (e) {
@@ -64,10 +66,8 @@ export default function AccountPage() {
   // Fetch latest user data to get webhook
   useEffect(() => {
     const fetchMe = async () => {
-        const token = localStorage.getItem('csinvest:token');
-        if (!token) return;
         try {
-            const res = await axios.get(`${BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+            const res = await axios.get(`${BASE_URL}/auth/me`, buildAuthConfig());
             setPortfolioWebhook(res.data.discord_portfolio_webhook_url);
             // Optionally update global context if meaningful
             // setUser(res.data); 
@@ -129,7 +129,7 @@ export default function AccountPage() {
     if (!userId) return;
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/portfolio/${userId}`);
+      const res = await axios.get(`${BASE_URL}/portfolio/${userId}`, buildAuthConfig());
       setItems(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error(err);
@@ -147,10 +147,9 @@ export default function AccountPage() {
   const removePortfolioWebhook = async () => {
     if (!(await showConfirm('Stop portfolio-wide notifications?', { title: 'Disable notifications', confirmText: 'Stop' }))) return;
     try {
-        const token = localStorage.getItem('csinvest:token');
         await axios.patch(`${BASE_URL}/users/me`, 
             { discord_portfolio_webhook_url: null }, 
-            { headers: { Authorization: `Bearer ${token}` } }
+        buildAuthConfig()
         );
         setPortfolioWebhook(null);
     } catch (e) {
@@ -162,10 +161,15 @@ export default function AccountPage() {
     if (!(await showConfirm(`Stop notifications for ${item.item?.name}?`, { title: 'Disable item notification', confirmText: 'Stop' }))) return;
     try {
       const token = localStorage.getItem('csinvest:token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       // Use helper if axios has issues with null body field or config order
       const res = await fetch(`${BASE_URL}/useritems/${item.user_item_id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers,
           body: JSON.stringify({ discord_webhook_url: null })
       });
       if (!res.ok) throw new Error('Failed to remove webhook');

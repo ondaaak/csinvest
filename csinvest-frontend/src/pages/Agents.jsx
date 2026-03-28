@@ -86,7 +86,11 @@ export default function AgentsPage() {
 
     try {
       setRefreshing(true);
-      await fetch(`${API_BASE}/refresh-items?item_type=agent`, { method: 'POST' });
+      const token = localStorage.getItem('csinvest:token');
+      await fetch(`${API_BASE}/refresh-items?item_type=agent`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const url = query ? `${API_BASE}/search/items?q=${encodeURIComponent(query)}&item_type=agent` : `${API_BASE}/items?item_type=agent`;
       invalidateCachedUrl(url);
       const data = await getCachedJson(url, { ttlMs: 180000, force: true });

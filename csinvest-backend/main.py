@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Request, Response
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from database import get_db
@@ -14,7 +14,15 @@ from sqlalchemy import func, text
 from scheduler import start_scheduler
 from encryption import encrypt_api_key
 import datetime
+import re
 from database import engine
+from security import (
+    FixedWindowRateLimiter,
+    get_client_ip,
+    is_valid_discord_webhook_url,
+    is_valid_notification_time,
+    sanitize_text,
+)
 
 app = FastAPI()
 
@@ -59,6 +67,15 @@ def _ensure_useritemhistory_columns():
 cfg = Config()
 origins = cfg.CORS_ORIGINS
 
+AUTH_COOKIE_NAME = cfg.AUTH_COOKIE_NAME
+AUTH_COOKIE_SECURE = cfg.AUTH_COOKIE_SECURE
+AUTH_COOKIE_SAMESITE = cfg.AUTH_COOKIE_SAMESITE
+
+auth_rate_limiter = FixedWindowRateLimiter()
+login_fail_limiter = FixedWindowRateLimiter()
+refresh_rate_limiter = FixedWindowRateLimiter()
+search_rate_limiter = FixedWindowRateLimiter()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -68,14 +85,43 @@ app.add_middleware(
 )
 # ------------------------------------
 
+
+def _set_auth_cookie(request: Request, response: Response, token: str) -> None:
+    max_age = int(cfg.ACCESS_TOKEN_EXPIRE_SECONDS or 0)
+    is_https_request = (request.url.scheme or '').lower() == 'https'
+    secure_cookie = AUTH_COOKIE_SECURE and is_https_request
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=secure_cookie,
+        samesite=AUTH_COOKIE_SAMESITE,
+        max_age=max_age if max_age > 0 else None,
+        path='/',
+    )
+
+
+def _clear_auth_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=AUTH_COOKIE_NAME,
+        path='/',
+        secure=AUTH_COOKIE_SECURE,
+        samesite=AUTH_COOKIE_SAMESITE,
+    )
+
+
+def _enforce_limit(limiter: FixedWindowRateLimiter, key: str, limit: int, window_seconds: int, detail: str) -> None:
+    if not limiter.allow(key=key, limit=limit, window_seconds=window_seconds):
+        raise HTTPException(status_code=429, detail=detail)
+
 class RegisterRequest(BaseModel):
-    username: str
+    username: str = Field(min_length=3, max_length=50)
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=128)
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=8, max_length=128)
 
 class AuthUser(BaseModel):
     user_id: int
@@ -100,69 +146,124 @@ def user_to_schema(u: User) -> AuthUser:
     )
 
 @app.post("/auth/register")
-def register(data: RegisterRequest, db: Session = Depends(get_db)):
-    existing = db.query(User).filter((User.username == data.username) | (User.email == data.email)).first()
+def register(data: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    client_ip = get_client_ip(request)
+    _enforce_limit(auth_rate_limiter, f"register:ip:{client_ip}", limit=8, window_seconds=300, detail="Too many registration attempts")
+
+    username = sanitize_text(data.username, 50)
+    email = sanitize_text(data.email, 320)
+    password = data.password
+
+    if not username or not re.fullmatch(r"[A-Za-z0-9_.-]{3,50}", username):
+        raise HTTPException(status_code=400, detail="Invalid username format")
+
+    existing = db.query(User).filter((User.username == username) | (User.email == email)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username nebo email již existuje")
-    user = User(username=data.username, email=data.email, password_hash=hash_password(data.password), currency='USD')
+    user = User(username=username, email=email, password_hash=hash_password(password), currency='USD')
     db.add(user)
     db.commit()
     db.refresh(user)
 
     token = create_access_token(str(user.user_id))
+    _set_auth_cookie(request, response, token)
     return {"access_token": token, "token_type": "bearer", "user": user_to_schema(user)}
 
 @app.post("/auth/login")
-def login(data: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == data.username).first()
-    if not user or not verify_password(data.password, user.password_hash):
+def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    client_ip = get_client_ip(request)
+    username_for_limit = sanitize_text(data.username, 50) or "unknown"
+
+    _enforce_limit(auth_rate_limiter, f"login:ip:{client_ip}", limit=30, window_seconds=60, detail="Too many login attempts")
+    _enforce_limit(
+        login_fail_limiter,
+        f"login-fail:ip-user:{client_ip}:{username_for_limit.lower()}",
+        limit=8,
+        window_seconds=900,
+        detail="Too many failed login attempts. Try again later.",
+    )
+
+    username = sanitize_text(data.username, 50)
+    if not username:
         raise HTTPException(status_code=401, detail="Neplatné přihlašovací údaje")
 
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not verify_password(data.password, user.password_hash):
+        login_fail_limiter.allow(
+            key=f"login-fail:ip-user:{client_ip}:{username_for_limit.lower()}",
+            limit=10_000,
+            window_seconds=900,
+        )
+        raise HTTPException(status_code=401, detail="Neplatné přihlašovací údaje")
+
+    login_fail_limiter.clear(f"login-fail:ip-user:{client_ip}:{username.lower()}")
     token = create_access_token(str(user.user_id))
+    _set_auth_cookie(request, response, token)
     return {"access_token": token, "token_type": "bearer", "user": user_to_schema(user)}
+
+
+@app.post("/auth/logout")
+def logout(response: Response):
+    _clear_auth_cookie(response)
+    return {"message": "Logged out"}
 
 @app.get("/auth/me")
 def auth_me(current: User = Depends(get_current_user)):
     return user_to_schema(current)
 
 class UpdateUserRequest(BaseModel):
-    discord_portfolio_webhook_url: str | None = None
-    discord_portfolio_notification_time: str | None = None
-    currency: str | None = None
-    sell_fee_pct: float | None = None
-    withdraw_fee_pct: float | None = None
+    discord_portfolio_webhook_url: str | None = Field(None, max_length=500)
+    discord_portfolio_notification_time: str | None = Field(None, max_length=5)
+    currency: str | None = Field(None, max_length=3)
+    sell_fee_pct: float | None = Field(None, ge=0, le=100)
+    withdraw_fee_pct: float | None = Field(None, ge=0, le=100)
 
 class CreateUserItemHistoryRequest(BaseModel):
     item_id: int
-    amount: int = 1
-    buy_price: float
-    sell_price: float
-    sell_fee_pct: float | None = None
-    withdraw_fee_pct: float | None = None
+    amount: int = Field(1, ge=1, le=1_000_000)
+    buy_price: float = Field(..., ge=0, le=10_000_000)
+    sell_price: float = Field(..., ge=0, le=10_000_000)
+    sell_fee_pct: float | None = Field(None, ge=0, le=100)
+    withdraw_fee_pct: float | None = Field(None, ge=0, le=100)
     final_price: float | None = None
     sold_date: datetime.date | None = None
 
 class SellUserItemRequest(BaseModel):
-    amount: int | None = None
-    sell_price: float | None = None
-    buy_price: float | None = None
-    sell_fee_pct: float | None = None
-    withdraw_fee_pct: float | None = None
+    amount: int | None = Field(None, ge=1, le=1_000_000)
+    sell_price: float | None = Field(None, ge=0, le=10_000_000)
+    buy_price: float | None = Field(None, ge=0, le=10_000_000)
+    sell_fee_pct: float | None = Field(None, ge=0, le=100)
+    withdraw_fee_pct: float | None = Field(None, ge=0, le=100)
     final_price: float | None = None
     sold_date: datetime.date | None = None
 
 class UpdateUserItemHistoryRequest(BaseModel):
-    amount: int | None = None
-    buy_price: float | None = None
-    sell_price: float | None = None
-    sell_fee_pct: float | None = None
-    withdraw_fee_pct: float | None = None
+    amount: int | None = Field(None, ge=1, le=1_000_000)
+    buy_price: float | None = Field(None, ge=0, le=10_000_000)
+    sell_price: float | None = Field(None, ge=0, le=10_000_000)
+    sell_fee_pct: float | None = Field(None, ge=0, le=100)
+    withdraw_fee_pct: float | None = Field(None, ge=0, le=100)
     final_price: float | None = None
     sold_date: datetime.date | None = None
 
 @app.patch("/users/me")
 def update_user_me(payload: UpdateUserRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     update_data = payload.dict(exclude_unset=True)
+    if 'discord_portfolio_webhook_url' in update_data:
+        webhook = sanitize_text(update_data['discord_portfolio_webhook_url'], 500)
+        if webhook:
+            if not is_valid_discord_webhook_url(webhook):
+                raise HTTPException(status_code=400, detail='Invalid Discord webhook URL')
+            update_data['discord_portfolio_webhook_url'] = webhook
+        else:
+            update_data['discord_portfolio_webhook_url'] = None
+
+    if 'discord_portfolio_notification_time' in update_data:
+        notify_time = sanitize_text(update_data['discord_portfolio_notification_time'], 5)
+        if notify_time and not is_valid_notification_time(notify_time):
+            raise HTTPException(status_code=400, detail='Invalid notification time format (HH:MM expected)')
+        update_data['discord_portfolio_notification_time'] = notify_time or None
+
     if 'currency' in update_data and update_data['currency'] is not None:
         allowed_currencies = {'USD', 'EUR', 'GBP', 'CZK', 'RUB'}
         normalized = str(update_data['currency']).upper()
@@ -243,9 +344,18 @@ def _list_unique_items_by_type(item_type: str, q: str | None, db: Session, limit
     return [to_search_item(item) for item in unique]
 
 @app.get("/search")
-def search_items(q: str, limit: int = 10, exclude_item_type: Optional[List[str]] = Query(None), db: Session = Depends(get_db)):
+def search_items(
+    request: Request,
+    q: str = Query(..., min_length=1, max_length=120),
+    limit: int = Query(10, ge=1, le=100),
+    exclude_item_type: Optional[List[str]] = Query(None),
+    db: Session = Depends(get_db),
+):
+    client_ip = get_client_ip(request)
+    _enforce_limit(search_rate_limiter, f"search:ip:{client_ip}", limit=120, window_seconds=60, detail="Too many search requests")
+
     repo = ItemRepository(db)
-    results = repo.search_items(q, limit=limit, exclude_types=exclude_item_type)
+    results = repo.search_items(q.strip(), limit=limit, exclude_types=exclude_item_type)
     return [to_search_item(r) for r in results]
 
 # ----------- Knives & Gloves listing/search -----------
@@ -276,7 +386,10 @@ def read_root():
     return {"message": "Vítejte v CSInvest API "}
 
 @app.get("/portfolio/{user_id}")
-def get_portfolio(user_id: int, db: Session = Depends(get_db)):
+def get_portfolio(user_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
+    if user_id != current.user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     repo = ItemRepository(db)
     items = repo.get_user_items(user_id)
     if not items:
@@ -351,18 +464,18 @@ def delete_user_item_history(user_item_history_id: int, db: Session = Depends(ge
     return
 
 @app.get("/items")
-def get_items(item_type: str = None, limit: int = 100, db: Session = Depends(get_db)):
+def get_items(item_type: str = None, limit: int = Query(100, ge=1, le=500), db: Session = Depends(get_db)):
     repo = ItemRepository(db)
     return repo.get_items(item_type=item_type, limit=limit)
 
 class CreateUserItemRequest(BaseModel):
     item_id: int
-    amount: int = 1
-    buy_price: float
-    float_value: float | None = None
-    pattern: int | None = None
-    variant: str | None = None
-    phase: str | None = None
+    amount: int = Field(1, ge=1, le=1_000_000)
+    buy_price: float = Field(..., ge=0, le=10_000_000)
+    float_value: float | None = Field(None, ge=0, le=1)
+    pattern: int | None = Field(None, ge=0, le=1_000_000)
+    variant: str | None = Field(None, max_length=32)
+    phase: str | None = Field(None, max_length=32)
 
 @app.post("/useritems")
 def create_user_item(payload: CreateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
@@ -399,33 +512,54 @@ def delete_user_item(user_item_id: int, db: Session = Depends(get_db), current: 
     return
 
 class UpdateUserItemRequest(BaseModel):
-    amount: int | None = None
-    float_value: float | None = None
-    pattern: int | None = None
-    buy_price: float | None = None
+    amount: int | None = Field(None, ge=1, le=1_000_000)
+    float_value: float | None = Field(None, ge=0, le=1)
+    pattern: int | None = Field(None, ge=0, le=1_000_000)
+    buy_price: float | None = Field(None, ge=0, le=10_000_000)
     description: str | None = Field(None, max_length=1000)
     wear: str | None = Field(None, max_length=100)
     discord_webhook_url: str | None = Field(None, max_length=500)
-    variant: str | None = None
-    phase: str | None = None
+    variant: str | None = Field(None, max_length=32)
+    phase: str | None = Field(None, max_length=32)
 
 @app.patch("/useritems/{user_item_id}")
 def update_user_item(user_item_id: int, payload: UpdateUserItemRequest, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     repo = ItemRepository(db)
+    patch_data = payload.model_dump(exclude_unset=True)
+    if 'discord_webhook_url' in patch_data:
+        webhook = sanitize_text(patch_data['discord_webhook_url'], 500)
+        if webhook:
+            if not is_valid_discord_webhook_url(webhook):
+                raise HTTPException(status_code=400, detail='Invalid Discord webhook URL')
+            patch_data['discord_webhook_url'] = webhook
+        else:
+            patch_data['discord_webhook_url'] = None
+
     updated = repo.update_user_item(
         user_item_id=user_item_id,
         user_id=current.user_id,
-        **payload.model_dump(exclude_unset=True)
+        **patch_data
     )
     if not updated:
         raise HTTPException(status_code=404, detail="User item nenalezen")
     return updated
 
 @app.post("/refresh-portfolio/{user_id}")
-def refresh_portfolio(user_id: int, db: Session = Depends(get_db)):
+def refresh_portfolio(user_id: int, request: Request, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     """
     Spustí aktualizaci cen z CSFloat.
     """
+    if user_id != current.user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    _enforce_limit(
+        refresh_rate_limiter,
+        f"refresh-portfolio:user:{current.user_id}",
+        limit=6,
+        window_seconds=60,
+        detail="Too many portfolio refresh requests",
+    )
+
     strategy = CSFloatStrategy()
     service = PriceService(db, strategy)
     try:
@@ -435,15 +569,18 @@ def refresh_portfolio(user_id: int, db: Session = Depends(get_db)):
             "source": "CSFloat API",
             "changes": updated_items
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Portfolio refresh failed")
     
     
 @app.get("/portfolio-history/{user_id}")
-def get_portfolio_history(user_id: int, db: Session = Depends(get_db)):
+def get_portfolio_history(user_id: int, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     """
     Vrátí historická data pro graf (hodnota portfolia v čase).
     """
+    if user_id != current.user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     repo = ItemRepository(db)
     history_records = db.query(PortfolioHistory).filter(
         PortfolioHistory.user_id == user_id
@@ -530,13 +667,26 @@ def get_collection_detail(slug: str, db: Session = Depends(get_db)):
 
 
 @app.post("/refresh-items")
-def refresh_items(item_type: str | None = None, db: Session = Depends(get_db)):
+def refresh_items(
+    request: Request,
+    item_type: str | None = None,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
     """
     Aktualizuje ceny pro daný typ itemů (např. item_type='case' nebo 'skin').
     Pokud není zadán item_type, zkusí aktualizovat všechny relevantní typy.
     """
     strategy = CSFloatStrategy()
     service = PriceService(db, strategy)
+    _enforce_limit(
+        refresh_rate_limiter,
+        f"refresh-items:user:{current.user_id}:{item_type or 'all'}",
+        limit=4,
+        window_seconds=60,
+        detail="Too many items refresh requests",
+    )
+
     try:
         updated = service.update_items_prices(item_type=item_type)
         return {
@@ -545,8 +695,8 @@ def refresh_items(item_type: str | None = None, db: Session = Depends(get_db)):
             "count": len(updated),
             "changes": updated,
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Items refresh failed")
 
 
 @app.post("/useritems/{user_item_id}/refresh")
@@ -570,19 +720,27 @@ def refresh_user_item_price(user_item_id: int, db: Session = Depends(get_db), cu
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/items/{item_id}/refresh")
-def refresh_single_item(item_id: int, db: Session = Depends(get_db)):
+def refresh_single_item(item_id: int, request: Request, db: Session = Depends(get_db), current: User = Depends(get_current_user)):
     """
     Refresh price for a single item.
     """
     strategy = CSFloatStrategy()
     service = PriceService(db, strategy)
+    _enforce_limit(
+        refresh_rate_limiter,
+        f"refresh-single:user:{current.user_id}:{item_id}",
+        limit=8,
+        window_seconds=60,
+        detail="Too many single-item refresh requests",
+    )
+
     try:
         updated = service.update_single_item_price(item_id)
         if not updated:
             raise HTTPException(status_code=404, detail="Item not found")
         return updated
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Item refresh failed")
 
 
 def _normalize_token(s: str) -> str:
@@ -749,7 +907,7 @@ def get_item_detail(slug: str, db: Session = Depends(get_db)):
     }
 
 @app.get("/items/{slug}/history")
-def get_item_price_history(slug: str, limit: int = 200, db: Session = Depends(get_db)):
+def get_item_price_history(slug: str, limit: int = Query(200, ge=1, le=1000), db: Session = Depends(get_db)):
     """
     Vrátí poslední záznamy cen pro daný item (case/skin) seřazené podle času.
     """
@@ -773,7 +931,7 @@ def get_item_price_history(slug: str, limit: int = 200, db: Session = Depends(ge
 # CSFloat API Key Management
 
 class CSFloatKeyRequest(BaseModel):
-    api_key: str
+    api_key: str = Field(min_length=8, max_length=512)
 
 
 @app.get('/user/csfloat/status')
@@ -790,13 +948,14 @@ def set_csfloat_api_key(req: CSFloatKeyRequest, current_user: AuthUser = Depends
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
     
-    if not req.api_key:
+    clean_api_key = sanitize_text(req.api_key, 512)
+    if not clean_api_key:
          # If empty string, treat as delete? Or raise error?
          # User said 'tlacitko na smazani nebo nastaveni noveho', so empty probably not allowed as 'set'.
          raise HTTPException(status_code=400, detail='API Key cannot be empty')
     
     try:
-        enc = encrypt_api_key(req.api_key)
+        enc = encrypt_api_key(clean_api_key)
         user.csfloat_api_key_ciphertext = enc['ciphertext']
         user.csfloat_api_key_iv = enc['iv']
         user.csfloat_api_key_tag = enc['tag']

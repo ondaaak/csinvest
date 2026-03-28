@@ -34,6 +34,11 @@ class Config(metaclass=_Singleton):
         self.PASSWORD_SALT: str = os.getenv("PASSWORD_SALT", "csinvest_static_salt")
         expire_raw = (os.getenv("ACCESS_TOKEN_EXPIRE_SECONDS", "3600") or "").strip()
         self.ACCESS_TOKEN_EXPIRE_SECONDS: int = int(expire_raw) if expire_raw else 0
+        self.AUTH_COOKIE_NAME: str = (os.getenv("AUTH_COOKIE_NAME", "csinvest_access_token") or "csinvest_access_token").strip()
+        self.AUTH_COOKIE_SECURE: bool = (os.getenv("AUTH_COOKIE_SECURE", "false") or "false").strip().lower() in {"1", "true", "yes", "on"}
+        self.AUTH_COOKIE_SAMESITE: str = (os.getenv("AUTH_COOKIE_SAMESITE", "lax") or "lax").strip().lower()
+        if self.AUTH_COOKIE_SAMESITE not in {"lax", "strict", "none"}:
+            self.AUTH_COOKIE_SAMESITE = "lax"
 
         self.DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
         if not self.DATABASE_URL:

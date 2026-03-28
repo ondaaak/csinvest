@@ -1,13 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Routes, Route, NavLink, useLocation, useNavigationType } from 'react-router-dom';
-import { InventoryPage, SearchPage, CasesPage, CaseDetailPage, SkinDetailPage, KnivesPage, GlovesPage, WeaponsPage, CollectionsPage, CollectionDetailPage } from './pages';
-import LoginPage from './pages/Login.jsx';
-import RegisterPage from './pages/Register.jsx';
-import AccountPage from './pages/Account.jsx';
-import AgentsPage from './pages/Agents.jsx';
-import CharmsPage from './pages/Charms.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import './App.css'; 
 import { useCurrency } from './currency/CurrencyContext.jsx';
@@ -16,6 +10,28 @@ import discordIcon from './assets/site/discord.png';
 import steamIcon from './assets/site/steam.png';
 
 const BASE_URL = '/api'; 
+
+const InventoryPage = lazy(() => import('./pages/Inventory.jsx'));
+const SearchPage = lazy(() => import('./pages/Search.jsx'));
+const CasesPage = lazy(() => import('./pages/Cases.jsx'));
+const CaseDetailPage = lazy(() => import('./pages/CaseDetail.jsx'));
+const SkinDetailPage = lazy(() => import('./pages/SkinDetail.jsx'));
+const KnivesPage = lazy(() => import('./pages/Knives.jsx'));
+const GlovesPage = lazy(() => import('./pages/Gloves.jsx'));
+const WeaponsPage = lazy(() => import('./pages/Weapons.jsx'));
+const CollectionsPage = lazy(() => import('./pages/Collections.jsx'));
+const CollectionDetailPage = lazy(() => import('./pages/CollectionDetail.jsx'));
+const LoginPage = lazy(() => import('./pages/Login.jsx'));
+const RegisterPage = lazy(() => import('./pages/Register.jsx'));
+const AccountPage = lazy(() => import('./pages/Account.jsx'));
+const AgentsPage = lazy(() => import('./pages/Agents.jsx'));
+const CharmsPage = lazy(() => import('./pages/Charms.jsx'));
+
+const RouteLoadingFallback = () => (
+    <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', color: 'var(--text-color)' }}>
+        <div style={{ opacity: 0.8 }}>Loading…</div>
+    </div>
+);
 
 
 const PortfolioChart = ({ history, currentTotals, feeMultiplier = 1 }) => {
@@ -257,10 +273,11 @@ function OverviewPage() {
         }
         try {
             const token = localStorage.getItem('csinvest:token');
+            const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined;
             const [portfolioResponse, historyResponse, meResponse] = await Promise.all([
-                axios.get(`${BASE_URL}/portfolio/${userId}`),
-                axios.get(`${BASE_URL}/portfolio-history/${userId}`),
-                axios.get(`${BASE_URL}/auth/me`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
+                axios.get(`${BASE_URL}/portfolio/${userId}`, authConfig),
+                axios.get(`${BASE_URL}/portfolio-history/${userId}`, authConfig),
+                axios.get(`${BASE_URL}/auth/me`, authConfig)
             ]);
 
             const portfolioArray = Array.isArray(portfolioResponse.data) ? portfolioResponse.data : [];
@@ -606,27 +623,29 @@ function App() {
                         </div>
                     </div>
                 )}
-                <Routes>
-                    <Route path="/" element={<SearchPage />} />
-                    <Route path="/overview" element={<OverviewPage />} />
-                    <Route path="/inventory" element={<InventoryPage />} />
-                    {/** Add route removed; Add Item is now handled via modal in Inventory */}
-                    <Route path="/search" element={<SearchPage />} />
-                    <Route path="/search/knives" element={<KnivesPage />} />
-                    <Route path="/search/gloves" element={<GlovesPage />} />
-                    <Route path="/search/agents" element={<AgentsPage />} />
-                    <Route path="/search/charms" element={<CharmsPage />} />
-                    <Route path="/search/weapons" element={<WeaponsPage />} />
-                    <Route path="/search/cases" element={<CasesPage />} />
-                    <Route path="/search/collections" element={<CollectionsPage />} />
-                    <Route path="/case/:slug" element={<CaseDetailPage />} />
-                    <Route path="/collection/:slug" element={<CollectionDetailPage />} />
-                    <Route path="/skin/:slug" element={<SkinDetailPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/account" element={<AccountPage />} />
-                    <Route path="*" element={<SearchPage />} />
-                </Routes>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                    <Routes>
+                        <Route path="/" element={<SearchPage />} />
+                        <Route path="/overview" element={<OverviewPage />} />
+                        <Route path="/inventory" element={<InventoryPage />} />
+                        {/** Add route removed; Add Item is now handled via modal in Inventory */}
+                        <Route path="/search" element={<SearchPage />} />
+                        <Route path="/search/knives" element={<KnivesPage />} />
+                        <Route path="/search/gloves" element={<GlovesPage />} />
+                        <Route path="/search/agents" element={<AgentsPage />} />
+                        <Route path="/search/charms" element={<CharmsPage />} />
+                        <Route path="/search/weapons" element={<WeaponsPage />} />
+                        <Route path="/search/cases" element={<CasesPage />} />
+                        <Route path="/search/collections" element={<CollectionsPage />} />
+                        <Route path="/case/:slug" element={<CaseDetailPage />} />
+                        <Route path="/collection/:slug" element={<CollectionDetailPage />} />
+                        <Route path="/skin/:slug" element={<SkinDetailPage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register" element={<RegisterPage />} />
+                        <Route path="/account" element={<AccountPage />} />
+                        <Route path="*" element={<SearchPage />} />
+                    </Routes>
+                </Suspense>
             </div>
             <footer className="footer">
                 <div className="footer-line">2026 CS2Invests (beta) |</div>

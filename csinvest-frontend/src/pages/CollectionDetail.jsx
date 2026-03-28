@@ -87,8 +87,11 @@ function CollectionDetailPage() {
     if (!pkgs.length) return;
     setRefreshing(true);
     try {
+      const token = localStorage.getItem('csinvest:token');
       for (const p of pkgs) {
-        await axios.post(`${BASE_URL}/items/${p.item_id}/refresh`);
+        await axios.post(`${BASE_URL}/items/${p.item_id}/refresh`, null, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
       await loadData();
     } catch (e) {

@@ -5,6 +5,7 @@ from price_factory import PriceFactory
 import time
 import requests
 import datetime
+from security import is_valid_discord_webhook_url
 
 class PriceService:
     USER_ITEM_REFRESH_MIN_AGE_SECONDS = 1800
@@ -99,7 +100,7 @@ class PriceService:
             return False
 
     def _send_discord_notification(self, webhook_url: str, item_name: str, old_price: float, new_price: float, currency: str = "USD"):
-        if not webhook_url:
+        if not webhook_url or not is_valid_discord_webhook_url(webhook_url):
             return
             
         try:
@@ -140,7 +141,7 @@ class PriceService:
         total_old_value: float | None = None,
         total_new_value: float | None = None,
     ):
-        if not webhook_url or not items:
+        if not webhook_url or not items or not is_valid_discord_webhook_url(webhook_url):
             return
 
         try:
