@@ -21,6 +21,11 @@ class User(Base):
     csfloat_api_key_iv = Column(String, nullable=True) 
     csfloat_api_key_tag = Column(String, nullable=True)
 
+    # Password reset flow
+    password_reset_code_hash = Column(String, nullable=True)
+    password_reset_expires_at = Column(DateTime, nullable=True)
+    password_reset_attempts = Column(Integer, nullable=False, default=0)
+
 class Item(Base):
     __tablename__ = "ITEM"
     item_id = Column(Integer, primary_key=True, index=True)

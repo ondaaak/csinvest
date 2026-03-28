@@ -23,6 +23,7 @@ const CollectionsPage = lazy(() => import('./pages/Collections.jsx'));
 const CollectionDetailPage = lazy(() => import('./pages/CollectionDetail.jsx'));
 const LoginPage = lazy(() => import('./pages/Login.jsx'));
 const RegisterPage = lazy(() => import('./pages/Register.jsx'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword.jsx'));
 const AccountPage = lazy(() => import('./pages/Account.jsx'));
 const AgentsPage = lazy(() => import('./pages/Agents.jsx'));
 const CharmsPage = lazy(() => import('./pages/Charms.jsx'));
@@ -641,6 +642,7 @@ function App() {
                         <Route path="/collection/:slug" element={<CollectionDetailPage />} />
                         <Route path="/skin/:slug" element={<SkinDetailPage />} />
                         <Route path="/login" element={<LoginPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/account" element={<AccountPage />} />
                         <Route path="*" element={<SearchPage />} />

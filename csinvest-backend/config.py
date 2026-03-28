@@ -40,6 +40,14 @@ class Config(metaclass=_Singleton):
         if self.AUTH_COOKIE_SAMESITE not in {"lax", "strict", "none"}:
             self.AUTH_COOKIE_SAMESITE = "lax"
 
+        self.SMTP_HOST: str = (os.getenv("SMTP_HOST", "") or "").strip()
+        smtp_port_raw = (os.getenv("SMTP_PORT", "465") or "465").strip()
+        self.SMTP_PORT: int = int(smtp_port_raw) if smtp_port_raw.isdigit() else 465
+        self.SMTP_USER: str = (os.getenv("SMTP_USER", "") or "").strip()
+        self.SMTP_PASSWORD: str = (os.getenv("SMTP_PASSWORD", "") or "").strip()
+        self.SMTP_FROM_EMAIL: str = (os.getenv("SMTP_FROM_EMAIL", "") or "").strip()
+        self.SMTP_USE_TLS: bool = (os.getenv("SMTP_USE_TLS", "false") or "false").strip().lower() in {"1", "true", "yes", "on"}
+
         self.DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
         if not self.DATABASE_URL:
             raise ValueError("Chybí DATABASE_URL v souboru .env!")

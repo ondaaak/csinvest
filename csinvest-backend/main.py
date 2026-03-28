@@ -13,8 +13,11 @@ from config import Config
 from sqlalchemy import func, text
 from scheduler import start_scheduler
 from encryption import encrypt_api_key
+from mailer import send_password_reset_code
 import datetime
 import re
+import hashlib
+import secrets
 from database import engine
 from security import (
     FixedWindowRateLimiter,
@@ -29,6 +32,7 @@ app = FastAPI()
 @app.on_event("startup")
 def startup_event():
     _ensure_useritemhistory_columns()
+    _ensure_user_password_reset_columns()
     start_scheduler()
 
 
@@ -62,6 +66,38 @@ def _ensure_useritemhistory_columns():
             if col_name in existing:
                 continue
             conn.execute(text(f"ALTER TABLE \"USERITEMHISTORY\" ADD COLUMN {col_name} {col_def}"))
+
+
+def _ensure_user_password_reset_columns():
+    expected_columns = {
+        "password_reset_code_hash": "VARCHAR",
+        "password_reset_expires_at": "TIMESTAMP",
+        "password_reset_attempts": "INTEGER NOT NULL DEFAULT 0",
+    }
+
+    with engine.begin() as conn:
+        dialect = conn.dialect.name
+        existing = set()
+
+        if dialect == "sqlite":
+            rows = conn.execute(text("PRAGMA table_info('USER')")).fetchall()
+            existing = {r[1] for r in rows}
+        else:
+            rows = conn.execute(
+                text(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'USER'
+                    """
+                )
+            ).fetchall()
+            existing = {r[0] for r in rows}
+
+        for col_name, col_def in expected_columns.items():
+            if col_name in existing:
+                continue
+            conn.execute(text(f"ALTER TABLE \"USER\" ADD COLUMN {col_name} {col_def}"))
 
 
 cfg = Config()
@@ -114,6 +150,23 @@ def _enforce_limit(limiter: FixedWindowRateLimiter, key: str, limit: int, window
     if not limiter.allow(key=key, limit=limit, window_seconds=window_seconds):
         raise HTTPException(status_code=429, detail=detail)
 
+
+RESET_CODE_LEN = 9
+RESET_CODE_TTL_MINUTES = 15
+RESET_CODE_MAX_ATTEMPTS = 8
+RESET_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+
+def _hash_reset_code(email: str, code: str) -> str:
+    normalized_email = (email or "").strip().lower()
+    normalized_code = (code or "").strip().upper()
+    payload = f"{normalized_email}:{normalized_code}:{cfg.SECRET_KEY}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _generate_reset_code(length: int = RESET_CODE_LEN) -> str:
+    return "".join(secrets.choice(RESET_CODE_ALPHABET) for _ in range(length))
+
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     email: EmailStr
@@ -122,6 +175,22 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     password: str = Field(min_length=8, max_length=128)
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetVerifyRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=5, max_length=32)
+
+
+class PasswordResetCompleteRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=5, max_length=32)
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=8, max_length=128)
 
 class AuthUser(BaseModel):
     user_id: int
@@ -206,6 +275,97 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 def logout(response: Response):
     _clear_auth_cookie(response)
     return {"message": "Logged out"}
+
+
+@app.post("/auth/password-reset/request")
+def request_password_reset(payload: PasswordResetRequest, request: Request, db: Session = Depends(get_db)):
+    client_ip = get_client_ip(request)
+    _enforce_limit(auth_rate_limiter, f"pwd-reset-request:ip:{client_ip}", limit=8, window_seconds=300, detail="Too many reset requests")
+
+    email = sanitize_text(payload.email, 320)
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="This email is not registered.")
+
+    code = _generate_reset_code()
+    user.password_reset_code_hash = _hash_reset_code(email, code)
+    user.password_reset_expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=RESET_CODE_TTL_MINUTES)
+    user.password_reset_attempts = 0
+    db.commit()
+
+    send_password_reset_code(email, code, user.username)
+    return {"message": "Reset has been sent."}
+
+
+@app.post("/auth/password-reset/verify")
+def verify_password_reset_code(payload: PasswordResetVerifyRequest, request: Request, db: Session = Depends(get_db)):
+    client_ip = get_client_ip(request)
+    _enforce_limit(auth_rate_limiter, f"pwd-reset-verify:ip:{client_ip}", limit=25, window_seconds=300, detail="Too many verification attempts")
+
+    email = sanitize_text(payload.email, 320)
+    code = sanitize_text(payload.code, 32)
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid code")
+
+    if not user.password_reset_code_hash or not user.password_reset_expires_at:
+        raise HTTPException(status_code=400, detail="No active reset code")
+
+    if datetime.datetime.utcnow() > user.password_reset_expires_at:
+        user.password_reset_code_hash = None
+        user.password_reset_expires_at = None
+        user.password_reset_attempts = 0
+        db.commit()
+        raise HTTPException(status_code=400, detail="Reset code expired")
+
+    if (user.password_reset_attempts or 0) >= RESET_CODE_MAX_ATTEMPTS:
+        raise HTTPException(status_code=400, detail="Too many invalid attempts. Request a new code.")
+
+    expected = user.password_reset_code_hash
+    actual = _hash_reset_code(email, code)
+    if actual != expected:
+        user.password_reset_attempts = (user.password_reset_attempts or 0) + 1
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid code")
+
+    return {"message": "Code verified"}
+
+
+@app.post("/auth/password-reset/complete")
+def complete_password_reset(payload: PasswordResetCompleteRequest, request: Request, db: Session = Depends(get_db)):
+    client_ip = get_client_ip(request)
+    _enforce_limit(auth_rate_limiter, f"pwd-reset-complete:ip:{client_ip}", limit=12, window_seconds=300, detail="Too many reset attempts")
+
+    email = sanitize_text(payload.email, 320)
+    code = sanitize_text(payload.code, 32)
+    if payload.new_password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid reset request")
+
+    if not user.password_reset_code_hash or not user.password_reset_expires_at:
+        raise HTTPException(status_code=400, detail="No active reset code")
+
+    if datetime.datetime.utcnow() > user.password_reset_expires_at:
+        user.password_reset_code_hash = None
+        user.password_reset_expires_at = None
+        user.password_reset_attempts = 0
+        db.commit()
+        raise HTTPException(status_code=400, detail="Reset code expired")
+
+    if _hash_reset_code(email, code) != user.password_reset_code_hash:
+        user.password_reset_attempts = (user.password_reset_attempts or 0) + 1
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid code")
+
+    user.password_hash = hash_password(payload.new_password)
+    user.password_reset_code_hash = None
+    user.password_reset_expires_at = None
+    user.password_reset_attempts = 0
+    db.commit()
+    return {"message": "Password has been reset successfully"}
 
 @app.get("/auth/me")
 def auth_me(current: User = Depends(get_current_user)):

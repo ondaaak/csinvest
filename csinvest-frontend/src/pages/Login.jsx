@@ -14,7 +14,7 @@ export default function LoginPage() {
     setError('');
     const ok = await login({ username, password });
     if (ok) navigate('/');
-    else setError('Invalid credentials. To reset contact ondaaak@gmail.com');
+    else setError('Invalid credentials.');
   };
 
   return (
@@ -29,7 +29,11 @@ export default function LoginPage() {
           Password
           <input type="password" className="search-input" value={password} onChange={(e) => setPassword(e.target.value)} style={{ marginTop: 6, width: '100%' }} />
         </label>
-        {error && <div style={{ color: 'var(--loss-color)', marginTop: 8 }}>{error}</div>}
+        {error && (
+          <div style={{ color: 'var(--loss-color)', marginTop: 8 }}>
+            {error} <Link to="/forgot-password" style={{ color: 'white' }}>Click here to reset password</Link>
+          </div>
+        )}
         <div style={{ marginTop: 12, textAlign:'center' }}>
           <button type="submit" className="account-button">Login</button>
         </div>
