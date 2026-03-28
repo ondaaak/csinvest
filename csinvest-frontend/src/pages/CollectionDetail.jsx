@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
-import { buildSteamInspectHref } from '../utils/inspect.js';
+import { buildSteamInspectHref, shouldShowInspect } from '../utils/inspect.js';
 import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const BASE_URL = '/api';
@@ -18,7 +18,11 @@ function CollectionDetailPage() {
   const restoreTargetKey = `collection-detail:return-target:${slug}`;
 
   const collectionImgMap = useMemo(() => {
-    const files = import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' });
+    const files = {
+      ...import.meta.glob('../assets/skins/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }),
+      ...import.meta.glob('../assets/stickers/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }),
+      ...import.meta.glob('../assets/collections/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }),
+    };
     const map = {};
     Object.entries(files).forEach(([path, url]) => {
       const filename = path.split('/').pop() || '';
@@ -62,7 +66,7 @@ function CollectionDetailPage() {
       setData(res.data);
     } catch (e) {
       console.error(e);
-      setError('Collection not found');
+      setError('Group not found');
     } finally {
       setLoading(false);
     }
@@ -106,9 +110,9 @@ function CollectionDetailPage() {
     const r = rarity.toLowerCase();
     if (r.includes('contraband') || r.includes('knife') || r.includes('glove')) return 7;
     if (r.includes('covert') || r.includes('extraordinary')) return 6;
-    if (r.includes('classified')) return 5;
-    if (r.includes('restricted')) return 4;
-    if (r.includes('mil-spec') || r.includes('milspec')) return 3;
+    if (r.includes('classified') || r.includes('exotic')) return 5;
+    if (r.includes('restricted') || r.includes('remarkable')) return 4;
+    if (r.includes('mil-spec') || r.includes('milspec') || r.includes('high grade')) return 3;
     if (r.includes('industrial')) return 2;
     if (r.includes('consumer')) return 1;
     return 0;
@@ -131,6 +135,9 @@ function CollectionDetailPage() {
   if (!data) return null;
 
   const { collection: coll } = data;
+  const isStickerGroup = (coll?.item_type || '').toLowerCase() === 'sticker_group';
+  const collectionTitle = isStickerGroup ? 'Sticker Group Info' : 'Collection Info';
+  const collectionTypeLabel = isStickerGroup ? 'Sticker Group' : 'Collection';
 
   const getSkinImage = (slug) => {
     if (!slug) return null;
@@ -144,9 +151,9 @@ function CollectionDetailPage() {
     const r = rarity.toLowerCase();
     if (r.includes('contraband')) return { bg: 'rgba(228, 174, 57, 0.25)', color: '#e4ae39' };
     if (r.includes('covert') || r.includes('extraordinary')) return { bg: 'rgba(235, 75, 75, 0.25)', color: '#eb4b4b' };
-    if (r.includes('classified')) return { bg: 'rgba(211, 44, 230, 0.25)', color: '#d32ce6' };
-    if (r.includes('restricted')) return { bg: 'rgba(136, 71, 255, 0.25)', color: '#8847ff' };
-    if (r.includes('mil-spec')) return { bg: 'rgba(75, 105, 255, 0.25)', color: '#4b69ff' };
+    if (r.includes('classified') || r.includes('exotic')) return { bg: 'rgba(211, 44, 230, 0.25)', color: '#d32ce6' };
+    if (r.includes('restricted') || r.includes('remarkable')) return { bg: 'rgba(136, 71, 255, 0.25)', color: '#8847ff' };
+    if (r.includes('mil-spec') || r.includes('milspec') || r.includes('high grade')) return { bg: 'rgba(75, 105, 255, 0.25)', color: '#4b69ff' };
     if (r.includes('industrial')) return { bg: 'rgba(94, 152, 217, 0.25)', color: '#5e98d9' };
     if (r.includes('consumer')) return { bg: 'rgba(176, 195, 217, 0.25)', color: '#b0c3d9' };
     return { bg: 'rgba(107,114,128,0.25)', color: 'var(--text-color)' };
@@ -192,7 +199,7 @@ function CollectionDetailPage() {
       <div className="collection-detail-main" style={{ display:'flex', gap:24, marginBottom:32 }}>
         <div className="collection-detail-image-wrap" style={{ width:200, flexShrink:0, textAlign:'center' }}>
           {getCollectionImage(coll.slug) ? (
-            <img src={getCollectionImage(coll.slug)} alt={coll.name} style={{ width:'100%', borderRadius:12, border:'1px solid var(--surface-border)', display:'block', margin:'0 auto' }} />
+            <img src={getCollectionImage(coll.slug)} alt={coll.name} style={{ width:'100%', borderRadius:12, display:'block', margin:'0 auto' }} />
           ) : (
             <div style={{ width:'100%', aspectRatio:'1', background:'var(--surface-bg)', borderRadius:12, border:'1px solid var(--surface-border)', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <span style={{ fontSize:'2rem', opacity:0.3 }}>📦</span>
@@ -201,10 +208,10 @@ function CollectionDetailPage() {
         </div>
         <div className="collection-detail-info-wrap" style={{ flex:1 }}>
           <div style={{ background:'var(--card-bg)', borderRadius:12, padding:20, border:'1px solid var(--surface-border)' }}>
-            <h3 style={{ marginTop:0 }}>Collection Info</h3>
+            <h3 style={{ marginTop:0 }}>{collectionTitle}</h3>
             <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:'8px 16px', fontSize:'0.9rem' }}>
               <div style={{ opacity:0.6 }}>Type:</div>
-              <div>Collection</div>
+              <div>{collectionTypeLabel}</div>
               {coll.drop_type && (
                 <>
                   <div style={{ opacity:0.6 }}>Status:</div>
@@ -278,7 +285,7 @@ function CollectionDetailPage() {
           <div className="categories-grid collection-detail-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
             {skins.map(it => (
               (() => {
-                const inspectHref = buildSteamInspectHref(it.inspect, it);
+                const inspectHref = shouldShowInspect(it) ? buildSteamInspectHref(it.inspect, it) : null;
                 return (
               <div
                 key={it.slug}

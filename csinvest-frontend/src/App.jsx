@@ -20,6 +20,7 @@ const KnivesPage = lazy(() => import('./pages/Knives.jsx'));
 const GlovesPage = lazy(() => import('./pages/Gloves.jsx'));
 const WeaponsPage = lazy(() => import('./pages/Weapons.jsx'));
 const CollectionsPage = lazy(() => import('./pages/Collections.jsx'));
+const StickersPage = lazy(() => import('./pages/Stickers.jsx'));
 const CollectionDetailPage = lazy(() => import('./pages/CollectionDetail.jsx'));
 const LoginPage = lazy(() => import('./pages/Login.jsx'));
 const RegisterPage = lazy(() => import('./pages/Register.jsx'));
@@ -638,6 +639,7 @@ function App() {
                         <Route path="/search/weapons" element={<WeaponsPage />} />
                         <Route path="/search/cases" element={<CasesPage />} />
                         <Route path="/search/collections" element={<CollectionsPage />} />
+                        <Route path="/search/stickers" element={<StickersPage />} />
                         <Route path="/case/:slug" element={<CaseDetailPage />} />
                         <Route path="/collection/:slug" element={<CollectionDetailPage />} />
                         <Route path="/skin/:slug" element={<SkinDetailPage />} />

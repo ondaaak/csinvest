@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
-import { buildSteamInspectHref } from '../utils/inspect.js';
+import { buildSteamInspectHref, shouldShowInspect } from '../utils/inspect.js';
 import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
 const BASE_URL = '/api';
@@ -166,7 +166,7 @@ function CaseDetailPage() {
       <div className="categories-grid case-detail-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
         {items.map(it => {
           const rarityStyle = getRarityColor(it.rarity);
-          const inspectHref = buildSteamInspectHref(it.inspect, it);
+          const inspectHref = shouldShowInspect(it) ? buildSteamInspectHref(it.inspect, it) : null;
           return (
             <div
               key={it.item_id || it.slug}

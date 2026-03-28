@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCurrency } from '../currency/CurrencyContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useAppModal } from '../components/AppModalProvider.jsx';
-import { buildSteamInspectHref } from '../utils/inspect.js';
+import { buildSteamInspectHref, shouldShowInspect } from '../utils/inspect.js';
 import { getCachedJson, invalidateCachedUrl } from '../utils/apiCache.js';
 import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
@@ -245,7 +245,7 @@ export default function CharmsPage() {
             style={{ cursor: 'pointer', position: 'relative', textDecoration: 'none', color: 'inherit' }}
           >
             {(() => {
-              const inspectHref = buildSteamInspectHref(it.inspect, it);
+              const inspectHref = shouldShowInspect(it) ? buildSteamInspectHref(it.inspect, it) : null;
               return (
               <button
                 type="button"

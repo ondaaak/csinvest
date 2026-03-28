@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { buildSteamInspectHref } from '../utils/inspect.js';
+import { buildSteamInspectHref, shouldShowInspect } from '../utils/inspect.js';
 const API_BASE = '/api';
 
 const CATEGORIES = [
@@ -10,7 +10,7 @@ const CATEGORIES = [
   { key: 'gloves', label: 'Gloves' },
   { key: 'weapons', label: 'Weapons' },
   { key: 'agents', label: 'Agents' },
-  { key: 'stickers', label: 'Stickers', disabled: true },
+  { key: 'stickers', label: 'Stickers' },
   { key: 'charms', label: 'Charms' },
   { key: 'patches', label: 'Patches', disabled: true },
   { key: 'pins', label: 'Pins', disabled: true },
@@ -218,8 +218,7 @@ function SearchPage() {
             <div className="search-suggestions">
               {suggestions.map((s) => (
                 (() => {
-                  const hasDefIndex = s.def_index !== null && s.def_index !== undefined;
-                  const inspectHref = hasDefIndex ? buildSteamInspectHref(s.inspect, s) : null;
+                  const inspectHref = shouldShowInspect(s) ? buildSteamInspectHref(s.inspect, s) : null;
                   return (
                     <div
                       key={s.slug}

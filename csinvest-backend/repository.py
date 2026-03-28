@@ -238,7 +238,11 @@ class ItemRepository:
         return self.db.query(Item).filter(Item.slug == slug, Item.item_type == 'case').first()
 
     def get_collection_by_slug(self, slug: str):
-        return self.db.query(Item).filter(Item.slug == slug, Item.item_type == 'collection').first()
+        return (
+            self.db.query(Item)
+            .filter(Item.slug == slug, Item.item_type.in_(['collection', 'sticker_group']))
+            .first()
+        )
 
     def get_case_skins(self, case_id: int):
         return self.db.query(Item).filter(Item.case_id == case_id, Item.item_type == 'skin').all()

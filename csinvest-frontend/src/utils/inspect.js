@@ -63,3 +63,8 @@ export const buildSteamInspectHref = (rawInspect, item = null) => {
   if (!token) return null;
   return `steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20${token}`;
 };
+
+export const shouldShowInspect = (item) => {
+  const paintIndex = Number(item?.paint_index);
+  return Number.isFinite(paintIndex) && paintIndex > 1;
+};

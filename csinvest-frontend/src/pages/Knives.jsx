@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { buildSteamInspectHref } from '../utils/inspect.js';
+import { buildSteamInspectHref, shouldShowInspect } from '../utils/inspect.js';
 import { getCachedJson } from '../utils/apiCache.js';
 import { saveReturnTarget, restoreReturnTarget } from '../utils/returnTarget.js';
 
@@ -359,7 +359,7 @@ export default function KnivesPage() {
               style={{ cursor: 'pointer', position: 'relative', textDecoration: 'none', color: 'inherit' }}
             >
               {(() => {
-                const inspectHref = buildSteamInspectHref(it.inspect, it);
+                const inspectHref = shouldShowInspect(it) ? buildSteamInspectHref(it.inspect, it) : null;
                 return (
                 <button
                   type="button"
